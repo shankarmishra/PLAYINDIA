@@ -33,6 +33,7 @@ const orderRoutes = require('./routes/order.routes');
 const deliveryRoutes = require('./routes/delivery.routes');
 const bookingRoutes = require('./routes/booking.routes');
 const nearbyPlayersRoutes = require('./routes/nearby-players.routes');
+const apiRoutes = require('./routes/api.routes');
 
 // Import error handler
 const errorHandler = require('./middleware/error');
@@ -70,6 +71,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/nearby-players', nearbyPlayersRoutes);
+app.use('/api', apiRoutes);
 
 // Health check endpoint
 app.get('/health', async (req, res) => {

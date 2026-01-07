@@ -1,61 +1,223 @@
 const Coach = require('../models/coach.model');
 const User = require('../models/user.model');
-const { AppError } = require('../middleware/error');
-const logger = require('../utils/logger');
+const Booking = require('../models/booking.model');
+const Review = require('../models/Review.model');
+const Wallet = require('../models/Wallet.model');
 
 /**
- * Get all coaches
- * @route GET /api/coaches
- * @access Public
+ * Get coaches based on filters
  */
-exports.getAllCoaches = async (req, res, next) => {
+exports.getCoaches = async (req, res, next) => {
   try {
-    const { sport, city, experience, rating, page = 1, limit = 10 } = req.query;
-
+    const { sport, location, rating, experience, availability, price } = req.query;
+    
     // Build query
-    const query = {};
-    if (sport) query.sport = sport;
-    if (city) query.city = city;
-    if (experience) query.experience = { $gte: parseInt(experience) };
-    if (rating) query.averageRating = { $gte: parseFloat(rating) };
-
-    // Execute query with pagination
+    let query = { verified: true, 'availability.isAvailable': true };
+    
+    if (sport) {
+      query.sports = { $in: [sport] };
+    }
+    
+    if (rating) {
+      query['ratings.average'] = { $gte: parseFloat(rating) };
+    }
+    
+    if (experience) {
+      query['experience.years'] = { $gte: parseInt(experience) };
+    }
+    
+    if (location) {
+      // Add location-based query if coordinates are provided
+      // This would require additional parameters
+    }
+    
     const coaches = await Coach.find(query)
-      .populate('user', 'name email phone')
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit))
-      .sort('-averageRating');
-
-    // Get total count
-    const total = await Coach.countDocuments(query);
+      .populate('userId', 'name mobile email')
+      .sort({ 'ratings.average': -1, 'experience.years': -1 })
+      .limit(50);
 
     res.status(200).json({
       success: true,
-      data: {
-        coaches,
-        total,
-        page: parseInt(page),
-        pages: Math.ceil(total / limit)
-      }
+      count: coaches.length,
+      data: coaches
     });
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
 
 /**
- * Get coach by ID
- * @route GET /api/coaches/:id
- * @access Public
+ * Get coach profile
  */
-exports.getCoachById = async (req, res, next) => {
+exports.getCoachProfile = async (req, res, next) => {
   try {
-    const coach = await Coach.findById(req.params.id)
-      .populate('user', 'name email phone')
-      .populate('reviews.user', 'name');
+    const { id } = req.params;
+    
+    const coach = await Coach.findById(id)
+      .populate('userId', 'name mobile email')
+      .populate('achievements', 'title description date');
 
     if (!coach) {
-      return next(new AppError('Coach not found', 404));
+      return res.status(404).json({
+        success: false,
+        message: 'Coach not found'
+      });
+    }
+
+    // Get additional stats
+    const completedSessions = await Booking.countDocuments({
+      coachId: id,
+      status: 'completed'
+    });
+
+    const totalEarnings = await Booking.aggregate([
+      { $match: { coachId: id, status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$payment.amount' } } }
+    ]);
+
+    const avgRating = await Review.aggregate([
+      { $match: { 'reviewee.userId': coach.userId } },
+      { $group: { _id: null, avgRating: { $avg: '$rating' } } }
+    ]);
+
+    const profileData = {
+      ...coach.toObject(),
+      stats: {
+        completedSessions,
+        totalEarnings: totalEarnings[0] ? totalEarnings[0].total : 0,
+        averageRating: avgRating[0] ? avgRating[0].avgRating : 0
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      data: profileData
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get coach dashboard
+ */
+exports.getCoachDashboard = async (req, res, next) => {
+  try {
+    const coach = await Coach.findOne({ userId: req.user.id })
+      .populate('userId', 'name mobile email');
+
+    if (!coach) {
+      return res.status(404).json({
+        success: false,
+        message: 'Coach profile not found'
+      });
+    }
+
+    // Get coach wallet
+    const wallet = await Wallet.findOne({ userId: req.user.id });
+
+    // Get recent bookings
+    const recentBookings = await Booking.find({ coachId: coach._id })
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    // Get upcoming bookings
+    const upcomingBookings = await Booking.find({
+      coachId: coach._id,
+      status: { $in: ['pending', 'confirmed', 'in_progress'] },
+      'schedule.date': { $gte: new Date() }
+    });
+
+    // Get recent reviews
+    const recentReviews = await Review.find({ 'reviewee.userId': req.user.id })
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    // Get earnings analytics
+    const monthlyEarnings = await Booking.aggregate([
+      { $match: { 
+          coachId: coach._id, 
+          status: 'completed',
+          createdAt: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 3)) }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+          total: { $sum: "$payment.amount" },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    const dashboardData = {
+      coach: {
+        ...coach.toObject(),
+        walletBalance: wallet ? wallet.balance : 0
+      },
+      stats: {
+        totalSessions: coach.sessions.total,
+        completedSessions: coach.sessions.completed,
+        totalEarnings: coach.earnings.total,
+        availableEarnings: coach.earnings.available,
+        pendingEarnings: coach.earnings.pending,
+        rating: coach.ratings.average,
+        totalRatings: coach.ratings.count
+      },
+      sections: {
+        recentBookings,
+        upcomingBookings,
+        recentReviews,
+        monthlyEarnings
+      },
+      analytics: {
+        monthlyEarnings,
+        sessionTrend: [], // Implement based on booking data
+        studentGrowth: [] // Implement based on new students
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      data: dashboardData
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Update coach availability
+ */
+exports.updateAvailability = async (req, res, next) => {
+  try {
+    const { schedule, isAvailable, timeSlots } = req.body;
+    
+    const coach = await Coach.findOneAndUpdate(
+      { userId: req.user.id },
+      { 
+        'availability.schedule': schedule,
+        'availability.isAvailable': isAvailable,
+        'availability.timeSlots': timeSlots
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!coach) {
+      return res.status(404).json({
+        success: false,
+        message: 'Coach profile not found'
+      });
     }
 
     res.status(200).json({
@@ -63,240 +225,132 @@ exports.getCoachById = async (req, res, next) => {
       data: coach
     });
   } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Create coach profile
- * @route POST /api/coaches
- * @access Private
- */
-exports.createCoachProfile = async (req, res, next) => {
-  try {
-    // Check if coach profile already exists
-    const existingCoach = await Coach.findOne({ user: req.user.id });
-    if (existingCoach) {
-      return next(new AppError('Coach profile already exists', 400));
-    }
-
-    // Create coach profile
-    const coach = await Coach.create({
-      user: req.user.id,
-      ...req.body
+    res.status(400).json({
+      success: false,
+      message: error.message
     });
-
-    // Update user role
-    await User.findByIdAndUpdate(req.user.id, { role: 'coach' });
-
-    res.status(201).json({
-      success: true,
-      data: coach
-    });
-  } catch (error) {
-    next(error);
   }
 };
 
 /**
  * Update coach profile
- * @route PUT /api/coaches/:id
- * @access Private
  */
 exports.updateCoachProfile = async (req, res, next) => {
   try {
-    const coach = await Coach.findById(req.params.id);
-
-    if (!coach) {
-      return next(new AppError('Coach not found', 404));
-    }
-
-    // Check ownership
-    if (coach.user.toString() !== req.user.id) {
-      return next(new AppError('Not authorized to update this profile', 403));
-    }
-
-    // Update coach profile
-    const updatedCoach = await Coach.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        new: true,
-        runValidators: true
-      }
-    ).populate('user', 'name email phone');
-
-    res.status(200).json({
-      success: true,
-      data: updatedCoach
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-/**
- * Add review to coach
- * @route POST /api/coaches/:id/reviews
- * @access Private
- */
-exports.addCoachReview = async (req, res) => {
-  try {
-    const { rating, comment } = req.body;
-    const coach = await Coach.findById(req.params.id);
+    const updateData = req.body;
     
-    if (!coach) {
-      return res.status(404).json({ message: 'Coach not found' });
-    }
-
-    const review = {
-      user: req.user.id,
-      rating,
-      comment
-    };
-
-    coach.reviews.push(review);
-    
-    // Update average rating
-    const totalRating = coach.reviews.reduce((sum, item) => sum + item.rating, 0);
-    coach.rating = totalRating / coach.reviews.length;
-
-    await coach.save();
-    res.status(201).json(coach);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-/**
- * Get coach reviews
- * @route GET /api/coaches/:id/reviews
- * @access Public
- */
-exports.getCoachReviews = async (req, res, next) => {
-  try {
-    const coach = await Coach.findById(req.params.id)
-      .populate('reviews.user', 'name email')
-      .select('reviews averageRating totalReviews');
+    const coach = await Coach.findOneAndUpdate(
+      { userId: req.user.id },
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
 
     if (!coach) {
-      return next(new AppError('Coach not found', 404));
+      return res.status(404).json({
+        success: false,
+        message: 'Coach profile not found'
+      });
     }
 
     res.status(200).json({
       success: true,
-      data: {
-        reviews: coach.reviews,
-        averageRating: coach.averageRating,
-        totalReviews: coach.totalReviews
-      }
+      data: coach
     });
   } catch (error) {
-    next(error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
   }
 };
 
 /**
- * Delete coach profile
- * @route DELETE /api/coaches/:id
- * @access Private
+ * Get coach availability for specific date
  */
-exports.deleteCoachProfile = async (req, res, next) => {
+exports.getCoachAvailability = async (req, res, next) => {
   try {
-    const coach = await Coach.findById(req.params.id);
-
+    const { id, date } = req.params;
+    
+    const coach = await Coach.findById(id);
+    
     if (!coach) {
-      return next(new AppError('Coach not found', 404));
+      return res.status(404).json({
+        success: false,
+        message: 'Coach not found'
+      });
     }
 
-    // Check ownership
-    if (coach.user.toString() !== req.user.id) {
-      return next(new AppError('Not authorized to delete this profile', 403));
+    // Check if coach is available on the specified date
+    const coachDate = new Date(date);
+    const dayOfWeek = coachDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+    
+    const daySchedule = coach.availability.schedule.find(s => s.day === dayOfWeek);
+    
+    if (!daySchedule || !daySchedule.available) {
+      return res.status(200).json({
+        success: true,
+        available: false,
+        message: 'Coach not available on this day'
+      });
     }
 
-    await Coach.findByIdAndDelete(req.params.id);
+    // Check time slots for the specific date
+    const dateSlot = coach.availability.timeSlots.find(ts => 
+      new Date(ts.date).toDateString() === coachDate.toDateString()
+    );
 
-    // Update user role back to user
-    await User.findByIdAndUpdate(req.user.id, { role: 'user' });
+    let availableSlots = [];
+    if (dateSlot) {
+      availableSlots = dateSlot.slots
+        .filter(slot => slot.available && !slot.bookingId)
+        .map(slot => slot.time);
+    } else {
+      // Use default schedule for the day
+      // This would require more complex time slot generation logic
+      availableSlots = generateTimeSlots(daySchedule.startTime, daySchedule.endTime);
+    }
 
     res.status(200).json({
       success: true,
-      message: 'Coach profile deleted successfully'
+      available: true,
+      date,
+      slots: availableSlots
     });
   } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Get coach's schedule
- * @route GET /api/coaches/:id/schedule
- * @access Public
- */
-exports.getCoachSchedule = async (req, res) => {
-  try {
-    const coach = await Coach.findById(req.params.id).select('availability');
-    if (!coach) {
-      return res.status(404).json({ message: 'Coach not found' });
-    }
-    res.json(coach.availability);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-/**
- * Update coach's schedule
- * @route PUT /api/coaches/:id/schedule
- * @access Private
- */
-exports.updateCoachSchedule = async (req, res) => {
-  try {
-    const coach = await Coach.findById(req.params.id);
-    if (!coach) {
-      return res.status(404).json({ message: 'Coach not found' });
-    }
-
-    if (coach.user.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-
-    coach.availability = req.body;
-    await coach.save();
-    res.json(coach.availability);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-/**
- * Search nearby coaches
- * @route POST /api/coaches/nearby
- * @access Public
- */
-exports.searchNearbyCoaches = async (req, res) => {
-  try {
-    const { coordinates, radius, specialization, maxHourlyRate } = req.body;
-    
-    let query = {};
-    
-    if (specialization) {
-      query.specialties = specialization;
-    }
-    
-    if (maxHourlyRate) {
-      query.hourlyRate = { $lte: maxHourlyRate };
-    }
-    
-    const coaches = await Coach.find(query)
-      .populate('user', 'name email')
-      .select('-reviews');
-    
-    res.json({
-      success: true,
-      coaches
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
   }
-}; 
+};
+
+/**
+ * Generate time slots based on start and end time
+ */
+function generateTimeSlots(startTime, endTime) {
+  const slots = [];
+  const [startHour, startMin] = startTime.split(':').map(Number);
+  const [endHour, endMin] = endTime.split(':').map(Number);
+  
+  let currentHour = startHour;
+  let currentMin = startMin;
+  
+  while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
+    slots.push(`${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`);
+    
+    currentMin += 30; // 30-minute slots
+    if (currentMin >= 60) {
+      currentHour++;
+      currentMin = 0;
+    }
+    
+    // Stop if we've exceeded the end time
+    if (currentHour > endHour || (currentHour === endHour && currentMin >= endMin)) {
+      break;
+    }
+  }
+  
+  return slots;
+}
+
+module.exports = exports;

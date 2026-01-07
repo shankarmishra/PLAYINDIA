@@ -1,135 +1,249 @@
 const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema({
+  storeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Store',
+    required: true
+  },
   name: {
     type: String,
-    required: [true, 'Product name is required'],
-    trim: true,
-    maxlength: [100, 'Product name cannot be more than 100 characters']
+    required: true,
+    trim: true
   },
   description: {
     type: String,
-    required: [true, 'Product description is required'],
-    trim: true,
-    maxlength: [1000, 'Product description cannot be more than 1000 characters']
-  },
-  price: {
-    type: Number,
-    required: [true, 'Product price is required'],
-    min: [0, 'Price cannot be negative']
-  },
-  seller: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: [true, 'Product seller is required']
+    required: true
   },
   category: {
     type: String,
-    required: [true, 'Product category is required'],
-    enum: ['equipment', 'apparel', 'accessories', 'nutrition', 'other'],
-    lowercase: true
+    required: true,
+    enum: ['cricket', 'football', 'badminton', 'tennis', 'gym', 'yoga', 'sports-wear', 'accessories']
   },
-  sport: {
+  subCategory: String,
+  brand: String,
+  sku: {
     type: String,
-    required: [true, 'Sport is required'],
-    enum: ['cricket', 'football', 'basketball', 'tennis', 'badminton', 'all'],
-    lowercase: true
+    required: true,
+    unique: true,
+    uppercase: true
   },
   images: [{
-    url: {
-      type: String,
-      required: true
-    },
-    isMain: {
-      type: Boolean,
-      default: false
-    }
+    type: String // URLs to product images
   }],
-  stock: {
-    type: Number,
-    required: [true, 'Product stock is required'],
-    min: [0, 'Stock cannot be negative']
-  },
-  brand: {
-    type: String,
-    trim: true
-  },
-  specifications: [{
-    name: {
-      type: String,
-      required: true
+  price: {
+    original: {
+      type: Number,
+      required: true,
+      min: 0
     },
-    value: {
-      type: String,
-      required: true
+    selling: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    discount: {
+      type: Number,
+      default: 0 // in percentage
     }
-  }],
-  rating: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 5
+  },
+  inventory: {
+    quantity: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    reserved: {
+      type: Number,
+      default: 0
+    },
+    lowStockThreshold: {
+      type: Number,
+      default: 10
+    },
+    totalSold: {
+      type: Number,
+      default: 0
+    }
+  },
+  specifications: {
+    size: String,
+    weight: String,
+    color: String,
+    material: String,
+    dimensions: String,
+    features: [String]
+  },
+  ratings: {
+    average: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
+    },
+    count: {
+      type: Number,
+      default: 0
+    }
+  },
+  seo: {
+    metaTitle: String,
+    metaDescription: String,
+    keywords: [String]
+  },
+  shipping: {
+    freeShipping: {
+      enabled: { type: Boolean, default: false },
+      minOrderValue: Number
+    },
+    weight: Number, // in kg
+    dimensions: {
+      length: Number,
+      width: Number,
+      height: Number
+    },
+    fragile: { type: Boolean, default: false }
+  },
+  availability: {
+    isActive: { type: Boolean, default: true },
+    availableIn: [String], // cities where available
+    deliveryTime: String // '2-3 days', '1-2 days'
+  },
+  features: {
+    isFeatured: { type: Boolean, default: false },
+    isBestSeller: { type: Boolean, default: false },
+    isNew: { type: Boolean, default: false },
+    isOnSale: { type: Boolean, default: false }
+  },
+  warranty: {
+    period: String, // '1 year', '6 months'
+    terms: String
+  },
+  returnPolicy: {
+    eligible: { type: Boolean, default: true },
+    days: { type: Number, default: 30 },
+    terms: String
+  },
+  tags: [String],
+  inventory: {
+    quantity: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    reserved: {
+      type: Number,
+      default: 0
+    },
+    lowStockThreshold: {
+      type: Number,
+      default: 10
+    },
+    totalSold: {
+      type: Number,
+      default: 0
+    },
+    reservedFor: [{
+      orderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Order'
+      },
+      quantity: Number,
+      reservedAt: Date
+    }],
+    batchNumbers: [{
+      batchNumber: String,
+      quantity: Number,
+      expiryDate: Date,
+      manufacturedDate: Date
+    }]
+  },
+  seo: {
+    metaTitle: String,
+    metaDescription: String,
+    keywords: [String],
+    slug: {
+      type: String,
+      unique: true
+    },
+    canonicalUrl: String,
+    structuredData: String
   },
   reviews: [{
-    user: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
+      ref: 'User'
     },
     rating: {
       type: Number,
-      required: true,
       min: 1,
       max: 5
     },
-    comment: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: [500, 'Review comment cannot be more than 500 characters']
-    },
-    createdAt: {
+    comment: String,
+    date: {
       type: Date,
       default: Date.now
+    },
+    verifiedPurchase: { type: Boolean, default: false },
+    helpfulCount: { type: Number, default: 0 },
+    images: [String],
+    response: {
+      from: String, // Store response
+      comment: String,
+      respondedAt: Date
     }
   }],
-  isActive: {
-    type: Boolean,
-    default: true
+  analytics: {
+    impressions: { type: Number, default: 0 },
+    clicks: { type: Number, default: 0 },
+    addToCart: { type: Number, default: 0 },
+    purchases: { type: Number, default: 0 },
+    conversionRate: { type: Number, default: 0 },
+    revenue: { type: Number, default: 0 },
+    profit: { type: Number, default: 0 },
+    customerSatisfaction: { type: Number, default: 0 },
+    returnRate: { type: Number, default: 0 }
+  },
+  recommendations: {
+    similarProducts: [{
+      productId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product'
+      },
+      similarityScore: { type: Number, default: 0 }
+    }],
+    frequentlyBoughtTogether: [{
+      productId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product'
+      }
+    }],
+    viewedTogether: [{
+      productId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product'
+      }
+    }]
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  timestamps: true
 });
 
-// Create indexes
-productSchema.index({ name: 'text', description: 'text' });
+// Indexes for efficient queries
+productSchema.index({ storeId: 1 });
 productSchema.index({ category: 1 });
-productSchema.index({ sport: 1 });
-productSchema.index({ seller: 1 });
+productSchema.index({ sku: 1, unique: true });
+productSchema.index({ name: 'text', description: 'text' });
 productSchema.index({ price: 1 });
-productSchema.index({ rating: -1 });
+productSchema.index({ 'ratings.average': 1 });
+productSchema.index({ availability: 1 });
+productSchema.index({ features: 1 });
+productSchema.index({ 'inventory.quantity': 1 });
+productSchema.index({ 'seo.slug': 1, unique: true });
+productSchema.index({ 'analytics.revenue': -1 });
 
-// Virtual for review count
-productSchema.virtual('reviewCount').get(function() {
-  return this.reviews ? this.reviews.length : 0;
-});
-
-// Virtual for average rating
-productSchema.virtual('averageRating').get(function() {
-  if (!this.reviews || this.reviews.length === 0) return 0;
-  const sum = this.reviews.reduce((acc, review) => acc + review.rating, 0);
-  return (sum / this.reviews.length).toFixed(1);
-});
-
-// Pre-save middleware to update rating
-productSchema.pre('save', function(next) {
-  if (this.reviews && this.reviews.length > 0) {
-    const sum = this.reviews.reduce((acc, review) => acc + review.rating, 0);
-    this.rating = (sum / this.reviews.length).toFixed(1);
-  }
-  next();
-});
-
-module.exports = mongoose.model('Product', productSchema); 
+module.exports = mongoose.model('Product', productSchema);

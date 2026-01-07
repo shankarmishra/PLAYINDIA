@@ -1,83 +1,125 @@
 const jwt = require('jsonwebtoken');
-const { AppError } = require('./error');
 const User = require('../models/user.model');
-const Coach = require('../models/coach.model');
+const Admin = require('../models/Admin.model');
 const config = require('../config');
 
-// Protect routes
-const protect = async (req, res, next) => {
+// Authentication middleware
+const authenticate = async (req, res, next) => {
   try {
-    // 1) Get token and check if it exists
-    let token;
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith('Bearer')
-    ) {
-      token = req.headers.authorization.split(' ')[1];
-    }
-
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
     if (!token) {
-      return next(new AppError('You are not logged in. Please log in to get access.', 401));
+      return res.status(401).json({
+        success: false,
+        message: 'Access denied. No token provided.'
+      });
     }
 
-    // 2) Verify token
-    const decoded = jwt.verify(token, config.jwtSecret);
+    const decoded = jwt.verify(token, config.jwt.secret);
+    
+    // Check if user exists based on role
+    let user;
+    if (decoded.userType === 'admin') {
+      user = await Admin.findById(decoded.id).select('-password');
+    } else {
+      user = await User.findById(decoded.id).select('-password');
+    }
 
-    // 3) Check if user still exists
-    const user = await User.findById(decoded.id);
     if (!user) {
-      return next(new AppError('The user belonging to this token no longer exists.', 401));
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token. User not found.'
+      });
     }
 
-    // 4) Check if user changed password after the token was issued
-    if (user.passwordChangedAfter && user.passwordChangedAfter(decoded.iat)) {
-      return next(new AppError('User recently changed password! Please log in again.', 401));
+    // Check if user is active
+    if (user.status === 'inactive' || user.status === 'suspended') {
+      return res.status(401).json({
+        success: false,
+        message: 'Account is inactive or suspended.'
+      });
     }
 
-    // Grant access to protected route
     req.user = user;
+    req.userId = decoded.id;
+    req.userType = decoded.userType;
+    
     next();
   } catch (error) {
-    next(new AppError('Authentication failed', 401));
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token.'
+      });
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Token expired.'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during authentication.'
+    });
   }
 };
 
-// Grant access to specific roles
+// Role-based authorization middleware
 const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return next(new AppError('You do not have permission to perform this action', 403));
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required.'
+      });
     }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Insufficient permissions.'
+      });
+    }
+
     next();
   };
 };
 
-// Coach only middleware
-const coachOnly = async (req, res, next) => {
+// Check if user is active
+const checkUserStatus = async (req, res, next) => {
   try {
     if (!req.user) {
-      return next(new AppError('You are not logged in. Please log in to get access.', 401));
+      return next();
     }
-    
-    if (req.user.role !== 'coach') {
-      return next(new AppError('You do not have permission to perform this action. Coach access required.', 403));
+
+    if (req.user.status === 'suspended') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been suspended.'
+      });
     }
-    
-    // Find and attach coach profile to request
-    const coach = await Coach.findOne({ user: req.user._id });
-    if (!coach) {
-      return next(new AppError('Coach profile not found', 404));
+
+    if (req.user.status === 'rejected') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account registration has been rejected.'
+      });
     }
-    
-    req.coach = coach;
+
     next();
   } catch (error) {
-    next(new AppError('Error verifying coach access', 500));
+    res.status(500).json({
+      success: false,
+      message: 'Error checking user status.'
+    });
   }
 };
 
 module.exports = {
-  protect,
+  authenticate,
   authorize,
-  coachOnly
-}; 
+  checkUserStatus
+};

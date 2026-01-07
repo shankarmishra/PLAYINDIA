@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,462 +10,367 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from 'react-native';
 import AsyncStorage from '../../utils/AsyncStorageSafe';
 import { CommonActions } from '@react-navigation/native';
 import { StackScreenProps } from '@react-navigation/stack';
 import axios from 'axios';
-import { UserTabParamList } from '../../navigation/UserNav';
-import { API_ENDPOINTS } from '../../config/constants';
+import { RootStackParamList } from '../../navigation/AppNavigator';
+import { API_ENDPOINTS, API_BASE_URL } from '../../config/constants';
 import BrandLogo from '../../components/BrandLogo';
+import Icon from 'react-native-vector-icons/Ionicons';
 
-interface LoginFormData {
-  email: string;
-  password: string;
-}
-
-type Props = StackScreenProps<UserTabParamList, 'Login'>;
+type Props = StackScreenProps<RootStackParamList, 'Login'>;
 
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
-  const [formData, setFormData] = useState<LoginFormData>({
-    email: '',
-    password: '',
-  });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const [slideAnim] = useState(new Animated.Value(30));
 
-  React.useEffect(() => {
+  // Premium Animation Refs
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(40)).current;
+
+  useEffect(() => {
+    StatusBar.setBarStyle('dark-content');
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 800,
+        duration: 1000,
         useNativeDriver: true,
       }),
       Animated.spring(slideAnim, {
         toValue: 0,
-        tension: 20,
-        friction: 7,
+        tension: 15,
+        friction: 8,
         useNativeDriver: true,
       }),
     ]).start();
   }, []);
 
-  const handleChange = (name: keyof LoginFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
   const handleLogin = async () => {
     if (!formData.email || !formData.password) {
-      Alert.alert('Error', 'Please enter email and password');
+      Alert.alert('Required', 'Please fill in all fields to continue.');
       return;
     }
-
     setIsLoading(true);
     try {
-      const response = await axios.post(API_ENDPOINTS.USERS.LOGIN, {
-        email: formData.email,
-        password: formData.password,
-      });
-
+      const response = await axios.post(API_ENDPOINTS.AUTH.LOGIN, formData);
       const { token, userType } = response.data;
       await AsyncStorage.setItem('userToken', token);
       await AsyncStorage.setItem('userType', userType || 'user');
-
-      // Navigate to Home screen after successful login
+      
+      // Determine the correct main route based on user type
+      let mainRouteName: string;
+      switch(userType) {
+        case 'coach':
+          mainRouteName = 'CoachMain';
+          break;
+        case 'store':
+        case 'seller':
+          mainRouteName = 'StoreMain';
+          break;
+        case 'delivery':
+          mainRouteName = 'DeliveryMain';
+          break;
+        case 'admin':
+          mainRouteName = 'AdminMain';
+          break;
+        default:
+          mainRouteName = 'UserMain';
+      }
+      
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
-          routes: [{ name: 'HomeTab' }],
+          routes: [{ name: mainRouteName }],
         }),
       );
     } catch (error: any) {
-      const errorMessage =
-        axios.isAxiosError(error) && error.response?.data?.message
-          ? error.response.data.message
-          : 'Login failed. Please check your credentials.';
-      Alert.alert('Login Failed', errorMessage);
+      Alert.alert('Access Denied', 'Invalid credentials. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSkipForTesting = () => {
-    Alert.alert(
-      'Test Mode',
-      'Skip login and go directly to Home?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Skip',
-          onPress: () => navigation.navigate('HomeTab' as any),
-        },
-      ],
-      { cancelable: true }
-    );
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-      <Animated.View style={[styles.brandingHeader, { opacity: fadeAnim }]}>
-        <BrandLogo size={50} />
-        <View style={styles.header}>
-          <Text style={styles.appName}>PLAYINDIA</Text>
-          <Text style={styles.tagline}>IND'S PREMIER SPORTS NETWORK</Text>
-        </View>
-        <TouchableOpacity 
-          style={styles.skipButton}
-          onPress={handleSkipForTesting}
-        >
-          <Text style={styles.skipButtonText}>Skip 🚀</Text>
-        </TouchableOpacity>
-      </Animated.View>
-
-      <Animated.View style={[
-        styles.contentContainer,
-        {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
-        }
-      ]}>
-        <Text style={styles.title}>Welcome Back! 👋</Text>
-        <Text style={styles.subtitle}>Sign in to find your squad and play.</Text>
-        
-        <View style={styles.quickStats}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>1000+</Text>
-            <Text style={styles.statLabel}>Players</Text>
+        {/* Top Header Section */}
+        <Animated.View style={[styles.brandingHeader, { opacity: fadeAnim }]}>
+          <BrandLogo size={42} />
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.appName}>PLAYINDIA</Text>
+            <Text style={styles.tagline}>IND'S PREMIER SPORTS NETWORK</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>500+</Text>
-            <Text style={styles.statLabel}>Tournaments</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>50+</Text>
-            <Text style={styles.statLabel}>Cities</Text>
-          </View>
-        </View>
-
-        <View style={styles.inputSection}>
-          <Text style={styles.label}>EMAIL ADDRESS</Text>
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputIcon}>📧</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="name@example.com"
-              placeholderTextColor="#718096"
-              value={formData.email}
-              onChangeText={value => handleChange('email', value)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-        </View>
-
-        <View style={styles.inputSection}>
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>PASSWORD</Text>
-            <TouchableOpacity>
-              <Text style={styles.forgotPassword}>Forgot?</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputIcon}>🔒</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Your password"
-              placeholderTextColor="#718096"
-              value={formData.password}
-              onChangeText={value => handleChange('password', value)}
-              secureTextEntry={!passwordVisible}
-            />
-            <TouchableOpacity
-              style={styles.eyeIcon}
-              onPress={() => setPasswordVisible(!passwordVisible)}
+          {/* Bypass buttons for different user types */}
+          <View style={styles.skipContainer}>
+            <TouchableOpacity 
+              style={[styles.skipButton, styles.userSkipButton]}
+              onPress={async () => {
+                // Set user type to 'user' and navigate to user dashboard
+                await AsyncStorage.setItem('userType', 'user');
+                navigation.dispatch(
+                  CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'UserMain' }],
+                  }),
+                );
+              }}
             >
-              <Text style={styles.eyeText}>{passwordVisible ? '👁️' : '👁️‍🗨️'}</Text>
+              <Text style={styles.skipButtonText}>User</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.skipButton, styles.coachSkipButton]}
+              onPress={async () => {
+                // Set user type to 'coach' and navigate to coach dashboard
+                await AsyncStorage.setItem('userType', 'coach');
+                navigation.dispatch(
+                  CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'CoachMain' }],
+                  }),
+                );
+              }}
+            >
+              <Text style={styles.skipButtonText}>Coach</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.skipButton, styles.storeSkipButton]}
+              onPress={async () => {
+                // Set user type to 'store' and navigate to store dashboard
+                await AsyncStorage.setItem('userType', 'store');
+                navigation.dispatch(
+                  CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'StoreMain' }],
+                  }),
+                );
+              }}
+            >
+              <Text style={styles.skipButtonText}>Store</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.skipButton, styles.deliverySkipButton]}
+              onPress={async () => {
+                // Set user type to 'delivery' and navigate to delivery dashboard
+                await AsyncStorage.setItem('userType', 'delivery');
+                navigation.dispatch(
+                  CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'DeliveryMain' }],
+                  }),
+                );
+              }}
+            >
+              <Text style={styles.skipButtonText}>Delivery</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.skipButton, styles.adminSkipButton]}
+              onPress={async () => {
+                // Set user type to 'admin' and navigate to admin dashboard
+                await AsyncStorage.setItem('userType', 'admin');
+                navigation.dispatch(
+                  CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'AdminMain' }],
+                  }),
+                );
+              }}
+            >
+              <Text style={styles.skipButtonText}>Admin</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
 
-        <TouchableOpacity
-          style={[styles.button, isLoading && styles.disabledButton]}
-          onPress={handleLogin}
-          disabled={isLoading}
-        >
-          <Text style={styles.buttonText}>
-            {isLoading ? 'Signing In...' : 'Sign In →'}
-          </Text>
-        </TouchableOpacity>
+        <Animated.View style={[
+          styles.contentContainer,
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+        ]}>
+          <Text style={styles.title}>Welcome Back! 👋</Text>
+          <Text style={styles.subtitle}>Sign in to continue</Text>
+          
+          {/* Form Fields */}
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>EMAIL ADDRESS</Text>
+              <View style={styles.inputWrapper}>
+                <Icon name="mail-outline" size={20} color="#94A3B8" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="name@example.com"
+                  placeholderTextColor="#94A3B8"
+                  value={formData.email}
+                  onChangeText={(text) => setFormData({ ...formData, email: text })}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
 
-        <View style={styles.dividerContainer}>
-          <View style={styles.divider} />
-          <Text style={styles.dividerText}>OR</Text>
-          <View style={styles.divider} />
-        </View>
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>PASSWORD</Text>
+                <TouchableOpacity><Text style={styles.forgotText}>Forgot?</Text></TouchableOpacity>
+              </View>
+              <View style={styles.inputWrapper}>
+                <Icon name="lock-closed-outline" size={20} color="#94A3B8" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor="#94A3B8"
+                  secureTextEntry={!passwordVisible}
+                  value={formData.password}
+                  onChangeText={(text) => setFormData({ ...formData, password: text })}
+                />
+                <TouchableOpacity onPress={() => setPasswordVisible(!passwordVisible)}>
+                  <Icon name={passwordVisible ? 'eye-outline' : 'eye-off-outline'} size={20} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+            </View>
 
-        <View style={styles.socialButtons}>
-          <TouchableOpacity style={styles.socialButton}>
-            <Text style={styles.socialIcon}>📱</Text>
-            <Text style={styles.socialText}>Phone</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
-            <Text style={styles.socialIcon}>👤</Text>
-            <Text style={styles.socialText}>Guest</Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={[styles.primaryButton, isLoading && styles.disabledButton]}
+              onPress={handleLogin}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.buttonText}>
+                {isLoading ? 'Processing...' : 'Sign In'}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.link}>Sign Up</Text>
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>New here? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={styles.linkText}>Create Account</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
+// Reusable Sub-components
+// Removed unused components
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7FAFC',
-  },
-  keyboardView: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  keyboardView: { flex: 1 },
   brandingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  skipButton: {
-    backgroundColor: '#00B8D4',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginLeft: 'auto',
-  },
-  skipButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  header: {
-    flex: 1,
-    paddingLeft: 10,
-    justifyContent: 'center',
-  },
-  appName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#00B8D4',
-    marginBottom: 4,
-  },
-  tagline: {
-    fontSize: 14,
-    color: '#718096',
-  },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: 30,
-    paddingTop: 20,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#0D1B1E',
+    paddingHorizontal: 24,
+    paddingTop: 15,
     marginBottom: 10,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#4A5568',
-    marginBottom: 25,
-    lineHeight: 22,
+  headerTextContainer: { marginLeft: 12, flex: 1 },
+  appName: { fontSize: 22, fontWeight: '900', color: '#0891B2', letterSpacing: -0.5 },
+  tagline: { fontSize: 10, color: '#64748B', fontWeight: '700', letterSpacing: 0.5 },
+  skipButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 100,
+    marginLeft: 5,
   },
+  userSkipButton: {
+    backgroundColor: '#0891B2',
+  },
+  coachSkipButton: {
+    backgroundColor: '#10B981',
+  },
+  storeSkipButton: {
+    backgroundColor: '#F59E0B',
+  },
+  deliverySkipButton: {
+    backgroundColor: '#8B5CF6',
+  },
+  adminSkipButton: {
+    backgroundColor: '#EF4444',
+  },
+  skipButtonText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+  skipContainer: {
+    flexDirection: 'row',
+  },
+  contentContainer: { flex: 1, paddingHorizontal: 24, paddingTop: 10, justifyContent: 'center' },
+  title: { fontSize: 28, fontWeight: '800', color: '#0F172A' },
+  subtitle: { fontSize: 15, color: '#64748B', marginTop: 4, marginBottom: 25 },
   quickStats: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF',
     borderRadius: 20,
-    padding: 20,
-    marginBottom: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#00B8D4',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#718096',
-    fontWeight: '600',
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: '#E2E8F0',
-    marginHorizontal: 10,
-  },
-  inputSection: {
-    marginBottom: 20,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  forgotPassword: {
-    fontSize: 12,
-    color: '#00B8D4',
-    fontWeight: 'bold',
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#718096',
-    marginBottom: 8,
-    letterSpacing: 1,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    height: 58,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    padding: 18,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    alignItems: 'center',
-    paddingHorizontal: 15,
+    borderColor: '#F1F5F9',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 1,
-  },
-  inputIcon: {
-    fontSize: 18,
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#0D1B1E',
-  },
-  eyeIcon: {
-    padding: 10,
-  },
-  eyeText: {
-    fontSize: 18,
-  },
-  button: {
-    width: '100%',
-    height: 58,
-    backgroundColor: '#00B8D4',
-    borderRadius: 29,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 30,
-    marginBottom: 25,
-    shadowColor: '#00B8D4',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E2E8F0',
-  },
-  dividerText: {
-    marginHorizontal: 15,
-    fontSize: 12,
-    color: '#718096',
-    fontWeight: '600',
-  },
-  socialButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    shadowRadius: 15,
+    elevation: 2,
     marginBottom: 25,
   },
-  socialButton: {
-    flex: 1,
+  statItem: { flex: 1, alignItems: 'center' },
+  statNumber: { fontSize: 18, fontWeight: '800', color: '#0891B2' },
+  statLabel: { fontSize: 10, color: '#94A3B8', fontWeight: '600', textTransform: 'uppercase' },
+  statDivider: { width: 1, backgroundColor: '#F1F5F9' },
+  form: { width: '100%' },
+  inputGroup: { marginBottom: 18 },
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  label: { fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 8, letterSpacing: 0.5 },
+  forgotText: { fontSize: 11, color: '#0891B2', fontWeight: '700' },
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    height: 52,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
     borderRadius: 14,
-    marginHorizontal: 6,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 1,
+    paddingHorizontal: 15,
+    height: 56,
   },
-  socialIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  socialText: {
-    fontSize: 14,
-    color: '#4A5568',
-    fontWeight: '600',
-  },
-  footer: {
-    flexDirection: 'row',
+  input: { flex: 1, marginLeft: 10, fontSize: 15, color: '#1E293B', fontWeight: '500' },
+  primaryButton: {
+    backgroundColor: '#0891B2',
+    height: 56,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 20,
+    marginTop: 10,
+    shadowColor: '#0891B2',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  footerText: {
-    fontSize: 14,
-    color: '#4A5568',
+  disabledButton: { opacity: 0.6 },
+  buttonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  dividerBox: { flexDirection: 'row', alignItems: 'center', marginVertical: 25 },
+  line: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
+  orText: { marginHorizontal: 10, fontSize: 11, fontWeight: '700', color: '#94A3B8' },
+  socialRow: { flexDirection: 'row', gap: 12 },
+  socialBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    height: 52,
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  link: {
-    fontSize: 14,
-    color: '#00B8D4',
-    fontWeight: 'bold',
-  },
+  socialBtnText: { fontSize: 14, fontWeight: '600', color: '#1E293B' },
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 30, paddingBottom: 20 },
+  footerText: { color: '#64748B', fontSize: 14 },
+  linkText: { color: '#0891B2', fontWeight: '700', fontSize: 14 },
 });
 
 export default LoginScreen;
-

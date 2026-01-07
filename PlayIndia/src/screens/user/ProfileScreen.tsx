@@ -1,601 +1,497 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ScrollView,
-  TextInput,
-  ActivityIndicator,
-  SafeAreaView,
-  Animated,
-} from 'react-native';
-import AsyncStorage from '../../utils/AsyncStorageSafe';
-import axios from 'axios';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { UserTabParamList } from '../../navigation/UserNav';
-import { API_ENDPOINTS } from '../../config/constants';
-import BrandLogo from '../../components/BrandLogo';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList } from 'react-native';
+import { theme } from '../../theme/colors';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
-type NavigationProp = StackNavigationProp<UserTabParamList>;
+// Mock data for achievements and stats
+const mockAchievements = [
+  { id: '1', name: 'First Win', description: 'Win your first match', icon: 'trophy', earned: true },
+  { id: '2', name: 'Social Butterfly', description: 'Connect with 10 players', icon: 'people', earned: true },
+  { id: '3', name: 'Champion', description: 'Win 10 matches', icon: 'medal', earned: false },
+  { id: '4', name: 'Fitness Enthusiast', description: 'Complete 30 workout sessions', icon: 'fitness', earned: true },
+  { id: '5', name: 'Bookworm', description: 'Book 5 coaching sessions', icon: 'book', earned: false },
+];
+
+const mockStats = [
+  { label: 'Matches Played', value: '24' },
+  { label: 'Wins', value: '18' },
+  { label: 'Win Rate', value: '75%' },
+  { label: 'Calories Burned', value: '12,450' },
+];
 
 const ProfileScreen = () => {
-  const navigation = useNavigation<NavigationProp>();
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [favoriteGames, setFavoriteGames] = useState<string[]>([]);
-  const [skillLevel, setSkillLevel] = useState('');
-  const [achievements, setAchievements] = useState<string[]>([]);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const [scaleAnim] = useState(new Animated.Value(0.95));
+  const [activeTab, setActiveTab] = useState('Profile');
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 20,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+  const user = {
+    name: 'Rahul Sharma',
+    email: 'rahul.sharma@example.com',
+    phone: '+91 98765 43210',
+    city: 'New Delhi',
+    sports: ['Cricket', 'Badminton', 'Tennis'],
+    skillLevel: 'Intermediate',
+    joinDate: 'Jan 2023',
+    rating: 4.5,
+  };
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  const profileOptions = [
+    { id: '1', title: 'Edit Profile', icon: 'person-outline', screen: 'EditProfile' },
+    { id: '2', title: 'My Bookings', icon: 'calendar-outline', screen: 'Bookings' },
+    { id: '3', title: 'My Orders', icon: 'cart-outline', screen: 'Orders' },
+    { id: '4', title: 'Wallet', icon: 'wallet-outline', screen: 'Wallet' },
+    { id: '5', title: 'Achievements', icon: 'trophy-outline', screen: 'Achievements' },
+    { id: '6', title: 'Settings', icon: 'settings-outline', screen: 'Settings' },
+    { id: '7', title: 'Help & Support', icon: 'help-circle-outline', screen: 'Support' },
+    { id: '8', title: 'Logout', icon: 'log-out-outline', screen: 'Logout' },
+  ];
 
-  const fetchProfile = async () => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      
-      if (!token) {
-        // Set dummy data for testing without token
-        setUsername('Test User');
-        setEmail('testuser@playindia.com');
-        setFavoriteGames(['Cricket', 'Football', 'Badminton']);
-        setSkillLevel('Intermediate');
-        setAchievements(['First Tournament Win', 'Top 10 Player']);
-        setIsLoading(false);
-        return;
+  const renderAchievement = ({ item }: any) => (
+    <View style={[
+      styles.achievementCard,
+      { 
+        opacity: item.earned ? 1 : 0.5,
+        backgroundColor: item.earned 
+          ? theme.colors.background.card 
+          : theme.colors.background.tertiary 
       }
-      
-      const response = await axios.get(API_ENDPOINTS.USERS.PROFILE, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 10000,
-      });
-
-      const {
-        name,
-        email: userEmail,
-        profileImage: userProfileImage,
-        favoriteGames: userFavoriteGames = [],
-        skillLevel: userSkillLevel,
-        achievements: userAchievements = [],
-      } = response.data;
-
-      setUsername(name || '');
-      setEmail(userEmail || '');
-      setProfileImage(userProfileImage || null);
-      setFavoriteGames(userFavoriteGames);
-      setSkillLevel(userSkillLevel || '');
-      setAchievements(userAchievements);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      
-      // Set dummy data if API fails
-      setUsername('Test User');
-      setEmail('testuser@playindia.com');
-      setFavoriteGames(['Cricket', 'Football', 'Badminton']);
-      setSkillLevel('Intermediate');
-      setAchievements(['First Tournament Win', 'Top 10 Player']);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      await axios.put(
-        API_ENDPOINTS.USERS.PROFILE,
-        {
-          name: username,
-          email,
-          profileImage,
-          favoriteGames,
-          achievements,
-        },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      setIsEditing(false);
-      Alert.alert('Success', 'Profile updated successfully.');
-    } catch {
-      Alert.alert('Error', 'Failed to update profile.');
-    }
-  };
-
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem('userToken');
-    await AsyncStorage.removeItem('userType');
-    navigation.navigate('Login');
-  };
-
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#00B8D4" />
-      </View>
-    );
-  }
+    ]}>
+      <Ionicons 
+        name={item.icon as any} 
+        size={32} 
+        color={item.earned ? theme.colors.accent.neonGreen : theme.colors.text.disabled} 
+      />
+      <Text style={[
+        styles.achievementName,
+        { 
+          color: item.earned 
+            ? theme.colors.text.primary 
+            : theme.colors.text.disabled 
+        }
+      ]}>
+        {item.name}
+      </Text>
+      <Text style={[
+        styles.achievementDescription,
+        { 
+          color: item.earned 
+            ? theme.colors.text.secondary 
+            : theme.colors.text.disabled 
+        }
+      ]}>
+        {item.description}
+      </Text>
+    </View>
+  );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Animated.View style={[styles.brandingHeader, { opacity: fadeAnim }]}>
-        <BrandLogo size={45} style={styles.logoStyle} />
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>My Profile 👤</Text>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutLink}>Logout</Text>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity>
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <TouchableOpacity>
+          <Ionicons name="notifications-outline" size={24} color={theme.colors.text.primary} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Profile Header */}
+        <View style={styles.profileHeader}>
+          <Image 
+            source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} 
+            style={styles.profileImage} 
+          />
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{user.name}</Text>
+            <Text style={styles.profileLocation}>{user.city}</Text>
+            <View style={styles.ratingContainer}>
+              <Ionicons name="star" size={16} color={theme.colors.accent.orange} />
+              <Text style={styles.ratingText}>{user.rating}</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.editButton}>
+            <Ionicons name="create-outline" size={20} color={theme.colors.text.inverted} />
           </TouchableOpacity>
         </View>
-      </Animated.View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <Animated.View style={[
-          styles.profileHeader,
-          {
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-          }
-        ]}>
-          <TouchableOpacity
-            onPress={() => Alert.alert('Feature coming soon!', 'Profile photo upload will be available soon! 📸')}
-            style={styles.imageWrapper}
-          >
-            <View style={styles.profileImageContainer}>
-              <Text style={styles.profileImagePlaceholder}>👤</Text>
+        {/* Stats Row */}
+        <View style={styles.statsContainer}>
+          {mockStats.map((stat, index) => (
+            <View key={index} style={styles.statItem}>
+              <Text style={styles.statValue}>{stat.value}</Text>
+              <Text style={styles.statLabel}>{stat.label}</Text>
             </View>
-            <View style={styles.editBadge}>
-              <Text style={styles.editBadgeText}>✎</Text>
-            </View>
-          </TouchableOpacity>
-          <Text style={styles.profileName}>{username || 'Player'}</Text>
-          <Text style={styles.profileEmail}>{email}</Text>
-          
-          <View style={styles.statsContainer}>
-            <View style={styles.statBox}>
-              <Text style={styles.statNumber}>12</Text>
-              <Text style={styles.statLabel}>Matches</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statBox}>
-              <Text style={styles.statNumber}>8</Text>
-              <Text style={styles.statLabel}>Wins</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statBox}>
-              <Text style={styles.statNumber}>350</Text>
-              <Text style={styles.statLabel}>Coins</Text>
-            </View>
+          ))}
+        </View>
+
+        {/* Sports Chips */}
+        <View style={styles.sportsContainer}>
+          <Text style={styles.sportsLabel}>Sports</Text>
+          <View style={styles.sportsChips}>
+            {user.sports.map((sport, index) => (
+              <View key={index} style={styles.sportChip}>
+                <Text style={styles.sportChipText}>{sport}</Text>
+              </View>
+            ))}
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>⚙️ Account Settings</Text>
+        {/* Navigation Tabs */}
+        <View style={styles.tabsContainer}>
+          {['Profile', 'Achievements', 'Fitness'].map((tab) => (
             <TouchableOpacity 
-              onPress={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
-              style={styles.editButton}
+              key={tab}
+              style={[
+                styles.tab,
+                { 
+                  borderBottomWidth: activeTab === tab ? 2 : 0,
+                  borderBottomColor: theme.colors.accent.neonGreen,
+                }
+              ]}
+              onPress={() => setActiveTab(tab)}
             >
-              <Text style={styles.editActionText}>{isEditing ? '✔️ Save' : '✏️ Edit'}</Text>
+              <Text style={[
+                styles.tabText,
+                { 
+                  color: activeTab === tab 
+                    ? theme.colors.accent.neonGreen 
+                    : theme.colors.text.secondary 
+                }
+              ]}>
+                {tab}
+              </Text>
             </TouchableOpacity>
-          </View>
+          ))}
+        </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>👤 FULL NAME</Text>
-            {isEditing ? (
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  value={username}
-                  onChangeText={setUsername}
-                  placeholder="Enter your name"
-                  placeholderTextColor="#A0AEC0"
-                />
+        {/* Content based on active tab */}
+        {activeTab === 'Profile' && (
+          <View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Personal Information</Text>
+              <View style={styles.infoItem}>
+                <Ionicons name="person-outline" size={20} color={theme.colors.text.secondary} />
+                <Text style={styles.infoLabel}>Name</Text>
+                <Text style={styles.infoValue}>{user.name}</Text>
               </View>
-            ) : (
-              <Text style={styles.valueText}>{username || 'Not set'}</Text>
-            )}
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>📧 EMAIL ADDRESS</Text>
-            {isEditing ? (
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="Enter your email"
-                  keyboardType="email-address"
-                  placeholderTextColor="#A0AEC0"
-                />
+              <View style={styles.infoItem}>
+                <Ionicons name="mail-outline" size={20} color={theme.colors.text.secondary} />
+                <Text style={styles.infoLabel}>Email</Text>
+                <Text style={styles.infoValue}>{user.email}</Text>
               </View>
-            ) : (
-              <Text style={styles.valueText}>{email || 'Not set'}</Text>
-            )}
-          </View>
-        </Animated.View>
-
-        <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-          <Text style={styles.cardTitle}>⚽ Sports & Skills</Text>
-          <View style={styles.skillRow}>
-            <View style={styles.skillItem}>
-              <Text style={styles.skillEmoji}>🎯</Text>
-              <View>
-                <Text style={styles.skillLabel}>Skill Level</Text>
-                <Text style={styles.skillValue}>{skillLevel || 'Intermediate'}</Text>
+              <View style={styles.infoItem}>
+                <Ionicons name="call-outline" size={20} color={theme.colors.text.secondary} />
+                <Text style={styles.infoLabel}>Phone</Text>
+                <Text style={styles.infoValue}>{user.phone}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Ionicons name="location-outline" size={20} color={theme.colors.text.secondary} />
+                <Text style={styles.infoLabel}>Location</Text>
+                <Text style={styles.infoValue}>{user.city}</Text>
               </View>
             </View>
-            <View style={styles.skillItem}>
-              <Text style={styles.skillEmoji}>📈</Text>
-              <View>
-                <Text style={styles.skillLabel}>Experience</Text>
-                <Text style={styles.skillValue}>2 Years</Text>
-              </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Account Settings</Text>
+              <FlatList
+                data={profileOptions}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.optionItem}>
+                    <Ionicons name={item.icon as any} size={20} color={theme.colors.text.secondary} />
+                    <Text style={styles.optionText}>{item.title}</Text>
+                    <Ionicons name="chevron-forward" size={20} color={theme.colors.text.disabled} />
+                  </TouchableOpacity>
+                )}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+              />
             </View>
           </View>
+        )}
 
-          <Text style={styles.inputLabel}>⭐ FAVORITE GAMES</Text>
-          <View style={styles.tagContainer}>
-            {favoriteGames.length > 0 ? (
-              favoriteGames.map((game, idx) => (
-                <View key={idx} style={styles.tag}>
-                  <Text style={styles.tagText}>{game}</Text>
+        {activeTab === 'Achievements' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Achievements</Text>
+            <FlatList
+              data={mockAchievements}
+              renderItem={renderAchievement}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              showsVerticalScrollIndicator={false}
+              scrollEnabled={false}
+            />
+          </View>
+        )}
+
+        {activeTab === 'Fitness' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Fitness Stats</Text>
+            <View style={styles.fitnessChart}>
+              <Text style={styles.chartTitle}>Weekly Activity</Text>
+              <View style={styles.chartContainer}>
+                {/* Mock chart representation */}
+                <View style={styles.chartBar}>
+                  <View style={[styles.bar, { height: '80%' }]} />
+                  <Text style={styles.barLabel}>Mon</Text>
                 </View>
-              ))
-            ) : (
-              <View style={styles.placeholderContainer}>
-                <Text style={styles.placeholderText}>Add your favorite sports to get personalized recommendations!</Text>
-              </View>
-            )}
-          </View>
-        </Animated.View>
-
-        <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-          <Text style={styles.cardTitle}>🏆 Achievements</Text>
-          {achievements.length > 0 ? (
-            achievements.map((ach, idx) => (
-              <View key={idx} style={styles.achievementItem}>
-                <View style={styles.achievementIconContainer}>
-                  <Text style={styles.achievementIcon}>🏆</Text>
+                <View style={styles.chartBar}>
+                  <View style={[styles.bar, { height: '60%' }]} />
+                  <Text style={styles.barLabel}>Tue</Text>
                 </View>
-                <Text style={styles.achievementText}>{ach}</Text>
+                <View style={styles.chartBar}>
+                  <View style={[styles.bar, { height: '100%' }]} />
+                  <Text style={styles.barLabel}>Wed</Text>
+                </View>
+                <View style={styles.chartBar}>
+                  <View style={[styles.bar, { height: '40%' }]} />
+                  <Text style={styles.barLabel}>Thu</Text>
+                </View>
+                <View style={styles.chartBar}>
+                  <View style={[styles.bar, { height: '70%' }]} />
+                  <Text style={styles.barLabel}>Fri</Text>
+                </View>
+                <View style={styles.chartBar}>
+                  <View style={[styles.bar, { height: '90%' }]} />
+                  <Text style={styles.barLabel}>Sat</Text>
+                </View>
+                <View style={styles.chartBar}>
+                  <View style={[styles.bar, { height: '30%' }]} />
+                  <Text style={styles.barLabel}>Sun</Text>
+                </View>
               </View>
-            ))
-          ) : (
-            <View style={styles.placeholderContainer}>
-              <Text style={styles.placeholderEmoji}>🎮</Text>
-              <Text style={styles.placeholderText}>No achievements yet.</Text>
-              <Text style={styles.placeholderSubtext}>Start playing to earn badges!</Text>
             </View>
-          )}
-        </Animated.View>
+          </View>
+        )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  brandingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  logoStyle: {
-    padding: 0,
-    marginRight: 10,
+    backgroundColor: theme.colors.background.secondary,
   },
   header: {
-    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.background.card,
+    ...theme.shadows.small,
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#0D1B1E',
-  },
-  logoutButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  logoutLink: {
-    color: '#FF4D4D',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    color: theme.colors.text.primary,
   },
   profileHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 25,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background.card,
+    ...theme.shadows.small,
   },
-  imageWrapper: {
-    position: 'relative',
-    marginBottom: 15,
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginRight: theme.spacing.md,
   },
-  profileImageContainer: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: '#E2E8F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
-    shadowColor: '#00B8D4',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  profileImagePlaceholder: {
-    fontSize: 56,
-  },
-  editBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#00B8D4',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  editBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  profileInfo: {
+    flex: 1,
   },
   profileName: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#0D1B1E',
-    marginTop: 15,
+    color: theme.colors.text.primary,
   },
-  profileEmail: {
-    fontSize: 14,
-    color: '#718096',
-    marginTop: 6,
-    marginBottom: 20,
+  profileLocation: {
+    fontSize: 16,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.xs,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.xs,
+  },
+  ratingText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.colors.text.primary,
+    marginLeft: theme.spacing.xs,
+  },
+  editButton: {
+    backgroundColor: theme.colors.accent.neonGreen,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   statsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    justifyContent: 'space-around',
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background.card,
+    margin: theme.spacing.md,
+    borderRadius: theme.borderRadius.large,
+    ...theme.shadows.small,
   },
-  statBox: {
-    flex: 1,
+  statItem: {
     alignItems: 'center',
   },
-  statNumber: {
-    fontSize: 24,
+  statValue: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#00B8D4',
-    marginBottom: 4,
+    color: theme.colors.accent.neonGreen,
   },
   statLabel: {
     fontSize: 12,
-    color: '#718096',
-    fontWeight: '600',
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.xs,
+    textAlign: 'center',
   },
-  statDivider: {
-    width: 1,
-    backgroundColor: '#E2E8F0',
-    marginHorizontal: 10,
+  sportsContainer: {
+    paddingHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 25,
-    padding: 25,
-    marginBottom: 20,
-    marginHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 15,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  cardTitle: {
-    fontSize: 19,
-    fontWeight: 'bold',
-    color: '#0D1B1E',
-    marginBottom: 20,
-  },
-  editButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  editActionText: {
-    color: '#00B8D4',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-  inputGroup: {
-    marginBottom: 18,
-  },
-  inputLabel: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#718096',
-    letterSpacing: 1.2,
-    marginBottom: 10,
-  },
-  valueText: {
+  sportsLabel: {
     fontSize: 16,
-    color: '#0D1B1E',
-    fontWeight: '500',
-  },
-  inputWrapper: {
-    backgroundColor: '#F7FAFC',
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  input: {
-    fontSize: 16,
-    color: '#0D1B1E',
-    paddingVertical: 8,
-  },
-  skillRow: {
-    flexDirection: 'row',
-    marginBottom: 25,
-    gap: 20,
-  },
-  skillItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F7FAFC',
-    padding: 15,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  skillEmoji: {
-    fontSize: 28,
-    marginRight: 12,
-  },
-  skillLabel: {
-    fontSize: 11,
     fontWeight: '600',
-    color: '#718096',
-    marginBottom: 4,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
   },
-  skillValue: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#00B8D4',
-  },
-  tagContainer: {
+  sportsChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
-  tag: {
-    backgroundColor: '#E6FBFF',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginRight: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#00B8D4',
+  sportChip: {
+    backgroundColor: theme.colors.background.card,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.large,
+    marginRight: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+    ...theme.shadows.small,
   },
-  tagText: {
-    color: '#00B8D4',
-    fontWeight: '600',
+  sportChipText: {
     fontSize: 14,
+    color: theme.colors.text.primary,
+    fontWeight: '600',
   },
-  achievementItem: {
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.background.card,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    borderRadius: theme.borderRadius.large,
+    ...theme.shadows.small,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  section: {
+    backgroundColor: theme.colors.background.card,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.md,
+    ...theme.shadows.small,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.md,
+  },
+  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 15,
-    backgroundColor: '#F7FAFC',
-    borderRadius: 15,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.ui.divider,
   },
-  achievementIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#E6FBFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  achievementIcon: {
-    fontSize: 22,
-  },
-  achievementText: {
+  infoLabel: {
     flex: 1,
-    fontSize: 15,
-    color: '#0D1B1E',
-    fontWeight: '600',
+    fontSize: 16,
+    color: theme.colors.text.primary,
+    marginLeft: theme.spacing.md,
   },
-  placeholderContainer: {
+  infoValue: {
+    fontSize: 16,
+    color: theme.colors.text.secondary,
+  },
+  optionItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 30,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.ui.divider,
   },
-  placeholderEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
+  optionText: {
+    flex: 1,
+    fontSize: 16,
+    color: theme.colors.text.primary,
+    marginLeft: theme.spacing.md,
   },
-  placeholderText: {
-    fontSize: 15,
-    color: '#718096',
+  achievementCard: {
+    flex: 0.45,
+    backgroundColor: theme.colors.background.card,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.md,
+    alignItems: 'center',
+    margin: theme.spacing.sm,
+    ...theme.shadows.small,
+  },
+  achievementName: {
+    fontSize: 16,
+    fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 4,
+    marginVertical: theme.spacing.sm,
   },
-  placeholderSubtext: {
-    fontSize: 13,
-    color: '#A0AEC0',
+  achievementDescription: {
+    fontSize: 12,
     textAlign: 'center',
+  },
+  fitnessChart: {
+    alignItems: 'center',
+  },
+  chartTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.md,
+  },
+  chartContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-end',
+    height: 150,
+  },
+  chartBar: {
+    alignItems: 'center',
+    width: 30,
+  },
+  bar: {
+    width: 20,
+    backgroundColor: theme.colors.accent.neonGreen,
+    borderRadius: 10,
+  },
+  barLabel: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.xs,
   },
 });
 
 export default ProfileScreen;
-
-

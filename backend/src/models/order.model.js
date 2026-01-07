@@ -1,160 +1,238 @@
 const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
-  user: {
+  orderId: {
+    type: String,
+    required: true,
+    unique: true,
+    uppercase: true
+  },
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Order must belong to a user']
+    required: true
+  },
+  storeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Store',
+    required: true
   },
   items: [{
-    product: {
+    productId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
       required: true
     },
+    name: String,
+    price: {
+      original: Number,
+      selling: Number
+    },
     quantity: {
       type: Number,
-      required: [true, 'Quantity is required'],
-      min: [1, 'Quantity must be at least 1']
+      required: true,
+      min: 1
     },
-    price: {
+    total: {
       type: Number,
-      required: [true, 'Price is required'],
-      min: [0, 'Price cannot be negative']
+      required: true
     }
   }],
-  shippingAddress: {
-    street: {
-      type: String,
-      required: [true, 'Street address is required']
-    },
-    city: {
-      type: String,
-      required: [true, 'City is required']
-    },
-    state: {
-      type: String,
-      required: [true, 'State is required']
-    },
-    country: {
-      type: String,
-      required: [true, 'Country is required']
-    },
-    postalCode: {
-      type: String,
-      required: [true, 'Postal code is required']
-    }
-  },
-  paymentMethod: {
-    type: String,
-    required: [true, 'Payment method is required'],
-    enum: ['credit_card', 'debit_card', 'upi', 'net_banking', 'cod'],
-    default: 'cod'
-  },
-  paymentResult: {
-    id: String,
-    status: String,
-    updateTime: String,
-    emailAddress: String
-  },
-  itemsPrice: {
+  totalAmount: {
     type: Number,
-    required: [true, 'Items price is required'],
-    min: [0, 'Items price cannot be negative']
+    required: true
   },
-  shippingPrice: {
-    type: Number,
-    required: [true, 'Shipping price is required'],
-    min: [0, 'Shipping price cannot be negative']
+  discount: {
+    amount: { type: Number, default: 0 },
+    percentage: { type: Number, default: 0 },
+    code: String
   },
-  taxPrice: {
-    type: Number,
-    required: [true, 'Tax price is required'],
-    min: [0, 'Tax price cannot be negative']
+  shipping: {
+    address: {
+      street: String,
+      city: String,
+      state: String,
+      pincode: String,
+      coordinates: [Number] // [longitude, latitude]
+    },
+    charges: { type: Number, default: 0 },
+    method: {
+      type: String,
+      enum: ['standard', 'express', 'pickup'],
+      default: 'standard'
+    },
+    estimatedDelivery: Date
   },
-  totalPrice: {
-    type: Number,
-    required: [true, 'Total price is required'],
-    min: [0, 'Total price cannot be negative']
-  },
-  isPaid: {
-    type: Boolean,
-    default: false
-  },
-  paidAt: Date,
-  status: {
-    type: String,
-    required: [true, 'Order status is required'],
-    enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
-    default: 'pending'
-  },
-  deliveryAssigned: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  deliveryInfo: {
-    pickedUpAt: Date,
-    deliveredAt: Date,
-    currentLocation: {
-      type: {
-        type: String,
-        enum: ['Point'],
-        default: 'Point'
-      },
-      coordinates: {
-        type: [Number],
-        default: [0, 0]
-      }
+  payment: {
+    method: {
+      type: String,
+      enum: ['upi', 'card', 'net_banking', 'wallet', 'cod'],
+      required: true
     },
     status: {
       type: String,
-      enum: ['pending', 'picked_up', 'in_transit', 'delivered', 'failed'],
+      enum: ['pending', 'processing', 'completed', 'failed', 'refunded'],
       default: 'pending'
     },
-    notes: String
+    transactionId: String,
+    gateway: String,
+    amount: Number
   },
-  cancelReason: {
+  status: {
     type: String,
-    enum: ['customer_request', 'payment_failed', 'out_of_stock', 'delivery_failed', 'other']
+    enum: [
+      'pending', 'confirmed', 'processing', 'ready_for_pickup', 'picked_up',
+      'in_transit', 'out_for_delivery', 'delivered', 'cancelled', 'returned', 'refunded'
+    ],
+    default: 'pending'
   },
-  isActive: {
-    type: Boolean,
-    default: true
+  delivery: {
+    deliveryBoyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Delivery'
+    },
+    assignedAt: Date,
+    pickupTime: Date,
+    deliveryTime: Date,
+    actualDeliveryTime: Date,
+    deliveryStatus: {
+      type: String,
+      enum: ['pending', 'assigned', 'picked_up', 'in_transit', 'delivered', 'failed']
+    }
+  },
+  ratings: {
+    user: {
+      rating: { type: Number, min: 1, max: 5 },
+      comment: String,
+      date: Date
+    },
+    store: {
+      rating: { type: Number, min: 1, max: 5 },
+      comment: String,
+      date: Date
+    }
+  },
+  timeline: [{
+    status: String,
+    timestamp: {
+      type: Date,
+      default: Date.now
+    },
+    notes: String
+  }],
+  cancellation: {
+    requested: { type: Boolean, default: false },
+    reason: String,
+    requestedAt: Date,
+    approved: { type: Boolean, default: false },
+    approvedBy: String, // 'user', 'admin', 'system'
+    approvedAt: Date
+  },
+  refund: {
+    initiated: { type: Boolean, default: false },
+    amount: Number,
+    reason: String,
+    status: {
+      type: String,
+      enum: ['pending', 'processing', 'completed', 'failed'],
+      default: 'pending'
+    },
+    initiatedAt: Date,
+    completedAt: Date
+  },
+  notifications: {
+    sent: [String], // list of notification types sent
+    lastNotified: Date
+  },
+  packaging: {
+    type: String, // 'standard', 'premium', 'eco-friendly'
+    materials: [String],
+    specialInstructions: String,
+    fragile: { type: Boolean, default: false },
+    temperatureControl: { type: Boolean, default: false },
+    temperatureRange: String // e.g., '2-8°C'
+  },
+  insurance: {
+    covered: { type: Boolean, default: false },
+    amount: Number, // Insurance value
+    provider: String,
+    policyNumber: String
+  },
+  customs: {
+    requiresDocumentation: { type: Boolean, default: false },
+    documentation: String, // URL to customs docs
+    dutyPaid: { type: Boolean, default: false },
+    dutyAmount: Number
+  },
+  tracking: {
+    enabled: { type: Boolean, default: true },
+    provider: String, // 'delhivery', 'shiprocket', 'bluedart'
+    trackingNumber: String,
+    trackingUrl: String,
+    lastUpdated: Date,
+    statusHistory: [{
+      status: String,
+      timestamp: Date,
+      location: String,
+      notes: String
+    }]
+  },
+  giftOptions: {
+    isGift: { type: Boolean, default: false },
+    giftMessage: String,
+    giftWrap: { type: Boolean, default: false },
+    senderName: String,
+    recipientName: String
+  },
+  subscription: {
+    isSubscription: { type: Boolean, default: false },
+    frequency: String, // 'weekly', 'monthly', 'quarterly'
+    nextDelivery: Date,
+    endDate: Date,
+    autoRenew: { type: Boolean, default: true }
+  },
+  analytics: {
+    value: Number,
+    commission: Number,
+    platformEarnings: Number,
+    customerLifetimeValue: { type: Number, default: 0 },
+    repeatOrderRate: { type: Number, default: 0 },
+    profitMargin: { type: Number, default: 0 }
+  },
+  priority: {
+    type: String,
+    enum: ['low', 'medium', 'high', 'urgent', 'express'],
+    default: 'medium'
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  timestamps: true
 });
 
-// Create indexes
-orderSchema.index({ user: 1, createdAt: -1 });
-orderSchema.index({ status: 1 });
-orderSchema.index({ deliveryAssigned: 1 });
-orderSchema.index({ 'items.product': 1 });
-orderSchema.index({ 'deliveryInfo.currentLocation': '2dsphere' });
-
-// Virtual for order duration
-orderSchema.virtual('duration').get(function() {
-  if (!this.deliveryInfo.deliveredAt) return null;
-  return Math.round((this.deliveryInfo.deliveredAt - this.createdAt) / (1000 * 60 * 60)); // Duration in hours
-});
-
-// Pre-save middleware to calculate total price
+// Update the updatedAt timestamp before saving
 orderSchema.pre('save', function(next) {
-  if (!this.isModified('items') && !this.isModified('shippingPrice') && !this.isModified('taxPrice')) {
-    return next();
-  }
-
-  // Calculate items price
-  this.itemsPrice = this.items.reduce((total, item) => {
-    return total + (item.price * item.quantity);
-  }, 0);
-
-  // Calculate total price
-  this.totalPrice = this.itemsPrice + this.shippingPrice + this.taxPrice;
-
+  this.updatedAt = Date.now();
   next();
 });
 
-module.exports = mongoose.model('Order', orderSchema); 
+// Indexes for efficient queries
+orderSchema.index({ orderId: 1, unique: true });
+orderSchema.index({ userId: 1 });
+orderSchema.index({ storeId: 1 });
+orderSchema.index({ status: 1 });
+orderSchema.index({ 'shipping.address.coordinates': '2dsphere' });
+orderSchema.index({ createdAt: -1 });
+orderSchema.index({ payment: 1 });
+orderSchema.index({ delivery: 1 });
+orderSchema.index({ 'tracking.trackingNumber': 1 });
+orderSchema.index({ 'analytics.customerLifetimeValue': 1 });
+orderSchema.index({ 'subscription.isSubscription': 1 });
+
+module.exports = mongoose.model('Order', orderSchema);

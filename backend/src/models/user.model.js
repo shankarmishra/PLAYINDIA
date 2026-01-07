@@ -1,6 +1,4 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-const validator = require('validator');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -10,108 +8,288 @@ const userSchema = new mongoose.Schema({
     minlength: [2, 'Name must be at least 2 characters long'],
     maxlength: [50, 'Name cannot be more than 50 characters']
   },
+  mobile: {
+    type: String,
+    required: [true, 'Please provide your mobile number'],
+    unique: true,
+    match: [/^[0-9]{10}$/, 'Please provide a valid 10-digit mobile number']
+  },
   email: {
     type: String,
     required: [true, 'Please provide your email'],
     unique: true,
     lowercase: true,
-    validate: [validator.isEmail, 'Please provide a valid email']
+    match: [/\S+@\S+\.\S+/, 'Please provide a valid email address']
   },
   password: {
     type: String,
     required: [true, 'Please provide a password'],
-    minlength: [8, 'Password must be at least 8 characters long'],
-    select: false
-  },
-  phone: {
-    type: String,
-    validate: {
-      validator: function(v) {
-        return /^\+[1-9]\d{10,14}$/.test(v);
-      },
-      message: props => `${props.value} is not a valid phone number!`
-    }
+    minlength: [6, 'Password must be at least 6 characters long'],
+    select: false // Don't return password in queries by default
   },
   role: {
     type: String,
-    enum: ['user', 'admin', 'coach', 'seller'],
+    enum: ['user', 'coach', 'seller', 'delivery', 'admin'],
     default: 'user'
   },
-  avatar: {
+  status: {
     type: String,
-    default: 'default.jpg'
+    enum: ['pending', 'active', 'inactive', 'suspended', 'rejected'],
+    default: 'pending'
   },
-  address: {
-    street: String,
+  profileComplete: {
+    type: Boolean,
+    default: false
+  },
+  verification: {
+    email: {
+      verified: { type: Boolean, default: false },
+      token: String,
+      expires: Date
+    },
+    mobile: {
+      verified: { type: Boolean, default: false },
+      otp: String,
+      otpExpires: Date
+    }
+  },
+  trustScore: {
+    type: Number,
+    default: 75, // Base trust score
+    min: 0,
+    max: 100
+  },
+  walletBalance: {
+    type: Number,
+    default: 0
+  },
+  level: {
+    type: String,
+    enum: ['rookie', 'pro', 'elite', 'legend'],
+    default: 'rookie'
+  },
+  experiencePoints: {
+    type: Number,
+    default: 0
+  },
+  achievements: [{
+    type: String
+  }],
+  preferences: {
+    favoriteGames: [String],
+    skillLevel: {
+      type: String,
+      enum: ['beginner', 'intermediate', 'pro']
+    },
+    ageGroup: String,
     city: String,
-    state: String,
-    pincode: String
+    preferredPlayTime: [String], // ['morning', 'evening', 'weekend']
+    distancePreference: {
+      type: Number,
+      default: 5 // km
+    }
   },
-  isEmailVerified: {
-    type: Boolean,
-    default: false
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      index: '2dsphere'
+    },
+    address: String,
+    city: String,
+    state: String
   },
-  isPhoneVerified: {
-    type: Boolean,
-    default: false
+  stats: {
+    gamesPlayed: { type: Number, default: 0 },
+    wins: { type: Number, default: 0 },
+    losses: { type: Number, default: 0 },
+    winLossRatio: { type: Number, default: 0 },
+    caloriesBurned: { type: Number, default: 0 },
+    skillProgression: { type: Number, default: 0 }
   },
-  emailVerificationToken: String,
-  emailVerificationExpires: Date,
-  passwordResetToken: String,
-  passwordResetExpires: Date,
-  active: {
+  lastActive: {
+    type: Date,
+    default: Date.now
+  },
+  deviceTokens: [String],
+  isActive: {
     type: Boolean,
-    default: true,
-    select: false
+    default: true
+  },
+  trustScore: {
+    type: Number,
+    default: 75, // Base trust score
+    min: 0,
+    max: 100
+  },
+  verification: {
+    email: {
+      verified: { type: Boolean, default: false },
+      token: String,
+      expires: Date
+    },
+    mobile: {
+      verified: { type: Boolean, default: false },
+      otp: String,
+      otpExpires: Date
+    },
+    aadhaar: {
+      number: String,
+      verified: { type: Boolean, default: false },
+      verifiedAt: Date,
+      documentFront: String,
+      documentBack: String
+    },
+    pan: {
+      number: String,
+      verified: { type: Boolean, default: false },
+      verifiedAt: Date,
+      document: String
+    },
+    faceMatch: {
+      verified: { type: Boolean, default: false },
+      verifiedAt: Date,
+      selfie: String
+    }
+  },
+  security: {
+    lastLogin: Date,
+    loginCount: { type: Number, default: 0 },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockedUntil: Date,
+    twoFactorEnabled: { type: Boolean, default: false },
+    twoFactorSecret: String,
+    deviceFingerprint: String,
+    ipAddresses: [String]
+  },
+  preferences: {
+    favoriteGames: [String],
+    skillLevel: {
+      type: String,
+      enum: ['beginner', 'intermediate', 'pro']
+    },
+    ageGroup: String,
+    city: String,
+    preferredPlayTime: [String], // ['morning', 'evening', 'weekend']
+    distancePreference: {
+      type: Number,
+      default: 5 // km
+    },
+    notificationSettings: {
+      push: { type: Boolean, default: true },
+      email: { type: Boolean, default: true },
+      sms: { type: Boolean, default: false },
+      whatsapp: { type: Boolean, default: false }
+    },
+    privacySettings: {
+      profileVisibility: {
+        type: String,
+        enum: ['public', 'friends', 'private'],
+        default: 'public'
+      },
+      locationSharing: { type: Boolean, default: false },
+      contactSharing: { type: Boolean, default: false }
+    }
+  },
+  social: {
+    followers: [{
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      followedAt: Date
+    }],
+    following: [{
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      followedAt: Date
+    }],
+    friendRequests: [{
+      from: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      sentAt: Date,
+      status: {
+        type: String,
+        enum: ['pending', 'accepted', 'rejected'],
+        default: 'pending'
+      }
+    }],
+    blockedUsers: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }]
+  },
+  achievements: [{
+    achievementId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Achievement'
+    },
+    earnedAt: Date,
+    unlocked: { type: Boolean, default: true }
+  }],
+  playPoints: {
+    totalPoints: { type: Number, default: 0 },
+    availablePoints: { type: Number, default: 0 },
+    pointsHistory: [{
+      points: Number,
+      type: String, // 'earned', 'redeemed', 'bonus'
+      description: String,
+      date: Date
+    }]
+  },
+  subscription: {
+    type: String, // 'free', 'premium', 'pro'
+    startDate: Date,
+    endDate: Date,
+    status: {
+      type: String,
+      enum: ['active', 'inactive', 'expired', 'cancelled'],
+      default: 'active'
+    },
+    features: [String]
+  },
+  referral: {
+    code: String,
+    referredBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    totalReferrals: { type: Number, default: 0 },
+    earnedPoints: { type: Number, default: 0 },
+    bonusHistory: [{
+      amount: Number,
+      date: Date,
+      type: String
+    }]
+  },
+  behavior: {
+    noShowRate: { type: Number, default: 0 }, // Percentage of no-shows
+    cancellationRate: { type: Number, default: 0 }, // Percentage of cancellations
+    responseTime: { type: Number, default: 0 }, // Average response time in minutes
+    reliabilityScore: { type: Number, default: 0 } // Overall reliability score
   }
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  timestamps: true
 });
 
-// Remove duplicate index declaration
+// Index for efficient queries
+userSchema.index({ mobile: 1 });
+userSchema.index({ email: 1 });
+userSchema.index({ role: 1 });
+userSchema.index({ status: 1 });
+userSchema.index({ trustScore: 1 });
+userSchema.index({ 'location.coordinates': '2dsphere' });
+userSchema.index({ 'verification.email.verified': 1 });
+userSchema.index({ 'verification.mobile.verified': 1 });
+userSchema.index({ 'security.lastLogin': -1 });
+userSchema.index({ 'referral.code': 1, unique: true });
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
-  next();
-});
-
-// Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
-};
-
-// Create password reset token
-userSchema.methods.createPasswordResetToken = function() {
-  const resetToken = crypto.randomBytes(32).toString('hex');
-  this.passwordResetToken = crypto
-    .createHash('sha256')
-    .update(resetToken)
-    .digest('hex');
-  this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
-  return resetToken;
-};
-
-// Create email verification token
-userSchema.methods.createEmailVerificationToken = function() {
-  const verificationToken = crypto.randomBytes(32).toString('hex');
-  this.emailVerificationToken = crypto
-    .createHash('sha256')
-    .update(verificationToken)
-    .digest('hex');
-  this.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
-  return verificationToken;
-};
-
-// Query middleware to hide inactive users
-userSchema.pre(/^find/, function(next) {
-  this.find({ active: { $ne: false } });
-  next();
-});
-
-const User = mongoose.model('User', userSchema);
-
-module.exports = User; 
+module.exports = mongoose.model('User', userSchema);

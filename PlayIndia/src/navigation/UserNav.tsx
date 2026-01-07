@@ -2,24 +2,42 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Ionicons';
-import useAuth from '../hooks/useAuth';
-import LoginScreen from '../screens/user/LoginScreen';
-import RegisterScreen from '../screens/user/RegisterScreen';
-import HomeScreen from '../screens/user/HomeScreen';
-import BookingScreen from '../screens/user/BookingScreen';
-import LeaderBoardScreen from '../screens/user/LeaderBoardScreen';
-import ProfileScreen from '../screens/user/ProfileScreen';
+
+import UserHomeDashboard from '../screens/user/UserHomeDashboard';
+import TournamentScreen from '../screens/user/TournamentScreen';
 import TournamentDetailScreen from '../screens/user/TournamentDetailScreen';
+import NearbyPlayersMap from '../screens/user/NearbyPlayersMap';
+import ProfileScreen from '../screens/user/ProfileScreen';
+import FindCoachScreen from '../screens/user/FindCoachScreen';
+import CoachProfileScreen from '../screens/user/CoachProfileScreen';
+import ShopHomeScreen from '../screens/user/ShopHomeScreen';
+import ProductDetailScreen from '../screens/user/ProductDetailScreen';
+import CartScreen from '../screens/user/CartScreen';
+import OrderTrackingScreen from '../screens/user/OrderTrackingScreen';
+import WalletScreen from '../screens/user/WalletScreen';
+import SettingsScreen from '../screens/user/SettingsScreen';
+import HelpSupportScreen from '../screens/user/HelpSupportScreen';
+import NotificationsScreen from '../screens/user/NotificationsScreen';
+import ChatScreen from '../screens/user/ChatScreen';
 
 export type UserTabParamList = {
   HomeTab: undefined;
   Home: undefined;
-  Bookings: undefined;
-  Leaderboard: undefined;
+  Tournaments: undefined;
+  TournamentDetail: { tournamentId: string };
+  NearbyPlayers: undefined;
   Profile: undefined;
-  TournamentDetail: { tournamentId?: string };
-  Login: undefined;
-  Register: undefined;
+  FindCoach: undefined;
+  CoachProfile: { coachId?: string };
+  ShopHome: undefined;
+  ProductDetail: { productId?: string };
+  Cart: undefined;
+  OrderTracking: { orderId?: string };
+  Wallet: undefined;
+  Settings: undefined;
+  HelpSupport: undefined;
+  Notifications: undefined;
+  Chat: { userId?: string };
 };
 
 const Tab = createBottomTabNavigator();
@@ -36,10 +54,10 @@ const TabNavigator = () => {
 
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Bookings') {
-            iconName = focused ? 'calendar' : 'calendar-outline';
-          } else if (route.name === 'Leaderboard') {
+          } else if (route.name === 'Tournaments') {
             iconName = focused ? 'trophy' : 'trophy-outline';
+          } else if (route.name === 'NearbyPlayers') {
+            iconName = focused ? 'people' : 'people-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           } else {
@@ -69,39 +87,35 @@ const TabNavigator = () => {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Bookings" component={BookingScreen} />
-      <Tab.Screen name="Leaderboard" component={LeaderBoardScreen} />
+      <Tab.Screen name="Home" component={UserHomeDashboard} />
+      <Tab.Screen name="Tournaments" component={TournamentScreen} />
+      <Tab.Screen name="NearbyPlayers" component={NearbyPlayersMap} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 };
 
 const UserNav = () => {
-  const { user } = useAuth();
-
-  // If user is authenticated, start with HomeTab, otherwise start with Login
-  const initialRoute = user ? 'HomeTab' : 'Login';
-
   return (
     <Stack.Navigator
-      initialRouteName={initialRoute}
+      initialRouteName="HomeTab"
       screenOptions={{
         headerShown: false,
       }}
     >
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen
-        name="Register"
-        component={RegisterScreen}
-        options={{ headerShown: false }}
-      />
       <Stack.Screen name="HomeTab" component={TabNavigator} />
-      <Stack.Screen
-        name="TournamentDetail"
-        component={TournamentDetailScreen}
-        options={{ headerShown: false }}
-      />
+      <Stack.Screen name="TournamentDetail" component={TournamentDetailScreen} />
+      <Stack.Screen name="FindCoach" component={FindCoachScreen} />
+      <Stack.Screen name="CoachProfile" component={CoachProfileScreen} />
+      <Stack.Screen name="ShopHome" component={ShopHomeScreen} />
+      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
+      <Stack.Screen name="Cart" component={CartScreen} />
+      <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
+      <Stack.Screen name="Wallet" component={WalletScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
 };

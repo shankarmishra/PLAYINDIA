@@ -1,28 +1,44 @@
 const Team = require('../models/team.model');
 const User = require('../models/user.model');
-const logger = require('../utils/logger');
+const Tournament = require('../models/tournament.model');
+const Match = require('../models/match.model');
 
 /**
  * Create a new team
- * @route POST /api/teams
- * @access Private
  */
-exports.createTeam = async (req, res) => {
+exports.createTeam = async (req, res, next) => {
   try {
-    const { name, sport, description, maxPlayers, location } = req.body;
+    const { name, description, sport, captain, members, location } = req.body;
+    
+    // Validate captain exists
+    const captainUser = await User.findById(captain);
+    if (!captainUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Captain user not found'
+      });
+    }
 
-    // Create team with captain as first player
+    // Validate members exist
+    if (members && members.length > 0) {
+      const users = await User.find({ _id: { $in: members } });
+      if (users.length !== members.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'Some members not found'
+        });
+      }
+    }
+
+    // Create team
     const team = await Team.create({
       name,
-      sport,
       description,
-      maxPlayers,
-      location,
-      captain: req.user._id,
-      players: [{
-        user: req.user._id,
-        role: 'captain'
-      }]
+      sport,
+      owner: req.user.id,
+      captain,
+      members: members ? members.map(userId => ({ userId })) : [],
+      location
     });
 
     res.status(201).json({
@@ -30,49 +46,72 @@ exports.createTeam = async (req, res) => {
       data: team
     });
   } catch (error) {
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: 'Error creating team'
+      message: error.message
     });
   }
 };
 
 /**
- * Get all teams
- * @route GET /api/teams
- * @access Public
+ * Get user teams
  */
-exports.getTeams = async (req, res) => {
+exports.getUserTeams = async (req, res, next) => {
   try {
-    const { sport } = req.query;
-    const query = sport ? { sport } : {};
-    
-    const teams = await Team.find(query)
-      .populate('captain', 'name email')
-      .populate('players.user', 'name email');
+    // Get teams where user is owner
+    const ownedTeams = await Team.find({ owner: req.user.id })
+      .populate('captain', 'name mobile')
+      .populate('members.userId', 'name mobile')
+      .sort({ createdAt: -1 });
+
+    // Get teams where user is captain
+    const captainedTeams = await Team.find({ 
+      captain: req.user.id,
+      owner: { $ne: req.user.id } // Avoid duplicates
+    })
+      .populate('captain', 'name mobile')
+      .populate('members.userId', 'name mobile')
+      .sort({ createdAt: -1 });
+
+    // Get teams where user is a member
+    const memberTeams = await Team.find({ 
+      'members.userId': req.user.id,
+      owner: { $ne: req.user.id },
+      captain: { $ne: req.user.id } // Avoid duplicates
+    })
+      .populate('captain', 'name mobile')
+      .populate('members.userId', 'name mobile')
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
-      data: teams
+      data: {
+        owned: ownedTeams,
+        captained: captainedTeams,
+        member: memberTeams
+      }
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error fetching teams'
+      message: error.message
     });
   }
 };
 
 /**
- * Get single team
- * @route GET /api/teams/:id
- * @access Public
+ * Get team details
  */
-exports.getTeam = async (req, res) => {
+exports.getTeam = async (req, res, next) => {
   try {
-    const team = await Team.findById(req.params.id)
-      .populate('captain', 'name email')
-      .populate('players.user', 'name email');
+    const { id } = req.params;
+    
+    const team = await Team.findById(id)
+      .populate('owner', 'name mobile')
+      .populate('captain', 'name mobile')
+      .populate('coach', 'name mobile')
+      .populate('members.userId', 'name mobile')
+      .populate('tournamentHistory.tournamentId', 'name category level');
 
     if (!team) {
       return res.status(404).json({
@@ -81,27 +120,63 @@ exports.getTeam = async (req, res) => {
       });
     }
 
+    // Check if user can view this team
+    const isMember = team.members.some(member => member.userId.toString() === req.user.id);
+    const isOwner = team.owner.toString() === req.user.id;
+    const isCaptain = team.captain.toString() === req.user.id;
+    const canView = isMember || isOwner || isCaptain || team.visibility === 'public';
+
+    if (!canView) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized to view this team'
+      });
+    }
+
+    // Get team's recent matches
+    const recentMatches = await Match.find({ 
+      $or: [
+        { 'teams.team1': id },
+        { 'teams.team2': id }
+      ]
+    })
+    .sort({ 'schedule.date': -1 })
+    .limit(10);
+
+    const teamData = {
+      ...team.toObject(),
+      recentMatches,
+      stats: {
+        wins: team.stats.wins,
+        losses: team.stats.losses,
+        draws: team.stats.draws,
+        matchesPlayed: team.stats.matchesPlayed,
+        winRate: team.stats.matchesPlayed > 0 ? 
+          Math.round((team.stats.wins / team.stats.matchesPlayed) * 100) : 0
+      }
+    };
+
     res.status(200).json({
       success: true,
-      data: team
+      data: teamData
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error fetching team'
+      message: error.message
     });
   }
 };
 
 /**
  * Update team
- * @route PUT /api/teams/:id
- * @access Private
  */
-exports.updateTeam = async (req, res) => {
+exports.updateTeam = async (req, res, next) => {
   try {
-    const team = await Team.findById(req.params.id);
-
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    const team = await Team.findById(id);
     if (!team) {
       return res.status(404).json({
         success: false,
@@ -109,41 +184,43 @@ exports.updateTeam = async (req, res) => {
       });
     }
 
-    // Check if user is team captain
-    if (team.captain.toString() !== req.user._id.toString()) {
+    // Check if user is owner
+    if (team.owner.toString() !== req.user.id) {
       return res.status(403).json({
         success: false,
-        message: 'Only team captain can update team'
+        message: 'Unauthorized to modify this team'
       });
     }
 
     const updatedTeam = await Team.findByIdAndUpdate(
-      req.params.id,
-      req.body,
+      id,
+      { $set: updateData },
       { new: true, runValidators: true }
-    );
+    )
+    .populate('captain', 'name mobile')
+    .populate('members.userId', 'name mobile');
 
     res.status(200).json({
       success: true,
       data: updatedTeam
     });
   } catch (error) {
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: 'Error updating team'
+      message: error.message
     });
   }
 };
 
 /**
- * Delete team
- * @route DELETE /api/teams/:id
- * @access Private
+ * Add member to team
  */
-exports.deleteTeam = async (req, res) => {
+exports.addMember = async (req, res, next) => {
   try {
-    const team = await Team.findById(req.params.id);
-
+    const { id } = req.params; // team id
+    const { userId, role = 'player' } = req.body;
+    
+    const team = await Team.findById(id);
     if (!team) {
       return res.status(404).json({
         success: false,
@@ -151,46 +228,19 @@ exports.deleteTeam = async (req, res) => {
       });
     }
 
-    // Check if user is captain or admin
-    if (team.captain.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    // Check if user is owner or captain
+    const isOwner = team.owner.toString() === req.user.id;
+    const isCaptain = team.captain.toString() === req.user.id;
+    
+    if (!isOwner && !isCaptain) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to delete team'
+        message: 'Only owner or captain can add members'
       });
     }
 
-    await team.remove();
-
-    res.json({
-      success: true,
-      message: 'Team deleted successfully'
-    });
-  } catch (error) {
-    logger.error('Delete team error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error deleting team'
-    });
-  }
-};
-
-/**
- * Add player to team
- * @route POST /api/teams/:id/players
- * @access Private
- */
-exports.addPlayer = async (req, res) => {
-  try {
-    const team = await Team.findById(req.params.id);
-    const user = await User.findById(req.body.userId);
-
-    if (!team) {
-      return res.status(404).json({
-        success: false,
-        message: 'Team not found'
-      });
-    }
-
+    // Check if user exists
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -198,103 +248,59 @@ exports.addPlayer = async (req, res) => {
       });
     }
 
-    // Check if user is team captain
-    if (team.captain.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Only team captain can add players'
-      });
-    }
-
-    // Check if team is full
-    if (team.players.length >= team.maxPlayers) {
+    // Check if user is already a member
+    const isMember = team.members.some(member => member.userId.toString() === userId);
+    if (isMember) {
       return res.status(400).json({
         success: false,
-        message: 'Team is full'
+        message: 'User is already a member of this team'
       });
     }
 
-    // Check if player is already in team
-    if (team.players.some(p => p.user.toString() === user._id.toString())) {
+    // Check team size limit
+    if (team.settings.maxMembers && team.members.length >= team.settings.maxMembers) {
       return res.status(400).json({
         success: false,
-        message: 'Player is already in team'
+        message: 'Team has reached maximum member limit'
       });
     }
 
-    team.players.push({
-      user: user._id,
-      role: req.body.role || 'player'
-    });
-
-    const updatedTeam = await team.save();
-
-    res.status(200).json({
-      success: true,
-      data: updatedTeam
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error adding player to team'
-    });
-  }
-};
-
-/**
- * Remove player from team
- * @route DELETE /api/teams/:id/players/:playerId
- * @access Private
- */
-exports.removePlayer = async (req, res) => {
-  try {
-    const team = await Team.findById(req.params.id);
-
-    if (!team) {
-      return res.status(404).json({
-        success: false,
-        message: 'Team not found'
-      });
-    }
-
-    // Check if user is team captain
-    if (team.captain.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Only team captain can remove players'
-      });
-    }
-
-    // Remove player
-    team.players = team.players.filter(
-      player => player.user.toString() !== req.params.playerId
+    const updatedTeam = await Team.findByIdAndUpdate(
+      id,
+      {
+        $push: {
+          members: {
+            userId,
+            role,
+            joinedAt: new Date(),
+            status: 'active'
+          }
+        }
+      },
+      { new: true }
     );
 
-    const updatedTeam = await team.save();
-
     res.status(200).json({
       success: true,
       data: updatedTeam
     });
   } catch (error) {
-    logger.error('Remove player error:', error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: 'Error removing player'
+      message: error.message
     });
   }
 };
 
 /**
- * Update player role in team
- * @route PUT /api/teams/:id/players/:playerId
- * @access Private
+ * Remove member from team
  */
-exports.updatePlayerRole = async (req, res) => {
+exports.removeMember = async (req, res, next) => {
   try {
-    const { role } = req.body;
-    const team = await Team.findById(req.params.id);
-
+    const { id } = req.params; // team id
+    const { userId } = req.body;
+    
+    const team = await Team.findById(id);
     if (!team) {
       return res.status(404).json({
         success: false,
@@ -302,43 +308,145 @@ exports.updatePlayerRole = async (req, res) => {
       });
     }
 
-    // Check if user is captain or admin
-    if (team.captain.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    // Check if user is owner or captain
+    const isOwner = team.owner.toString() === req.user.id;
+    const isCaptain = team.captain.toString() === req.user.id;
+    
+    if (!isOwner && !isCaptain) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to update player roles'
+        message: 'Only owner or captain can remove members'
       });
     }
 
-    // Check if player is in team
-    const playerIndex = team.players.findIndex(p => p.user.toString() === req.params.playerId);
-    if (playerIndex === -1) {
-      return res.status(404).json({
+    // Prevent removing the captain unless it's the owner
+    const member = team.members.find(m => m.userId.toString() === userId);
+    if (member && member.role === 'captain' && !isOwner) {
+      return res.status(403).json({
         success: false,
-        message: 'Player not found in team'
+        message: 'Only owner can remove captain'
       });
     }
 
-    // Don't allow changing captain's role
-    if (team.players[playerIndex].role === 'captain') {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot change captain role'
-      });
-    }
+    const updatedTeam = await Team.findByIdAndUpdate(
+      id,
+      {
+        $pull: {
+          members: { userId }
+        }
+      },
+      { new: true }
+    );
 
-    team.players[playerIndex].role = role;
-    await team.save();
-
-    res.json({
+    res.status(200).json({
       success: true,
-      data: team
+      data: updatedTeam
     });
   } catch (error) {
-    logger.error('Update player role error:', error);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      message: 'Error updating player role'
+      message: error.message
     });
   }
-}; 
+};
+
+/**
+ * Update member role
+ */
+exports.updateMemberRole = async (req, res, next) => {
+  try {
+    const { id } = req.params; // team id
+    const { userId, role } = req.body;
+    
+    const team = await Team.findById(id);
+    if (!team) {
+      return res.status(404).json({
+        success: false,
+        message: 'Team not found'
+      });
+    }
+
+    // Check if user is owner
+    if (team.owner.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only owner can update member roles'
+      });
+    }
+
+    // Update member role
+    const updatedTeam = await Team.findOneAndUpdate(
+      { _id: id, 'members.userId': userId },
+      { $set: { 'members.$.role': role } },
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: updatedTeam
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get teams by sport and location
+ */
+exports.getTeamsBySportAndLocation = async (req, res, next) => {
+  try {
+    const { sport, location, city, state } = req.query;
+    
+    let query = { isActive: true };
+    
+    if (sport) {
+      query.sport = sport;
+    }
+    
+    if (city) {
+      query['location.city'] = new RegExp(city, 'i');
+    }
+    
+    if (state) {
+      query['location.state'] = new RegExp(state, 'i');
+    }
+    
+    // Add location-based query if coordinates are provided
+    if (location) {
+      const [lat, lng] = location.split(',').map(Number);
+      const distance = req.query.distance || 50; // default 50km
+      const radiusInRadians = distance / 6378.1; // Earth's radius in km
+
+      query['location.coordinates'] = {
+        $geoWithin: {
+          $centerSphere: [
+            [lng, lat],
+            radiusInRadians
+          ]
+        }
+      };
+    }
+    
+    const teams = await Team.find(query)
+      .populate('captain', 'name mobile')
+      .populate('members.userId', 'name')
+      .sort({ 'stats.rating': -1 })
+      .limit(50);
+
+    res.status(200).json({
+      success: true,
+      count: teams.length,
+      data: teams
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+module.exports = exports;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, Alert, ActivityIndicator, SafeAreaView, Animated, TouchableOpacity } from 'react-native';
 import axios from 'axios';
+import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '../../utils/AsyncStorageSafe';
 import { API_ENDPOINTS } from '../../config/constants';
 import BrandLogo from '../../components/BrandLogo';
@@ -95,7 +96,12 @@ const LeaderBoardScreen = () => {
   }, []);
 
   const renderItem = ({ item, index }: { item: User; index: number }) => {
-    const medalEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+    const getMedalIcon = () => {
+      if (index === 0) return <Icon name="medal" size={32} color="#FFD700" />;
+      if (index === 1) return <Icon name="medal" size={32} color="#C0C0C0" />;
+      if (index === 2) return <Icon name="medal" size={32} color="#CD7F32" />;
+      return null;
+    };
     
     return (
       <Animated.View style={[
@@ -108,8 +114,8 @@ const LeaderBoardScreen = () => {
         }
       ]}>
         <View style={styles.rankContainer}>
-          {medalEmoji ? (
-            <Text style={styles.medalEmoji}>{medalEmoji}</Text>
+          {getMedalIcon() ? (
+            <View style={styles.medalContainer}>{getMedalIcon()}</View>
           ) : (
             <Text style={[styles.rank, index < 3 && styles.topRank]}>#{index + 1}</Text>
           )}
@@ -119,9 +125,15 @@ const LeaderBoardScreen = () => {
             {item.name}
           </Text>
           <View style={styles.statsRow}>
-            <Text style={styles.coinsSmall}>🪙 {item.coins}</Text>
+            <View style={styles.coinIconContainer}>
+              <Icon name="logo-bitcoin" size={14} color="#FFB800" />
+              <Text style={styles.coinsSmall}> {item.coins}</Text>
+            </View>
             {index < 3 && item.topDays > 0 && (
-              <Text style={styles.topDaysSmall}>🔥 {item.topDays}d</Text>
+              <View style={styles.topDaysContainer}>
+                <Icon name="flame" size={14} color="#FF4D4D" />
+                <Text style={styles.topDaysSmall}> {item.topDays}d</Text>
+              </View>
             )}
           </View>
         </View>
@@ -145,17 +157,20 @@ const LeaderBoardScreen = () => {
       <Animated.View style={[styles.brandingHeader, { opacity: fadeAnim }]}>
         <BrandLogo size={45} style={styles.logoStyle} />
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.title}>Leaderboard 🏆</Text>
-          <Text style={styles.tagline}>PLAYINDIA CHAMPIONS</Text>
+          <Icon name="trophy" size={28} color="#FFB800" />
+          <View style={{ marginLeft: 10 }}>
+            <Text style={styles.title}>Leaderboard</Text>
+            <Text style={styles.tagline}>PLAYINDIA CHAMPIONS</Text>
+          </View>
         </View>
         <TouchableOpacity style={styles.filterButton}>
-          <Text style={styles.filterIcon}>📊</Text>
+          <Icon name="stats-chart" size={22} color="#00B8D4" />
         </TouchableOpacity>
       </Animated.View>
 
       {users.length === 0 ? (
         <Animated.View style={[styles.emptyContainer, { opacity: fadeAnim }]}>
-          <Text style={styles.emptyEmoji}>🎮</Text>
+          <Icon name="game-controller" size={64} color="#CBD5E0" />
           <Text style={styles.emptyText}>No leaderboard data available.</Text>
           <Text style={styles.emptySubtext}>Start playing to see rankings!</Text>
         </Animated.View>
@@ -170,23 +185,26 @@ const LeaderBoardScreen = () => {
               }
             ]}>
               <View style={styles.userRankHeader}>
-                <Text style={styles.userRankTitle}>🎯 YOUR RANK</Text>
+                <View style={styles.yourRankContainer}>
+                  <Icon name="target" size={20} color="#00B8D4" />
+                  <Text style={styles.userRankTitle}>YOUR RANK</Text>
+                </View>
                 <View style={styles.rankBadge}>
                   <Text style={styles.rankBadgeText}>#{userRank.rank}</Text>
                 </View>
               </View>
               <View style={styles.userRankStats}>
                 <View style={styles.userStatItem}>
-                  <Text style={styles.userStatIcon}>👤</Text>
+                  <Icon name="person" size={18} color="#718096" />
                   <Text style={styles.userStatValue}>{userRank.name}</Text>
                 </View>
                 <View style={styles.userStatItem}>
-                  <Text style={styles.userStatIcon}>🪙</Text>
+                  <Icon name="logo-bitcoin" size={18} color="#FFB800" />
                   <Text style={styles.userStatValue}>{userRank.coins} Coins</Text>
                 </View>
                 {userRank.topDays > 0 && (
                   <View style={styles.userStatItem}>
-                    <Text style={styles.userStatIcon}>🔥</Text>
+                    <Icon name="flame" size={18} color="#FF4D4D" />
                     <Text style={styles.userStatValue}>{userRank.topDays} {userRank.topDays === 1 ? 'Day' : 'Days'}</Text>
                   </View>
                 )}
@@ -200,7 +218,8 @@ const LeaderBoardScreen = () => {
             renderItem={renderItem}
             ListHeaderComponent={
               <Animated.View style={[styles.leaderboardTitle, { opacity: fadeAnim }]}>
-                <Text style={styles.leaderboardTitleText}>🌟 Top Players</Text>
+                <Icon name="star" size={20} color="#FFB800" />
+                <Text style={styles.leaderboardTitleText}>Top Players</Text>
               </Animated.View>
             }
             contentContainerStyle={styles.listContent}
@@ -339,6 +358,9 @@ const styles = StyleSheet.create({
     width: 50,
     alignItems: 'center',
   },
+  medalContainer: {
+    marginRight: 8,
+  },
   medalEmoji: {
     fontSize: 28,
   },
@@ -361,6 +383,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  coinIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+  },
   coinsSmall: {
     fontSize: 12,
     color: '#718096',
@@ -370,6 +397,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#FF6B6B',
     fontWeight: '600',
+  },
+  topDaysContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
   },
   coinsBadge: {
     backgroundColor: '#F7FAFC',
@@ -428,6 +460,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+  },
+  yourRankContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   userRankTitle: {
     fontSize: 13,

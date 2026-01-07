@@ -3,194 +3,312 @@ const mongoose = require('mongoose');
 const tournamentSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Tournament name is required'],
-    trim: true,
-    maxlength: [100, 'Tournament name cannot be more than 100 characters']
+    required: true,
+    trim: true
   },
-  description: {
-    type: String,
-    required: [true, 'Tournament description is required'],
-    trim: true,
-    maxlength: [1000, 'Tournament description cannot be more than 1000 characters']
-  },
-  sport: {
-    type: String,
-    required: [true, 'Sport is required'],
-    enum: ['cricket', 'football', 'basketball', 'tennis', 'badminton'],
-    lowercase: true
-  },
+  description: String,
   organizer: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: [true, 'Tournament organizer is required']
+    ref: 'User', // Could be a coach or admin
+    required: true
   },
-  startDate: {
-    type: Date,
-    required: [true, 'Tournament start date is required']
+  category: {
+    type: String,
+    required: true,
+    enum: ['cricket', 'football', 'badminton', 'tennis', 'basketball', 'volleyball', 'table-tennis', 'chess', 'carrom']
   },
-  endDate: {
-    type: Date,
-    required: [true, 'Tournament end date is required']
+  level: {
+    type: String,
+    enum: ['local', 'city', 'state', 'national', 'international'],
+    default: 'local'
   },
-  registrationDeadline: {
-    type: Date,
-    required: [true, 'Registration deadline is required']
+  type: {
+    type: String,
+    enum: ['knockout', 'league', 'round-robin', 'double-elimination'],
+    default: 'knockout'
   },
-  maxTeams: {
-    type: Number,
-    required: [true, 'Maximum number of teams is required'],
-    min: [2, 'Tournament must have at least 2 teams'],
-    max: [64, 'Tournament cannot have more than 64 teams']
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      index: '2dsphere'
+    },
+    address: String,
+    city: String,
+    state: String,
+    venue: String
   },
-  minTeamsPerMatch: {
-    type: Number,
-    required: [true, 'Minimum teams per match is required'],
-    min: [2, 'Match must have at least 2 teams']
+  dates: {
+    registrationStart: Date,
+    registrationEnd: Date,
+    tournamentStart: Date,
+    tournamentEnd: Date
   },
-  maxTeamsPerMatch: {
-    type: Number,
-    required: [true, 'Maximum teams per match is required'],
-    min: [2, 'Match must have at least 2 teams']
-  },
-  teams: [{
-    team: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Team',
-      required: true
+  registration: {
+    fee: {
+      type: Number,
+      default: 0
+    },
+    maxTeams: Number,
+    minTeams: Number,
+    currentTeams: {
+      type: Number,
+      default: 0
     },
     status: {
       type: String,
-      enum: ['pending', 'approved', 'rejected'],
-      default: 'pending'
+      enum: ['closed', 'open', 'full'],
+      default: 'closed'
+    }
+  },
+  teams: [{
+    teamId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Team'
     },
-    registeredAt: {
-      type: Date,
-      default: Date.now
+    captain: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    members: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }],
+    registrationDate: Date,
+    status: {
+      type: String,
+      enum: ['pending', 'confirmed', 'disqualified', 'withdrawn'],
+      default: 'pending'
     }
   }],
   matches: [{
-    teams: [{
-      team: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Team',
-        required: true
-      },
-      score: {
-        type: Number,
-        default: 0
-      }
-    }],
+    matchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Match'
+    },
+    team1: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Team'
+    },
+    team2: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Team'
+    },
+    date: Date,
+    time: String, // 'HH:MM'
+    venue: String,
+    status: {
+      type: String,
+      enum: ['scheduled', 'live', 'completed', 'postponed', 'cancelled'],
+      default: 'scheduled'
+    },
+    scores: {
+      team1: Number,
+      team2: Number
+    },
     winner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Team'
     },
-    status: {
-      type: String,
-      enum: ['scheduled', 'in-progress', 'completed', 'cancelled'],
-      default: 'scheduled'
-    },
-    startTime: {
-      type: Date,
-      required: true
-    },
-    endTime: Date,
-    venue: {
-      name: {
-        type: String,
-        required: true
-      },
-      address: {
-        type: String,
-        required: true
-      },
-      location: {
-        type: {
-          type: String,
-          enum: ['Point'],
-          default: 'Point'
-        },
-        coordinates: {
-          type: [Number],
-          default: [0, 0]
-        }
-      }
+    referee: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
     }
   }],
-  format: {
-    type: String,
-    enum: ['knockout', 'league', 'group-stage'],
-    required: [true, 'Tournament format is required']
+  prize: {
+    first: Number,
+    second: Number,
+    third: Number,
+    others: [{
+      position: String,
+      amount: Number
+    }]
   },
-  rules: [{
-    title: {
-      type: String,
-      required: true
-    },
-    description: {
-      type: String,
-      required: true
-    }
+  sponsors: [{
+    name: String,
+    logo: String,
+    type: String, // 'title', 'official', 'associate'
+    amount: Number
   }],
-  prizes: [{
-    position: {
-      type: Number,
-      required: true
-    },
-    description: {
-      type: String,
-      required: true
-    },
-    value: {
-      type: Number,
-      required: true
-    }
-  }],
+  rules: {
+    format: String,
+    duration: String,
+    substitutions: Number,
+    equipment: String,
+    other: String
+  },
+  documents: {
+    tournamentRules: String,
+    safetyGuidelines: String,
+    insurance: String
+  },
+  visibility: {
+    type: String,
+    enum: ['public', 'private', 'friends'],
+    default: 'public'
+  },
   status: {
     type: String,
-    enum: ['draft', 'published', 'registration-closed', 'in-progress', 'completed', 'cancelled'],
+    enum: ['draft', 'active', 'completed', 'cancelled', 'archived'],
     default: 'draft'
   },
-  isActive: {
-    type: Boolean,
-    default: true
+  settings: {
+    allowIndividualRegistration: { type: Boolean, default: false },
+    requireApproval: { type: Boolean, default: true },
+    maxPlayersPerTeam: { type: Number, default: 11 },
+    minPlayersPerTeam: { type: Number, default: 5 }
+  },
+  features: {
+    liveScore: { type: Boolean, default: true },
+    liveStreaming: { type: Boolean, default: false },
+    digitalCertificates: { type: Boolean, default: true },
+    photoGallery: { type: Boolean, default: true },
+    shareableLeaderboard: { type: Boolean, default: true },
+    liveStats: { type: Boolean, default: false },
+    videoAnalysis: { type: Boolean, default: false },
+    playerTracking: { type: Boolean, default: false },
+    aiAnalysis: { type: Boolean, default: false },
+    virtualAwards: { type: Boolean, default: false }
+  },
+  brackets: {
+    type: String, // 'single_elimination', 'double_elimination', 'round_robin', 'swiss'
+    structure: mongoose.Schema.Types.Mixed, // Bracket structure data
+    currentRound: String,
+    completed: { type: Boolean, default: false }
+  },
+  officials: {
+    referees: [{
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      name: String,
+      qualification: String,
+      assignedMatches: [Number] // Match numbers assigned
+    }],
+    scorers: [{
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      name: String,
+      assignedMatches: [Number]
+    }],
+    medicalStaff: [{
+      name: String,
+      qualification: String,
+      contact: String
+    }]
+  },
+  media: {
+    photographers: [{
+      name: String,
+      contact: String
+    }],
+    videographers: [{
+      name: String,
+      contact: String
+    }],
+    commentators: [{
+      name: String,
+      expertise: String
+    }],
+    socialMedia: {
+      autoPost: { type: Boolean, default: false },
+      hashtags: [String],
+      contentSchedule: [{
+        time: Date,
+        content: String,
+        platform: String // 'instagram', 'facebook', 'twitter'
+      }]
+    }
+  },
+  prizeDistribution: {
+    structure: [{
+      position: Number,
+      prize: Number,
+      type: String, // 'cash', 'gift', 'trophy', 'certificate'
+      recipient: {
+        teamId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Team'
+        },
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User'
+        }
+      }
+    }],
+    distributionDate: Date,
+    claimed: { type: Boolean, default: false },
+    claimDate: Date
+  },
+  insurance: {
+    covered: { type: Boolean, default: false },
+    amount: Number,
+    provider: String,
+    policyNumber: String
+  },
+  safety: {
+    safetyOfficer: String,
+    emergencyContact: String,
+    firstAidAvailable: { type: Boolean, default: true },
+    medicalFacility: String,
+    safetyProtocols: [String]
+  },
+  ratings: {
+    average: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
+    },
+    count: {
+      type: Number,
+      default: 0
+    }
+  },
+  analytics: {
+    views: { type: Number, default: 0 },
+    registrations: { type: Number, default: 0 },
+    shares: { type: Number, default: 0 },
+    engagementRate: { type: Number, default: 0 },
+    revenue: { type: Number, default: 0 },
+    participantSatisfaction: { type: Number, default: 0 }
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true
 });
 
-// Create indexes
-tournamentSchema.index({ name: 'text', description: 'text' });
-tournamentSchema.index({ sport: 1 });
-tournamentSchema.index({ organizer: 1 });
-tournamentSchema.index({ startDate: 1 });
-tournamentSchema.index({ status: 1 });
-tournamentSchema.index({ 'teams.team': 1 });
-tournamentSchema.index({ 'matches.teams.team': 1 });
-
-// Virtual for registered teams count
-tournamentSchema.virtual('registeredTeamsCount').get(function() {
-  return this.teams.length;
-});
-
-// Virtual for approved teams count
-tournamentSchema.virtual('approvedTeamsCount').get(function() {
-  return this.teams.filter(team => team.status === 'approved').length;
-});
-
-// Virtual for completed matches count
-tournamentSchema.virtual('completedMatchesCount').get(function() {
-  return this.matches.filter(match => match.status === 'completed').length;
-});
-
-// Pre-save middleware to validate dates
+// Update the updatedAt timestamp before saving
 tournamentSchema.pre('save', function(next) {
-  if (this.endDate <= this.startDate) {
-    next(new Error('End date must be after start date'));
-  }
-  if (this.registrationDeadline >= this.startDate) {
-    next(new Error('Registration deadline must be before start date'));
-  }
+  this.updatedAt = Date.now();
   next();
 });
 
-module.exports = mongoose.model('Tournament', tournamentSchema); 
+// Indexes for efficient queries
+tournamentSchema.index({ organizer: 1 });
+tournamentSchema.index({ category: 1 });
+tournamentSchema.index({ level: 1 });
+tournamentSchema.index({ status: 1 });
+tournamentSchema.index({ 'location.coordinates': '2dsphere' });
+tournamentSchema.index({ 'dates.tournamentStart': 1 });
+tournamentSchema.index({ 'dates.registrationEnd': 1 });
+tournamentSchema.index({ createdAt: -1 });
+tournamentSchema.index({ 'brackets.type': 1 });
+tournamentSchema.index({ 'analytics.revenue': 1 });
+tournamentSchema.index({ 'prizeDistribution.claimed': 1 });
+
+module.exports = mongoose.model('Tournament', tournamentSchema);

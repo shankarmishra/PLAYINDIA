@@ -1,36 +1,35 @@
 const express = require('express');
-const { authValidations } = require('../middleware/validate');
-const { protect } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth.middleware');
 const {
   register,
   login,
+  adminLogin,
   logout,
-  refreshToken,
   forgotPassword,
   resetPassword,
-  verifyEmail,
-  resendVerificationEmail,
-  getCurrentUser,
-  updatePassword,
-  updateProfile
+  getMe,
+  updateMe,
+  verifyMobile,
+  sendMobileOTP,
+  getDashboard
 } = require('../controllers/auth.controller');
 
 const router = express.Router();
 
 // Public routes
-router.post('/register', authValidations.register, register);
-router.post('/login', authValidations.login, login);
+router.post('/register', register);
+router.post('/login', login);
+router.post('/admin/login', adminLogin);
 router.post('/logout', logout);
-router.post('/refresh-token', refreshToken);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password/:token', resetPassword);
-router.get('/verify-email/:token', verifyEmail);
-router.post('/resend-verification', resendVerificationEmail);
+router.post('/verify-mobile', verifyMobile);
+router.post('/send-otp', sendMobileOTP);
 
 // Protected routes
-router.use(protect); // Apply protection to all routes below this
-router.get('/me', getCurrentUser);
-router.patch('/update-password', authValidations.updatePassword, updatePassword);
-router.patch('/update-profile', authValidations.updateProfile, updateProfile);
+router.use(authenticate);
+router.get('/me', getMe);
+router.patch('/update', updateMe);
+router.get('/dashboard', getDashboard);
 
-module.exports = router; 
+module.exports = router;

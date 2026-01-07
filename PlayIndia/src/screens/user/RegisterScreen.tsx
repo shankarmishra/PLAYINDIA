@@ -13,8 +13,9 @@ import {
 import { StackScreenProps } from '@react-navigation/stack';
 import { UserTabParamList } from '../../navigation/UserNav';
 import axios from 'axios';
-import { API_ENDPOINTS } from '../../config/constants';
+import { API_ENDPOINTS, API_BASE_URL } from '../../config/constants';
 import BrandLogo from '../../components/BrandLogo';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 interface RegisterFormData {
   firstName: string;
@@ -23,14 +24,6 @@ interface RegisterFormData {
   password: string;
   confirmPassword: string;
   phone: string;
-  age: string;
-  gender: string;
-  sport: string;
-  position: string;
-  height: string;
-  weight: string;
-  team: string;
-  experience: string;
 }
 
 type Props = StackScreenProps<UserTabParamList, 'Register'>;
@@ -43,15 +36,8 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     password: '',
     confirmPassword: '',
     phone: '',
-    age: '',
-    gender: '',
-    sport: '',
-    position: '',
-    height: '',
-    weight: '',
-    team: '',
-    experience: '',
   });
+  const [userType, setUserType] = useState('user'); // Default to user type
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -92,22 +78,12 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
     setIsLoading(true);
     try {
-      await axios.post(API_ENDPOINTS.USERS.REGISTER, {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+      await axios.post(`${API_BASE_URL}/api/auth/register`, {
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
         email: formData.email,
         password: formData.password,
         phone: formData.phone,
-        age: formData.age ? parseInt(formData.age, 10) : undefined,
-        gender: formData.gender,
-        sport: formData.sport,
-        position: formData.position,
-        height: formData.height ? parseFloat(formData.height) : undefined,
-        weight: formData.weight ? parseFloat(formData.weight) : undefined,
-        team: formData.team,
-        experience: formData.experience
-          ? parseInt(formData.experience, 10)
-          : undefined,
+        role: 'user', // Default to user role, but could be changed based on flow
       });
 
       Alert.alert('Success', 'Account registered successfully', [
@@ -147,8 +123,8 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <Animated.View style={[styles.brandingHeader, { opacity: fadeAnim }]}>
+      <ScrollView contentContainerStyle={[styles.scrollContainer, { flexGrow: 1, justifyContent: 'center' }]} showsVerticalScrollIndicator={false}>
+        <Animated.View style={[styles.brandingHeader, { opacity: fadeAnim, position: 'absolute', top: 20, left: 0, right: 0, zIndex: 1 }]}>
           <BrandLogo size={50} />
           <View style={styles.header}>
             <Text style={styles.appName}>PLAYINDIA</Text>
@@ -158,7 +134,8 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.skipButton}
             onPress={handleSkipForTesting}
           >
-            <Text style={styles.skipButtonText}>Skip 🚀</Text>
+            <Text style={styles.skipButtonText}>Skip </Text>
+            <Icon name="rocket" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </Animated.View>
 
@@ -238,9 +215,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                 onPress={() => setPasswordVisible(!passwordVisible)}
                 style={styles.eyeIcon}
               >
-                <Text style={styles.eyeText}>
-                  {passwordVisible ? '👁️' : '👁️‍🗨️'}
-                </Text>
+                <Icon name={passwordVisible ? 'eye' : 'eye-off'} size={20} color="#718096" />
               </TouchableOpacity>
             </View>
           </View>
@@ -261,124 +236,12 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                 onPress={() => setConfirmPasswordVisible(!confirmPasswordVisible)}
                 style={styles.eyeIcon}
               >
-                <Text style={styles.eyeText}>
-                  {confirmPasswordVisible ? '👁️' : '👁️‍🗨️'}
-                </Text>
+                <Icon name={confirmPasswordVisible ? 'eye' : 'eye-off'} size={20} color="#718096" />
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.row}>
-            <View style={[styles.inputSection, { flex: 1, marginRight: 10 }]}>
-              <Text style={styles.label}>AGE</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 25"
-                  placeholderTextColor="#718096"
-                  value={formData.age}
-                  onChangeText={text => handleChange('age', text)}
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-            <View style={[styles.inputSection, { flex: 1 }]}>
-              <Text style={styles.label}>GENDER</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Male/Female/Other"
-                  placeholderTextColor="#718096"
-                  value={formData.gender}
-                  onChangeText={text => handleChange('gender', text)}
-                />
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={[styles.inputSection, { flex: 1, marginRight: 10 }]}>
-              <Text style={styles.label}>SPORT</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="football, cricket..."
-                  placeholderTextColor="#718096"
-                  value={formData.sport}
-                  onChangeText={text => handleChange('sport', text)}
-                />
-              </View>
-            </View>
-            <View style={[styles.inputSection, { flex: 1 }]}>
-              <Text style={styles.label}>POSITION</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Forward"
-                  placeholderTextColor="#718096"
-                  value={formData.position}
-                  onChangeText={text => handleChange('position', text)}
-                />
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={[styles.inputSection, { flex: 1, marginRight: 10 }]}>
-              <Text style={styles.label}>HEIGHT (CM)</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 175"
-                  placeholderTextColor="#718096"
-                  value={formData.height}
-                  onChangeText={text => handleChange('height', text)}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-            </View>
-            <View style={[styles.inputSection, { flex: 1 }]}>
-              <Text style={styles.label}>WEIGHT (KG)</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 70"
-                  placeholderTextColor="#718096"
-                  value={formData.weight}
-                  onChangeText={text => handleChange('weight', text)}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={[styles.inputSection, { flex: 1, marginRight: 10 }]}>
-              <Text style={styles.label}>TEAM</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Your team name"
-                  placeholderTextColor="#718096"
-                  value={formData.team}
-                  onChangeText={text => handleChange('team', text)}
-                />
-              </View>
-            </View>
-            <View style={[styles.inputSection, { flex: 1 }]}>
-              <Text style={styles.label}>EXPERIENCE (YRS)</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 2"
-                  placeholderTextColor="#718096"
-                  value={formData.experience}
-                  onChangeText={text => handleChange('experience', text)}
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-          </View>
+          
 
           <TouchableOpacity
             style={[styles.button, isLoading && styles.disabledButton]}
@@ -447,6 +310,8 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingHorizontal: 30,
     paddingTop: 10,
+    justifyContent: 'center',
+    flex: 1,
   },
   title: {
     fontSize: 32,
@@ -496,9 +361,7 @@ const styles = StyleSheet.create({
   eyeIcon: {
     padding: 10,
   },
-  eyeText: {
-    fontSize: 18,
-  },
+
   button: {
     width: '100%',
     height: 56,

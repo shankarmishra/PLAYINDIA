@@ -3,48 +3,67 @@ const mongoose = require('mongoose');
 const teamSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Team name is required'],
+    required: true,
     trim: true,
-    maxlength: [50, 'Team name cannot be more than 50 characters']
+    minlength: [3, 'Team name must be at least 3 characters'],
+    maxlength: [50, 'Team name cannot exceed 50 characters']
   },
-  description: {
-    type: String,
-    required: [true, 'Team description is required'],
-    trim: true,
-    maxlength: [500, 'Team description cannot be more than 500 characters']
-  },
+  description: String,
   sport: {
     type: String,
-    required: [true, 'Sport is required'],
-    enum: ['cricket', 'football', 'basketball', 'tennis', 'badminton'],
-    lowercase: true
+    required: true,
+    enum: ['cricket', 'football', 'badminton', 'tennis', 'basketball', 'volleyball', 'table-tennis', 'chess', 'carrom']
+  },
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
   captain: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Team captain is required']
+    required: true
   },
-  players: [{
-    user: {
+  coach: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User' // Optional coach
+  },
+  members: [{
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true
     },
     role: {
       type: String,
-      enum: ['captain', 'vice-captain', 'player'],
+      enum: ['player', 'vice_captain', 'coach_assistant', 'trainer', 'manager'],
       default: 'player'
     },
     joinedAt: {
       type: Date,
       default: Date.now
+    },
+    status: {
+      type: String,
+      enum: ['active', 'pending', 'removed', 'suspended'],
+      default: 'active'
     }
   }],
-  maxPlayers: {
-    type: Number,
-    required: [true, 'Maximum number of players is required'],
-    min: [2, 'Team must have at least 2 players'],
-    max: [30, 'Team cannot have more than 30 players']
+  stats: {
+    wins: { type: Number, default: 0 },
+    losses: { type: Number, default: 0 },
+    draws: { type: Number, default: 0 },
+    matchesPlayed: { type: Number, default: 0 },
+    winRate: { type: Number, default: 0 },
+    totalPoints: { type: Number, default: 0 },
+    currentRank: { type: Number, default: 0 },
+    rating: { type: Number, default: 0 }
+  },
+  performance: {
+    recentForm: [String], // ['W', 'L', 'D', 'W', 'W'] - last 5 matches
+    goalsFor: { type: Number, default: 0 },
+    goalsAgainst: { type: Number, default: 0 },
+    goalDifference: { type: Number, default: 0 }
   },
   location: {
     type: {
@@ -53,61 +72,163 @@ const teamSchema = new mongoose.Schema({
       default: 'Point'
     },
     coordinates: {
-      type: [Number],
-      default: [0, 0]
+      type: [Number], // [longitude, latitude]
+      index: '2dsphere'
+    },
+    city: String,
+    state: String
+  },
+  contact: {
+    email: String,
+    phone: String,
+    socialMedia: {
+      instagram: String,
+      facebook: String,
+      website: String
     }
   },
-  stats: {
-    wins: {
-      type: Number,
-      default: 0
+  documents: {
+    registrationCertificate: String,
+    teamPhoto: String,
+    uniformPhotos: [String]
+  },
+  tournamentHistory: [{
+    tournamentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tournament'
     },
-    losses: {
-      type: Number,
-      default: 0
-    },
-    draws: {
-      type: Number,
-      default: 0
-    },
-    points: {
-      type: Number,
-      default: 0
+    tournamentName: String,
+    position: Number, // 1st, 2nd, 3rd, etc.
+    matchesPlayed: Number,
+    wins: Number,
+    losses: Number,
+    date: Date
+  }],
+  achievements: [{
+    title: String,
+    description: String,
+    date: Date,
+    tournament: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tournament'
     }
+  }],
+  preferences: {
+    preferredMatchTime: [String], // ['morning', 'evening']
+    preferredVenue: String,
+    uniformColors: [String]
+  },
+  settings: {
+    allowJoinRequests: { type: Boolean, default: true },
+    requireApproval: { type: Boolean, default: true },
+    maxMembers: { type: Number, default: 15, min: 5, max: 30 }
+  },
+  fees: {
+    membershipFee: Number,
+    tournamentRegistrationFee: Number
   },
   isActive: {
     type: Boolean,
     default: true
+  },
+  visibility: {
+    type: String,
+    enum: ['public', 'private', 'friends'],
+    default: 'public'
+  },
+  aiAnalysis: {
+    enabled: { type: Boolean, default: false },
+    performanceMetrics: mongoose.Schema.Types.Mixed,
+    tacticalAnalysis: String,
+    playerDevelopment: [mongoose.Schema.Types.Mixed],
+    trainingRecommendations: [String]
+  },
+  training: {
+    schedule: [{
+      day: String,
+      time: String,
+      location: String,
+      type: String // 'practice', 'match', 'fitness', 'strategy'
+    }],
+    drills: [String],
+    fitnessProgram: String,
+    nutritionPlan: String,
+    progressTracking: [{
+      date: Date,
+      metrics: mongoose.Schema.Types.Mixed
+    }]
+  },
+  media: {
+    logo: String,
+    primaryColor: String,
+    secondaryColor: String,
+    socialMedia: {
+      instagram: String,
+      facebook: String,
+      twitter: String,
+      youtube: String
+    },
+    photos: [String],
+    videos: [String]
+  },
+  sponsorships: [{
+    sponsorName: String,
+    logo: String,
+    contractValue: Number,
+    startDate: Date,
+    endDate: Date,
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'paid', 'overdue'],
+      default: 'pending'
+    }
+  }],
+  analytics: {
+    performanceTrend: [mongoose.Schema.Types.Mixed],
+    opponentAnalysis: [mongoose.Schema.Types.Mixed],
+    playerDevelopment: [mongoose.Schema.Types.Mixed],
+    fanEngagement: { type: Number, default: 0 }
+  },
+  ratings: {
+    average: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
+    },
+    count: {
+      type: Number,
+      default: 0
+    }
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true
 });
 
-// Create indexes
-teamSchema.index({ name: 'text', description: 'text' });
-teamSchema.index({ location: '2dsphere' });
-teamSchema.index({ sport: 1 });
-teamSchema.index({ captain: 1 });
-teamSchema.index({ 'players.user': 1 });
-
-// Virtual for total matches
-teamSchema.virtual('totalMatches').get(function() {
-  return this.stats.wins + this.stats.losses + this.stats.draws;
-});
-
-// Virtual for win rate
-teamSchema.virtual('winRate').get(function() {
-  const totalMatches = this.totalMatches;
-  return totalMatches > 0 ? (this.stats.wins / totalMatches * 100).toFixed(2) : 0;
-});
-
-// Pre-save middleware to ensure captain is in players array
+// Update the updatedAt timestamp before saving
 teamSchema.pre('save', function(next) {
-  const captainPlayer = this.players.find(p => p.user.toString() === this.captain.toString());
-  if (!captainPlayer) {
-    this.players.unshift({ user: this.captain, role: 'captain' });
-  }
+  this.updatedAt = Date.now();
   next();
 });
 
-module.exports = mongoose.model('Team', teamSchema); 
+// Indexes for efficient queries
+teamSchema.index({ owner: 1 });
+teamSchema.index({ captain: 1 });
+teamSchema.index({ sport: 1 });
+teamSchema.index({ name: 'text' });
+teamSchema.index({ 'location.coordinates': '2dsphere' });
+teamSchema.index({ isActive: 1 });
+teamSchema.index({ createdAt: -1 });
+teamSchema.index({ 'aiAnalysis.enabled': 1 });
+teamSchema.index({ 'analytics.fanEngagement': 1 });
+teamSchema.index({ 'sponsorships.paymentStatus': 1 });
+
+module.exports = mongoose.model('Team', teamSchema);

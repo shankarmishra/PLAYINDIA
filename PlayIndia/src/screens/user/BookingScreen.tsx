@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
 import Geolocation from '../../utils/GeolocationSafe';
 import AsyncStorage from '../../utils/AsyncStorageSafe';
@@ -159,7 +160,10 @@ const BookingScreen = () => {
       <Animated.View style={[styles.brandingHeader, { opacity: fadeAnim }]}>
         <BrandLogo size={45} style={styles.logoStyle} />
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Find Players 🎯</Text>
+          <View style={styles.headerTitleContainer}>
+            <Icon name="game-controller" size={24} color="#00B8D4" />
+            <Text style={styles.headerTitle}>Find Players</Text>
+          </View>
           <Text style={styles.headerSubtitle}>Seek teammates in your area</Text>
         </View>
       </Animated.View>
@@ -173,7 +177,10 @@ const BookingScreen = () => {
           }
         ]}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>🎮 MATCH DETAILS</Text>
+            <View style={styles.sectionLabelContainer}>
+              <Icon name="grid" size={16} color="#00B8D4" />
+              <Text style={styles.sectionLabel}>MATCH DETAILS</Text>
+            </View>
             {selectedGame && (
               <View style={styles.selectedBadge}>
                 <Text style={styles.selectedBadgeText}>{selectedGame}</Text>
@@ -184,7 +191,7 @@ const BookingScreen = () => {
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>SELECT GAME</Text>
             <View style={styles.searchBar}>
-              <Text style={styles.searchIcon}>🔍</Text>
+              <Icon name="search" size={18} color="#718096" style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search games..."
@@ -216,9 +223,9 @@ const BookingScreen = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>⏰ MEETING TIME</Text>
+            <Text style={styles.inputLabel}>MEETING TIME</Text>
             <View style={styles.inputContainer}>
-              <Text style={styles.inputEmoji}>⏰</Text>
+              <Icon name="time" size={16} color="#718096" style={styles.inputEmoji} />
               <TextInput
                 style={styles.input}
                 placeholder="e.g. 5:00 PM"
@@ -230,9 +237,9 @@ const BookingScreen = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>📍 LOCATION / VENUE</Text>
+            <Text style={styles.inputLabel}>LOCATION / VENUE</Text>
             <View style={styles.inputContainer}>
-              <Text style={styles.inputEmoji}>📍</Text>
+              <Icon name="location" size={16} color="#718096" style={styles.inputEmoji} />
               <TextInput
                 style={styles.input}
                 placeholder="Enter address or venue"
@@ -253,7 +260,7 @@ const BookingScreen = () => {
             ) : (
               <>
                 <Text style={styles.findButtonText}>Notify Nearby Players</Text>
-                <Text style={styles.findButtonEmoji}>🚀</Text>
+                <Icon name="rocket" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
               </>
             )}
           </TouchableOpacity>
@@ -298,6 +305,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#0D1B1E',
   },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
   headerSubtitle: {
     fontSize: 16,
     color: '#718096',
@@ -324,6 +336,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+  },
+  sectionLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   sectionLabel: {
     fontSize: 12,

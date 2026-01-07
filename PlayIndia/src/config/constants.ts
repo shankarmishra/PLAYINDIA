@@ -8,13 +8,21 @@ export const API_BASE_URL = 'https://sportsbackend-n2xb.onrender.com';
 
 // API Endpoints
 export const API_ENDPOINTS = {
+    // Auth endpoints
+    AUTH: {
+        BASE: `${API_BASE_URL}/api/auth`,
+        LOGIN: `${API_BASE_URL}/api/auth/login`,
+        REGISTER: `${API_BASE_URL}/api/auth/register`,
+        PROFILE: `${API_BASE_URL}/api/auth/profile`,
+        ME: `${API_BASE_URL}/api/auth/me`,
+    },
+
     // User endpoints
     USERS: {
         BASE: `${API_BASE_URL}/api/users`,
-        LOGIN: `${API_BASE_URL}/api/users/login`,
-        REGISTER: `${API_BASE_URL}/api/users/register`,
         PROFILE: `${API_BASE_URL}/api/users/profile`,
         LEADERBOARD: `${API_BASE_URL}/api/users/leaderboard`,
+        NEARBY: `${API_BASE_URL}/api/users/nearby`,
     },
 
     // Tournament endpoints

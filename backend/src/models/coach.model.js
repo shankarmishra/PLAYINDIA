@@ -1,210 +1,282 @@
 const mongoose = require('mongoose');
 
-const reviewSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  rating: {
-    type: Number,
-    required: [true, 'Please provide a rating'],
-    min: 1,
-    max: 5
-  },
-  comment: {
-    type: String,
-    required: [true, 'Please provide a review comment'],
-    trim: true,
-    maxlength: [500, 'Review comment cannot be more than 500 characters']
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
-const scheduleSchema = new mongoose.Schema({
-  date: {
-    type: Date,
-    required: true
-  },
-  time: {
-    type: String,
-    required: true
-  },
-  duration: {
-    type: Number,
-    required: true,
-    min: 30,
-    max: 180
-  },
-  booking: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Booking'
-  },
-  status: {
-    type: String,
-    enum: ['available', 'booked', 'cancelled'],
-    default: 'available'
-  }
-});
-
 const coachSchema = new mongoose.Schema({
-  user: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
     unique: true
   },
-  sport: {
-    type: String,
-    required: [true, 'Please specify your sport'],
-    enum: ['Cricket', 'Football', 'Basketball', 'Tennis', 'Badminton', 'Swimming', 'Athletics', 'Other']
-  },
   experience: {
-    type: Number,
-    required: [true, 'Please specify your years of experience'],
-    min: 0
-  },
-  certifications: [{
-    name: {
-      type: String,
-      required: true
-    },
-    issuedBy: {
-      type: String,
-      required: true
-    },
-    year: {
+    years: {
       type: Number,
-      required: true
-    }
-  }],
-  specializations: [{
+      required: true,
+      min: 0
+    },
+    description: String
+  },
+  sports: [{
     type: String,
     required: true
   }],
-  achievements: [{
-    title: {
-      type: String,
-      required: true
+  specialization: String,
+  coachingStyle: String,
+  coachingFees: {
+    perSession: {
+      type: Number,
+      min: 0
     },
+    perMonth: {
+      type: Number,
+      min: 0
+    }
+  },
+  certificates: [{
+    name: String,
+    issuingBody: String,
+    issueDate: Date,
+    expiryDate: Date,
+    certificateFile: String
+  }],
+  achievements: [{
+    title: String,
     description: String,
-    year: Number
+    date: Date
   }],
-  hourlyRate: {
-    type: Number,
-    required: [true, 'Please specify your hourly rate'],
-    min: 0
-  },
-  city: {
-    type: String,
-    required: [true, 'Please specify your city']
-  },
-  availability: [{
-    type: String,
-    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  previousAcademies: [{
+    name: String,
+    position: String,
+    startDate: Date,
+    endDate: Date,
+    description: String
   }],
-  schedule: [scheduleSchema],
-  reviews: [reviewSchema],
-  averageRating: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 5
+  rating: {
+    average: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
+    },
+    count: {
+      type: Number,
+      default: 0
+    }
   },
-  totalReviews: {
-    type: Number,
-    default: 0
-  },
-  isVerified: {
+  verified: {
     type: Boolean,
     default: false
   },
-  bio: {
-    type: String,
-    required: [true, 'Please provide a bio'],
-    trim: true,
-    maxlength: [1000, 'Bio cannot be more than 1000 characters']
-  },
-  languages: [{
-    type: String,
-    required: true
-  }],
-  preferredAgeGroup: {
-    type: String,
-    enum: ['Kids', 'Teenagers', 'Adults', 'Seniors', 'All'],
-    default: 'All'
-  },
-  trainingLocations: [{
-    name: {
-      type: String,
-      required: true
+  documents: {
+    aadhaar: {
+      front: String,
+      back: String,
+      verified: { type: Boolean, default: false }
     },
-    address: {
-      type: String,
-      required: true
+    pan: {
+      file: String,
+      verified: { type: Boolean, default: false }
     },
-    facilities: [String]
-  }]
+    profilePhoto: String,
+    additionalDocs: [String]
+  },
+  availability: {
+    schedule: [{
+      day: String, // 'monday', 'tuesday', etc.
+      startTime: String, // '09:00'
+      endTime: String,
+      available: { type: Boolean, default: true }
+    }],
+    isAvailable: { type: Boolean, default: true }
+  },
+  sessions: {
+    total: { type: Number, default: 0 },
+    completed: { type: Number, default: 0 },
+    cancelled: { type: Number, default: 0 }
+  },
+  earnings: {
+    total: { type: Number, default: 0 },
+    available: { type: Number, default: 0 },
+    pending: { type: Number, default: 0 }
+  },
+  commissionPercentage: {
+    type: Number,
+    default: 10, // Platform commission
+    min: 0,
+    max: 100
+  },
+  tournamentCreationEnabled: {
+    type: Boolean,
+    default: false
+  },
+  academyMode: {
+    enabled: { type: Boolean, default: false },
+    name: String,
+    multipleCoaches: { type: Boolean, default: false },
+    monthlySubscription: Number,
+    batchSystem: Boolean,
+    parentDashboard: Boolean
+  },
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      index: '2dsphere'
+    },
+    address: String,
+    city: String,
+    state: String
+  },
+  bio: String,
+  videoIntroduction: String,
+  successRate: {
+    type: Number,
+    default: 0 // Percentage of successful student outcomes
+  },
+  languages: [String],
+  onlineCoaching: {
+    enabled: { type: Boolean, default: false },
+    platforms: [String] // ['zoom', 'google meet', 'teams']
+  },
+  academyMode: {
+    enabled: { type: Boolean, default: false },
+    name: String,
+    students: [{
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      batch: String,
+      enrolledAt: Date,
+      progress: Number,
+      status: {
+        type: String,
+        enum: ['active', 'completed', 'dropped', 'on_hold'],
+        default: 'active'
+      }
+    }],
+    batches: [{
+      name: String,
+      schedule: [{
+        day: String,
+        startTime: String,
+        endTime: String
+      }],
+      maxStudents: Number,
+      currentStudents: { type: Number, default: 0 }
+    }],
+    parentDashboard: { type: Boolean, default: false },
+    monthlySubscription: Number,
+    features: {
+      videoAnalysis: { type: Boolean, default: false },
+      progressTracking: { type: Boolean, default: false },
+      parentCommunication: { type: Boolean, default: false },
+      attendanceTracking: { type: Boolean, default: false }
+    }
+  },
+  aiFeatures: {
+    enabled: { type: Boolean, default: false },
+    skillAssessment: { type: Boolean, default: false },
+    personalizedTraining: { type: Boolean, default: false },
+    performanceAnalysis: { type: Boolean, default: false }
+  },
+  pricing: {
+    sessionTypes: [{
+      type: String, // 'beginner', 'intermediate', 'advanced', 'tournament', 'match_analysis'
+      price: Number,
+      duration: Number // in minutes
+    }],
+    groupSessions: {
+      enabled: { type: Boolean, default: false },
+      pricePerPerson: Number,
+      maxGroupSize: Number
+    },
+    packageDeals: [{
+      name: String,
+      sessions: Number,
+      price: Number,
+      validity: Number // in days
+    }]
+  },
+  availability: {
+    schedule: [{
+      day: String, // 'monday', 'tuesday', etc.
+      startTime: String, // '09:00'
+      endTime: String,
+      available: { type: Boolean, default: true }
+    }],
+    isAvailable: { type: Boolean, default: true },
+    timeSlots: [{
+      date: Date,
+      slots: [{
+        time: String, // 'HH:MM'
+        available: { type: Boolean, default: true },
+        bookingId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Booking'
+        }
+      }]
+    }],
+    bufferTime: { type: Number, default: 30 } // in minutes between sessions
+  },
+  ratings: {
+    average: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
+    },
+    count: {
+      type: Number,
+      default: 0
+    },
+    breakdown: {
+      5: { type: Number, default: 0 },
+      4: { type: Number, default: 0 },
+      3: { type: Number, default: 0 },
+      2: { type: Number, default: 0 },
+      1: { type: Number, default: 0 }
+    },
+    recentReviews: [{
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      rating: Number,
+      comment: String,
+      date: Date
+    }]
+  },
+  earnings: {
+    total: { type: Number, default: 0 },
+    available: { type: Number, default: 0 },
+    pending: { type: Number, default: 0 },
+    monthlyEarnings: [{
+      month: String, // 'YYYY-MM'
+      amount: Number,
+      commission: Number
+    }]
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  timestamps: true
 });
 
-// Indexes
-coachSchema.index({ sport: 1, city: 1 });
-coachSchema.index({ hourlyRate: 1 });
-coachSchema.index({ averageRating: -1 });
+// Indexes for efficient queries
+coachSchema.index({ userId: 1 });
+coachSchema.index({ sports: 1 });
+coachSchema.index({ verified: 1 });
+coachSchema.index({ 'location.coordinates': '2dsphere' });
+coachSchema.index({ 'ratings.average': 1 });
+coachSchema.index({ experience: 1 });
+coachSchema.index({ 'academyMode.enabled': 1 });
+coachSchema.index({ 'pricing.sessionTypes.price': 1 });
+coachSchema.index({ 'availability.isAvailable': 1 });
 
-// Virtual field for upcoming sessions
-coachSchema.virtual('upcomingSessions', {
-  ref: 'Booking',
-  localField: '_id',
-  foreignField: 'coach',
-  match: {
-    status: 'confirmed',
-    date: { $gte: new Date() }
-  }
-});
-
-// Calculate average rating before saving
-coachSchema.pre('save', function(next) {
-  if (this.reviews.length > 0) {
-    this.averageRating = (
-      this.reviews.reduce((acc, item) => item.rating + acc, 0) /
-      this.reviews.length
-    ).toFixed(1);
-    this.totalReviews = this.reviews.length;
-  }
-  next();
-});
-
-// Check for schedule conflicts before saving
-coachSchema.pre('save', function(next) {
-  const schedules = this.schedule;
-  const conflicts = schedules.some((schedule1, index1) => {
-    return schedules.some((schedule2, index2) => {
-      if (index1 === index2) return false;
-      
-      const start1 = new Date(schedule1.date).setHours(parseInt(schedule1.time.split(':')[0]));
-      const end1 = new Date(start1).setMinutes(schedule1.duration);
-      
-      const start2 = new Date(schedule2.date).setHours(parseInt(schedule2.time.split(':')[0]));
-      const end2 = new Date(start2).setMinutes(schedule2.duration);
-
-      return (start1 < end2 && start2 < end1);
-    });
-  });
-
-  if (conflicts) {
-    next(new Error('Schedule conflict detected'));
-  }
-  next();
-});
-
-const Coach = mongoose.model('Coach', coachSchema);
-
-module.exports = Coach; 
+module.exports = mongoose.model('Coach', coachSchema);
