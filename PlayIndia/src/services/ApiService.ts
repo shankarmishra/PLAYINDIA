@@ -28,13 +28,31 @@ apiClient.interceptors.request.use(
 // Response interceptor to handle errors globally
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid, redirect to login
-      AsyncStorage.removeItem('userToken');
-      AsyncStorage.removeItem('user');
-      // TODO: Implement navigation to login
+      // Token expired or invalid, clear storage
+      await AsyncStorage.removeItem('userToken');
+      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('userType');
+      
+      // Format error message for better UX
+      const errorMessage = error.response?.data?.message || 'Session expired. Please login again.';
+      error.message = errorMessage;
+    } else if (error.response?.status === 403) {
+      error.message = error.response?.data?.message || 'Access denied. You don\'t have permission.';
+    } else if (error.response?.status === 404) {
+      error.message = error.response?.data?.message || 'Resource not found.';
+    } else if (error.response?.status === 429) {
+      error.message = 'Too many requests. Please try again later.';
+    } else if (error.response?.status >= 500) {
+      error.message = 'Server error. Please try again later.';
+    } else if (!error.response) {
+      // Network error
+      error.message = 'Network error. Please check your connection.';
+    } else {
+      error.message = error.response?.data?.message || error.message || 'An error occurred.';
     }
+    
     return Promise.reject(error);
   }
 );
