@@ -203,18 +203,24 @@ const UserHomeDashboard = () => {
     <View style={styles.container}>
       {/* Header with location and notification */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.locationContainer}>
-          <Ionicons name="location-outline" size={20} color="#1F2937" />
-          <Text style={styles.locationText}>{location}</Text>
-          <Ionicons name="chevron-down" size={16} color="#1F2937" />
-        </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.locationContainer} activeOpacity={0.7}>
+            <Ionicons name="location" size={18} color="#0891B2" />
+            <Text style={styles.locationText}>{location}</Text>
+            <Ionicons name="chevron-down" size={14} color="#64748B" />
+          </TouchableOpacity>
+        </View>
         
-        <TouchableOpacity 
-          style={styles.notificationContainer}
-          onPress={() => navigation.navigate('Notifications')}
-        >
-          <Ionicons name="notifications-outline" size={24} color="#1F2937" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity 
+            style={styles.notificationContainer}
+            onPress={() => navigation.navigate('Notifications')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="notifications-outline" size={22} color="#1F2937" />
+            <View style={styles.notificationBadge} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
@@ -229,22 +235,32 @@ const UserHomeDashboard = () => {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          {/* Welcome section */}
-          <View style={styles.welcomeSection}>
-            <Text style={styles.welcomeText}>
-              {new Date().getHours() < 12 ? 'Good Morning' : 
-               new Date().getHours() < 18 ? 'Good Afternoon' : 'Good Evening'},
-            </Text>
-            <Text style={styles.userName}>{user?.name || 'Player'}</Text>
-            <Text style={styles.welcomeSubtitle}>
-              {user?.preferences?.favoriteGames && user.preferences.favoriteGames.length > 0
-                ? `Ready to play ${user.preferences.favoriteGames[0]} today?`
-                : 'Ready to play some sports today?'}
-            </Text>
+          {/* Welcome section with gradient card */}
+          <View style={styles.welcomeCard}>
+            <View style={styles.welcomeContent}>
+              <Text style={styles.welcomeText}>
+                {new Date().getHours() < 12 ? 'Good Morning' : 
+                 new Date().getHours() < 18 ? 'Good Afternoon' : 'Good Evening'} 👋
+              </Text>
+              <Text style={styles.userName}>{user?.name || 'Player'}</Text>
+              <Text style={styles.welcomeSubtitle}>
+                {user?.preferences?.favoriteGames && user.preferences.favoriteGames.length > 0
+                  ? `Ready to play ${user.preferences.favoriteGames[0]} today?`
+                  : 'Ready to play some sports today?'}
+              </Text>
+            </View>
+            <View style={styles.welcomeIconContainer}>
+              <Ionicons name="fitness" size={48} color="#1ED760" />
+            </View>
           </View>
 
         {/* Quick action cards */}
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <TouchableOpacity>
+            <Text style={styles.seeAllText}>See All</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.quickActionsContainer}>
           {quickActions.map((action, index) => (
             <QuickActionCard 
@@ -258,7 +274,9 @@ const UserHomeDashboard = () => {
         </View>
 
         {/* Fitness Stats */}
-        <Text style={styles.sectionTitle}>Fitness Summary</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Fitness Summary</Text>
+        </View>
         <View style={styles.statsContainer}>
           {fitnessStats.map((stat, index) => (
             <StatCard 
@@ -271,7 +289,12 @@ const UserHomeDashboard = () => {
         </View>
 
         {/* Recent Activity */}
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          <TouchableOpacity>
+            <Text style={styles.seeAllText}>View All</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.activityCard}>
           {activities.length > 0 ? (
             activities.map((activity) => (
@@ -314,63 +337,124 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F7FA', // Off-white background
   },
   scrollContent: {
-    padding: 16,
+    padding: 20,
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.18,
-    shadowRadius: 1.0,
-    elevation: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F7FA',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
+    backgroundColor: '#F0F9FF',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
   },
   locationText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginHorizontal: 8,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginHorizontal: 6,
   },
   notificationContainer: {
-    padding: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
   },
-  welcomeSection: {
-    marginVertical: 24,
+  notificationBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+  },
+  welcomeCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#0891B2',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E0F2FE',
+  },
+  welcomeContent: {
+    flex: 1,
+  },
+  welcomeIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   welcomeText: {
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '600',
+    marginBottom: 4,
   },
   userName: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 6,
+    letterSpacing: -0.5,
   },
   welcomeSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 4,
+    fontSize: 15,
+    color: '#64748B',
+    lineHeight: 22,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 8,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginVertical: 16,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0891B2',
   },
   quickActionsContainer: {
     flexDirection: 'row',
@@ -384,17 +468,19 @@ const styles = StyleSheet.create({
   },
   activityCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginVertical: 8,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   fab: {
     position: 'absolute',

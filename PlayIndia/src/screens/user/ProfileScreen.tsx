@@ -86,32 +86,39 @@ const ProfileScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerPlaceholder} />
         <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity>
-          <Ionicons name="notifications-outline" size={24} color={theme.colors.text.primary} />
+        <TouchableOpacity style={styles.headerButton}>
+          <Ionicons name="settings-outline" size={22} color={theme.colors.text.primary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile Header */}
+        {/* Profile Header with gradient effect */}
         <View style={styles.profileHeader}>
-          <Image 
-            source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} 
-            style={styles.profileImage} 
-          />
+          <View style={styles.profileImageContainer}>
+            <Image 
+              source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} 
+              style={styles.profileImage} 
+            />
+            <View style={styles.profileImageBadge}>
+              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+            </View>
+          </View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{user.name}</Text>
-            <Text style={styles.profileLocation}>{user.city}</Text>
+            <View style={styles.profileLocationContainer}>
+              <Ionicons name="location" size={14} color={theme.colors.text.secondary} />
+              <Text style={styles.profileLocation}>{user.city}</Text>
+            </View>
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={16} color={theme.colors.accent.orange} />
               <Text style={styles.ratingText}>{user.rating}</Text>
+              <Text style={styles.ratingCount}>(24 reviews)</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.editButton}>
-            <Ionicons name="create-outline" size={20} color={theme.colors.text.inverted} />
+          <TouchableOpacity style={styles.editButton} activeOpacity={0.7}>
+            <Ionicons name="create-outline" size={18} color={theme.colors.text.inverted} />
           </TouchableOpacity>
         </View>
 
@@ -277,28 +284,61 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     backgroundColor: theme.colors.background.card,
-    ...theme.shadows.small,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  headerPlaceholder: {
+    width: 40,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '800',
     color: theme.colors.text.primary,
+    letterSpacing: -0.5,
   },
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: theme.spacing.md,
+    padding: 24,
     backgroundColor: theme.colors.background.card,
-    ...theme.shadows.small,
+    marginBottom: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  profileImageContainer: {
+    position: 'relative',
+    marginRight: theme.spacing.md,
   },
   profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginRight: theme.spacing.md,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 3,
+    borderColor: '#E0F2FE',
+  },
+  profileImageBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
   },
   profileInfo: {
     flex: 1,
@@ -308,15 +348,27 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: theme.colors.text.primary,
   },
+  profileLocationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    marginBottom: 8,
+  },
   profileLocation: {
-    fontSize: 16,
+    fontSize: 15,
     color: theme.colors.text.secondary,
-    marginTop: theme.spacing.xs,
+    marginLeft: 4,
+    fontWeight: '500',
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: theme.spacing.xs,
+    marginTop: 4,
+  },
+  ratingCount: {
+    fontSize: 13,
+    color: theme.colors.text.secondary,
+    marginLeft: 6,
   },
   ratingText: {
     fontSize: 16,
@@ -326,20 +378,38 @@ const styles = StyleSheet.create({
   },
   editButton: {
     backgroundColor: theme.colors.accent.neonGreen,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: theme.colors.accent.neonGreen,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: theme.spacing.md,
+    padding: 20,
     backgroundColor: theme.colors.background.card,
-    margin: theme.spacing.md,
-    borderRadius: theme.borderRadius.large,
-    ...theme.shadows.small,
+    marginHorizontal: 20,
+    marginBottom: theme.spacing.md,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   statItem: {
     alignItems: 'center',
