@@ -56,7 +56,7 @@ const AdminUsers = () => {
     try {
       setLoading(true);
       setError(null);
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {
@@ -167,7 +167,7 @@ const AdminUsers = () => {
 
   const updateUserStatus = async (userId: string, status: string) => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {

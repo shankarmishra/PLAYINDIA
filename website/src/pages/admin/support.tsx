@@ -52,7 +52,7 @@ const AdminSupport = () => {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {
@@ -90,7 +90,7 @@ const AdminSupport = () => {
 
   const updateTicketStatus = async (ticketId: string, status: string) => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {
@@ -130,7 +130,7 @@ const AdminSupport = () => {
     }
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {

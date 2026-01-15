@@ -4,8 +4,7 @@
  */
 
 // API Base URL
-export const API_BASE_URL = 'http://10.0.2.2:4000'; // Local backend for Android emulator
-// For iOS simulator, use 'http://localhost:4000' instead
+export const API_BASE_URL = 'https://playindia-3.onrender.com'; // Production backend on Render
 
 // API Endpoints
 export const API_ENDPOINTS = {

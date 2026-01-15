@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Get backend API URL from environment variable or default to production URL
-const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
 
 // Create axios instance with defaults
 const apiClient = axios.create({

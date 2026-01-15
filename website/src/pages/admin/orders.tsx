@@ -49,7 +49,7 @@ const AdminOrders = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {
@@ -92,7 +92,7 @@ const AdminOrders = () => {
 
   const updateOrderStatus = async (orderId: string, status: string) => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {

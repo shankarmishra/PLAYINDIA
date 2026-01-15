@@ -16,7 +16,7 @@ const AdminLogin = () => {
     setError(null);
     
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
       const apiUrl = `${backendUrl}/api/auth/admin/login`;
       
       let response;
@@ -98,7 +98,7 @@ const AdminLogin = () => {
               <p className="text-xs text-blue-700">Password: admin123</p>
             </div>
             <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-              <p className="font-medium">⚠️ Backend URL: {process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000'}</p>
+              <p className="font-medium">⚠️ Backend URL: {process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com'}</p>
               <p className="mt-1">Make sure the backend server is running!</p>
             </div>
           </div>

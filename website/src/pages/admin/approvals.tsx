@@ -62,7 +62,7 @@ const AdminApprovals = () => {
     try {
       setLoading(true);
       setError(null);
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {
@@ -243,7 +243,7 @@ const AdminApprovals = () => {
 
       // Fetch role-specific data for each user to get documents
       const fetchUserDetails = async (users: any[], role: string) => {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
         const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
         
         return Promise.all(users.map(async (user: any) => {
@@ -365,7 +365,7 @@ const AdminApprovals = () => {
   const updateUserStatus = async (userId: string, status: 'active' | 'rejected') => {
     try {
       setProcessing(userId);
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {
@@ -421,7 +421,7 @@ const AdminApprovals = () => {
   const fetchUserFullDetails = async (user: User) => {
     try {
       setLoadingDetails(true);
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {

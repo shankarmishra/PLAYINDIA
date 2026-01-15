@@ -167,7 +167,7 @@ const RegistrationStatusPage = () => {
     setError(null);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
       const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
       
       // Try to fetch user by email using admin API (if admin) or check logged-in user

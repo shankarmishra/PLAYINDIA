@@ -221,7 +221,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
     // Update store profile with documents
     try {
-      const storeProfileUrl = API_CONFIG.ENDPOINTS.STORES?.PROFILE || `${API_CONFIG.ENDPOINTS.STORES?.BASE || 'http://localhost:5000/api/stores'}/profile`;
+      const storeProfileUrl = API_CONFIG.ENDPOINTS.STORES?.PROFILE || `${API_CONFIG.ENDPOINTS.STORES?.BASE || 'https://playindia-3.onrender.com/api/stores'}/profile`;
       const storeResponse = await fetch(storeProfileUrl, {
         method: 'PUT',
         body: storeProfileFormData as any,
