@@ -1,102 +1,120 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, Animated, Dimensions } from 'react-native';
-import useAuth from '../hooks/useAuth';
+import { View, Text, StyleSheet, Animated, Dimensions, StatusBar } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import AsyncStorage from '../utils/AsyncStorageSafe';
 import { theme } from '../theme/colors';
 import BrandLogo from '../components/BrandLogo';
+import { RootStackParamList } from '../navigation/AppNavigator';
 
 const { width, height } = Dimensions.get('window');
 
-const SplashScreen = ({ navigation }: any) => {
+type NavigationProp = StackNavigationProp<RootStackParamList, 'Splash'>;
+
+const SplashScreen = () => {
+  const navigation = useNavigation<NavigationProp>();
   const [fadeAnim] = useState(new Animated.Value(0));
-  const [playerPosition] = useState(new Animated.ValueXY({ x: -100, y: height / 2 }));
-  
-  const { user, loading } = useAuth();
+  const [scaleAnim] = useState(new Animated.Value(0.8));
+  const [loading, setLoading] = useState(true);
 
-  // Animation for logo fade in
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1500,
-      useNativeDriver: true,
-    }).start();
+    StatusBar.setBarStyle('light-content');
+    
+    // Start animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 15,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-    // Animation for player running effect
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(playerPosition, {
-          toValue: { x: width + 100, y: height / 2 },
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(playerPosition, {
-          toValue: { x: -100, y: height / 2 },
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Check authentication and redirect after delay
-    const timer = setTimeout(() => {
-      if (!loading) {
-        if (user) {
-          // Redirect based on user role
-          switch (user.role) {
-            case 'user':
-              navigation.replace('UserDashboard');
-              break;
+    // Check authentication and redirect
+    const checkAuthAndNavigate = async () => {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 2500)); // Minimum splash duration
+        
+        const token = await AsyncStorage.getItem('userToken');
+        const userType = await AsyncStorage.getItem('userType');
+        
+        if (token && userType) {
+          // Navigate based on user type
+          switch (userType) {
             case 'coach':
-              navigation.replace('CoachDashboard');
+              navigation.replace('CoachMain');
               break;
+            case 'store':
             case 'seller':
+              navigation.replace('StoreMain');
+              break;
             case 'delivery':
-              navigation.replace('StoreDashboard');
+              navigation.replace('DeliveryMain');
               break;
             case 'admin':
-              navigation.replace('AdminDashboard');
+              navigation.replace('AdminMain');
               break;
             default:
-              navigation.replace('UserDashboard');
+              navigation.replace('UserMain');
           }
         } else {
           navigation.replace('Login');
         }
+      } catch (error) {
+        console.error('Error checking auth:', error);
+        navigation.replace('Login');
+      } finally {
+        setLoading(false);
       }
-    }, 3000);
+    };
 
-    return () => clearTimeout(timer);
-  }, [fadeAnim, playerPosition, navigation, user, loading]);
+    checkAuthAndNavigate();
+  }, [fadeAnim, scaleAnim, navigation]);
 
   return (
     <View style={styles.container}>
-      {/* Gradient background */}
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary.navy} />
+      
+      {/* Background gradient effect */}
       <View style={styles.background} />
       
-      {/* Sports animation - running players */}
-      <Animated.View
+      {/* App logo with animations */}
+      <Animated.View 
         style={[
-          styles.player,
-          {
-            transform: [{ translateX: playerPosition.x }, { translateY: playerPosition.y }],
-          },
+          styles.logoContainer,
+          { 
+            opacity: fadeAnim, 
+            transform: [{ scale: scaleAnim }] 
+          }
         ]}
       >
-        <Text style={styles.playerIcon}>🏃‍♂️</Text>
-      </Animated.View>
-      
-      {/* App logo with fade animation */}
-      <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: fadeAnim }] }}>
         <BrandLogo size={120} />
       </Animated.View>
       
       {/* App name */}
-      <Animated.View style={{ opacity: fadeAnim, marginTop: theme.spacing.lg }}>
-        <Text style={styles.appName}>TeamUp India</Text>
+      <Animated.View 
+        style={[
+          styles.textContainer,
+          { opacity: fadeAnim }
+        ]}
+      >
+        <Text style={styles.appName}>PLAYINDIA</Text>
+        <Text style={styles.tagline}>IND'S PREMIER SPORTS NETWORK</Text>
       </Animated.View>
       
-      {/* Tagline */}
-      <Animated.View style={{ opacity: fadeAnim, marginTop: theme.spacing.sm }}>
-        <Text style={styles.tagline}>Connect. Play. Win.</Text>
+      {/* Loading indicator */}
+      <Animated.View 
+        style={[
+          styles.footer,
+          { opacity: fadeAnim }
+        ]}
+      >
+        <Text style={styles.footerText}>CONNECT. PLAY. COMPETE.</Text>
       </Animated.View>
     </View>
   );
@@ -117,24 +135,40 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: theme.colors.primary.navy,
   },
-  player: {
-    position: 'absolute',
-    zIndex: 1,
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.xl,
   },
-  playerIcon: {
-    fontSize: 40,
+  textContainer: {
+    alignItems: 'center',
+    marginTop: theme.spacing.lg,
   },
   appName: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 32,
+    fontWeight: '900',
     color: theme.colors.text.inverted,
     textAlign: 'center',
+    letterSpacing: 2,
+    marginBottom: theme.spacing.sm,
   },
   tagline: {
-    fontSize: 16,
+    fontSize: 14,
     color: theme.colors.accent.neonGreen,
     textAlign: 'center',
-    fontStyle: 'italic',
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 50,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    letterSpacing: 2,
+    fontWeight: '600',
   },
 });
 

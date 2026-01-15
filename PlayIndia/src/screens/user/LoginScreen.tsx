@@ -109,84 +109,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.appName}>PLAYINDIA</Text>
             <Text style={styles.tagline}>IND'S PREMIER SPORTS NETWORK</Text>
           </View>
-          {/* Bypass buttons for different user types */}
-          <View style={styles.skipContainer}>
-            <TouchableOpacity 
-              style={[styles.skipButton, styles.userSkipButton]}
-              onPress={async () => {
-                // Set user type to 'user' and navigate to user dashboard
-                await AsyncStorage.setItem('userType', 'user');
-                navigation.dispatch(
-                  CommonActions.reset({
-                    index: 0,
-                    routes: [{ name: 'UserMain' }],
-                  }),
-                );
-              }}
-            >
-              <Text style={styles.skipButtonText}>User</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.skipButton, styles.coachSkipButton]}
-              onPress={async () => {
-                // Set user type to 'coach' and navigate to coach dashboard
-                await AsyncStorage.setItem('userType', 'coach');
-                navigation.dispatch(
-                  CommonActions.reset({
-                    index: 0,
-                    routes: [{ name: 'CoachMain' }],
-                  }),
-                );
-              }}
-            >
-              <Text style={styles.skipButtonText}>Coach</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.skipButton, styles.storeSkipButton]}
-              onPress={async () => {
-                // Set user type to 'store' and navigate to store dashboard
-                await AsyncStorage.setItem('userType', 'store');
-                navigation.dispatch(
-                  CommonActions.reset({
-                    index: 0,
-                    routes: [{ name: 'StoreMain' }],
-                  }),
-                );
-              }}
-            >
-              <Text style={styles.skipButtonText}>Store</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.skipButton, styles.deliverySkipButton]}
-              onPress={async () => {
-                // Set user type to 'delivery' and navigate to delivery dashboard
-                await AsyncStorage.setItem('userType', 'delivery');
-                navigation.dispatch(
-                  CommonActions.reset({
-                    index: 0,
-                    routes: [{ name: 'DeliveryMain' }],
-                  }),
-                );
-              }}
-            >
-              <Text style={styles.skipButtonText}>Delivery</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.skipButton, styles.adminSkipButton]}
-              onPress={async () => {
-                // Set user type to 'admin' and navigate to admin dashboard
-                await AsyncStorage.setItem('userType', 'admin');
-                navigation.dispatch(
-                  CommonActions.reset({
-                    index: 0,
-                    routes: [{ name: 'AdminMain' }],
-                  }),
-                );
-              }}
-            >
-              <Text style={styles.skipButtonText}>Admin</Text>
-            </TouchableOpacity>
-          </View>
         </Animated.View>
 
         <Animated.View style={[
@@ -275,33 +197,6 @@ const styles = StyleSheet.create({
   headerTextContainer: { marginLeft: 12, flex: 1 },
   appName: { fontSize: 22, fontWeight: '900', color: '#0891B2', letterSpacing: -0.5 },
   tagline: { fontSize: 10, color: '#64748B', fontWeight: '700', letterSpacing: 0.5 },
-  skipButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 100,
-    marginLeft: 5,
-  },
-  userSkipButton: {
-    backgroundColor: '#0891B2',
-  },
-  coachSkipButton: {
-    backgroundColor: '#10B981',
-  },
-  storeSkipButton: {
-    backgroundColor: '#F59E0B',
-  },
-  deliverySkipButton: {
-    backgroundColor: '#8B5CF6',
-  },
-  adminSkipButton: {
-    backgroundColor: '#EF4444',
-  },
-  skipButtonText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-  skipContainer: {
-    flexDirection: 'row',
-  },
   contentContainer: { flex: 1, paddingHorizontal: 24, paddingTop: 10, justifyContent: 'center' },
   title: { fontSize: 28, fontWeight: '800', color: '#0F172A' },
   subtitle: { fontSize: 15, color: '#64748B', marginTop: 4, marginBottom: 25 },

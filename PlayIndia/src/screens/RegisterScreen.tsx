@@ -79,17 +79,43 @@ const RegisterScreen: React.FC<Props> = () => {
       return;
     }
 
+    // Validate mobile number
+    const mobileRegex = /^[6-9]\d{9}$/;
+    if (!mobileRegex.test(mobile.replace(/\D/g, ''))) {
+      Alert.alert('Invalid Mobile', 'Please enter a valid 10-digit Indian mobile number');
+      return;
+    }
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
+    }
+
     setLoading(true);
     try {
-      const result = await register(name, email, password, mobile, 'user');
+      // Normalize mobile number (remove spaces, ensure 10 digits)
+      const normalizedMobile = mobile.replace(/\D/g, '');
+      
+      const result = await register(name, email, password, normalizedMobile, 'user');
       if (result.success) {
-        // Navigate to appropriate screen after successful registration
-        navigation.dispatch(StackActions.replace('Login'));
+        Alert.alert(
+          'Success', 
+          'Account created successfully! Please login to continue.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.dispatch(StackActions.replace('Login')),
+            },
+          ]
+        );
       } else {
         Alert.alert('Registration Failed', result.message || 'An error occurred');
       }
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.message || 'An error occurred');
+      const errorMessage = error.response?.data?.message || error.message || 'Registration failed. Please try again.';
+      Alert.alert('Registration Failed', errorMessage);
     } finally {
       setLoading(false);
     }

@@ -37,7 +37,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     confirmPassword: '',
     phone: '',
   });
-  const [userType, setUserType] = useState('user'); // Default to user type
+  // Only user registration allowed from app
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -76,22 +76,41 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
+    // Validate mobile number
+    const mobileRegex = /^[6-9]\d{9}$/;
+    const normalizedPhone = formData.phone.replace(/\D/g, '');
+    if (!mobileRegex.test(normalizedPhone)) {
+      Alert.alert('Invalid Mobile', 'Please enter a valid 10-digit Indian mobile number');
+      return;
+    }
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
+    }
+
     setIsLoading(true);
     try {
       await axios.post(`${API_BASE_URL}/api/auth/register`, {
         name: `${formData.firstName} ${formData.lastName}`.trim(),
-        email: formData.email,
+        email: formData.email.toLowerCase().trim(),
         password: formData.password,
-        phone: formData.phone,
-        role: 'user', // Default to user role, but could be changed based on flow
+        mobile: normalizedPhone,
+        role: 'user', // Only user registration allowed from app
       });
 
-      Alert.alert('Success', 'Account registered successfully', [
-        {
-          text: 'OK',
-          onPress: () => navigation.navigate('Login'),
-        },
-      ]);
+      Alert.alert(
+        'Success', 
+        'Account registered successfully! Please login to continue.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('Login' as any),
+          },
+        ]
+      );
     } catch (error) {
       const errorMessage =
         axios.isAxiosError(error) && error.response?.data?.message
@@ -103,23 +122,6 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const handleSkipForTesting = () => {
-    Alert.alert(
-      'Test Mode',
-      'Skip registration and go directly to Home?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Skip',
-          onPress: () => navigation.navigate('HomeTab' as any),
-        },
-      ],
-      { cancelable: true }
-    );
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -130,13 +132,6 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.appName}>PLAYINDIA</Text>
             <Text style={styles.tagline}>IND'S PREMIER SPORTS NETWORK</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.skipButton}
-            onPress={handleSkipForTesting}
-          >
-            <Text style={styles.skipButtonText}>Skip </Text>
-            <Icon name="rocket" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
-          </TouchableOpacity>
         </Animated.View>
 
         <Animated.View style={[styles.contentContainer, { opacity: fadeAnim }]}>
@@ -279,18 +274,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingTop: 20,
     paddingBottom: 10,
-  },
-  skipButton: {
-    backgroundColor: '#00B8D4',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginLeft: 'auto',
-  },
-  skipButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: 'bold',
   },
   header: {
     flex: 1,
