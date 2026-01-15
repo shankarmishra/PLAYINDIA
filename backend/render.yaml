@@ -13,3 +13,7 @@ services:
           type: web
           name: teamup-india-backend
           property: port
+      - key: MONGODB_URI
+        value: mongodb+srv://PLAYINDIA:UWZrsaT2iyCZnDOp@cluster0.46abq.mongodb.net/teamup?retryWrites=true&w=majority
+
+
