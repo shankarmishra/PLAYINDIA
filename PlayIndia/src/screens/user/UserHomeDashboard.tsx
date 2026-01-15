@@ -292,16 +292,18 @@ const UserHomeDashboard = () => {
             </View>
           )}
         </View>
-      </ScrollView>
+        </ScrollView>
       )}
 
-      {/* Floating Action Button */}
-      <TouchableOpacity 
-        style={styles.fab} 
-        onPress={() => navigation.navigate('FindCoach')}
-      >
-        <Ionicons name="add" size={24} color="#FFFFFF" />
-      </TouchableOpacity>
+      {/* Floating Action Button - Only show when not loading */}
+      {!loading && (
+        <TouchableOpacity 
+          style={styles.fab} 
+          onPress={() => navigation.navigate('FindCoach')}
+        >
+          <Ionicons name="add" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
