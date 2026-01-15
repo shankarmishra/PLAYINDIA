@@ -1,16 +1,7 @@
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
+const AppError = require('../utils/AppError');
 
-class AppError extends Error {
-  constructor(message, statusCode) {
-    super(message);
-    this.statusCode = statusCode;
-    this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
-    this.isOperational = true;
-
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
 
 const handleCastErrorDB = err => {
   const message = `Invalid ${err.path}: ${err.value}`;
@@ -18,8 +9,21 @@ const handleCastErrorDB = err => {
 };
 
 const handleDuplicateFieldsDB = err => {
-  const value = err.errmsg.match(/(["'])(\\?.)*?\1/)[0];
-  const message = `Duplicate field value: ${value}. Please use another value!`;
+  let message = 'Duplicate field value. Please use another value!';
+  
+  // Try to extract the duplicate field value from error message
+  if (err.errmsg) {
+    const match = err.errmsg.match(/(["'])(\\?.)*?\1/);
+    if (match && match[0]) {
+      message = `Duplicate field value: ${match[0]}. Please use another value!`;
+    }
+  } else if (err.keyValue) {
+    // MongoDB driver v4+ uses keyValue
+    const field = Object.keys(err.keyValue)[0];
+    const value = err.keyValue[field];
+    message = `Duplicate field value for ${field}: ${value}. Please use another value!`;
+  }
+  
   return new AppError(message, 400);
 };
 
@@ -46,6 +50,13 @@ const handleMulterError = err => {
     return new AppError('Unexpected field! Please check your form data', 400);
   }
   return new AppError('File upload error', 400);
+};
+
+const handleJSONParseError = err => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return new AppError('Invalid JSON format in request body. Please check your request data.', 400);
+  }
+  return err;
 };
 
 const sendErrorDev = (err, res) => {
@@ -96,6 +107,11 @@ const sendErrorProd = (err, res) => {
 module.exports = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
+
+  // Handle JSON parsing errors first (works in both dev and prod)
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    err = handleJSONParseError(err);
+  }
 
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, res);

@@ -1,9 +1,10 @@
 const express = require('express');
-const { protect } = require('../middleware/auth');
-const { coachOnly } = require('../middleware/auth.middleware');
+const { authenticate: protect } = require('../middleware/auth.middleware');
+const { authorize } = require('../middleware/auth.middleware');
 const {
   getAllCoaches,
   getCoachById,
+  getMyCoachProfile,
   createCoachProfile,
   updateCoachProfile,
   deleteCoachProfile,
@@ -17,15 +18,17 @@ const router = express.Router();
 
 // Public routes
 router.get('/', getAllCoaches);
-router.get('/:id', getCoachById);
-router.get('/:id/reviews', getCoachReviews);
 
 // Protected routes
-router.post('/', protect, createCoachProfile);
-router.put('/:id', protect, coachOnly, updateCoachProfile);
-router.delete('/:id', protect, coachOnly, deleteCoachProfile);
+router.use(protect);
+router.get('/profile', getMyCoachProfile); // Must come before /:id route
+router.post('/', createCoachProfile);
+router.get('/:id', getCoachById);
+router.get('/:id/reviews', getCoachReviews);
+router.put('/:id', protect, authorize('coach'), updateCoachProfile);
+router.delete('/:id', protect, authorize('coach'), deleteCoachProfile);
 router.post('/:id/reviews', protect, addCoachReview);
 router.get('/:id/schedule', getCoachSchedule);
-router.put('/:id/schedule', protect, coachOnly, updateCoachSchedule);
+router.put('/:id/schedule', protect, authorize('coach'), updateCoachSchedule);
 
 module.exports = router; 

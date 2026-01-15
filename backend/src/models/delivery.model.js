@@ -136,20 +136,7 @@ const deliverySchema = new mongoose.Schema({
     bankName: String,
     accountHolderName: String
   },
-  performance: {
-    onTimeRate: { type: Number, default: 0 }, // percentage
-    customerSatisfaction: { type: Number, default: 0 }, // average rating
-    loadCapacity: { type: Number, default: 0 }, // number of orders
-    avgDeliveryTime: { type: Number, default: 0 }, // in minutes
-    distanceTravelled: { type: Number, default: 0 }, // in km
-    efficiencyScore: { type: Number, default: 0 }, // Overall efficiency score
-    improvementAreas: [String], // Areas for improvement
-    trainingCompleted: [{
-      name: String,
-      completedAt: Date,
-      score: Number
-    }]
-  },
+
   geoFencing: {
     enabled: { type: Boolean, default: false },
     zones: [{
@@ -208,8 +195,8 @@ const deliverySchema = new mongoose.Schema({
 });
 
 // Indexes for efficient queries
-deliverySchema.index({ userId: 1 });
-deliverySchema.index({ 'currentLocation.coordinates': '2dsphere' });
+// userId already has unique index via schema definition
+// currentLocation.coordinates already has 2dsphere index via schema definition
 deliverySchema.index({ availability: 1 });
 deliverySchema.index({ 'rating.average': 1 });
 deliverySchema.index({ serviceRadius: 1 });

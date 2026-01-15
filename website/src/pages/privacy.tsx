@@ -1,11 +1,10 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Layout from '../components/Layout';
 
 const PrivacyPage = () => {
   return (
-    <Layout title="Privacy Policy - TeamUp India" description="TeamUp India privacy policy and data protection information">
+    <div>
       <Head>
         <title>Privacy Policy - TeamUp India</title>
         <meta name="description" content="TeamUp India privacy policy and data protection information" />
@@ -175,7 +174,7 @@ const PrivacyPage = () => {
           </div>
         </div>
       </section>
-    </Layout>
+    </div>
   );
 };
 

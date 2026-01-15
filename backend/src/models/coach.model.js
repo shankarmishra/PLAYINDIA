@@ -79,15 +79,7 @@ const coachSchema = new mongoose.Schema({
     profilePhoto: String,
     additionalDocs: [String]
   },
-  availability: {
-    schedule: [{
-      day: String, // 'monday', 'tuesday', etc.
-      startTime: String, // '09:00'
-      endTime: String,
-      available: { type: Boolean, default: true }
-    }],
-    isAvailable: { type: Boolean, default: true }
-  },
+
   sessions: {
     total: { type: Number, default: 0 },
     completed: { type: Number, default: 0 },
@@ -108,14 +100,7 @@ const coachSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  academyMode: {
-    enabled: { type: Boolean, default: false },
-    name: String,
-    multipleCoaches: { type: Boolean, default: false },
-    monthlySubscription: Number,
-    batchSystem: Boolean,
-    parentDashboard: Boolean
-  },
+
   location: {
     type: {
       type: String,
@@ -269,10 +254,10 @@ const coachSchema = new mongoose.Schema({
 });
 
 // Indexes for efficient queries
-coachSchema.index({ userId: 1 });
+// userId already has unique index via schema definition
 coachSchema.index({ sports: 1 });
 coachSchema.index({ verified: 1 });
-coachSchema.index({ 'location.coordinates': '2dsphere' });
+// location.coordinates already has 2dsphere index via schema definition
 coachSchema.index({ 'ratings.average': 1 });
 coachSchema.index({ experience: 1 });
 coachSchema.index({ 'academyMode.enabled': 1 });

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
-import Layout from '../../components/Layout';
+import { ApiService } from '../../utils/api';
+import { useRouter } from 'next/router';
 
 const DeliveryRegistration = () => {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     // Step 1 - Personal Details
-    fullName: '',
+    name: '',
     email: '',
     mobile: '',
     password: '',
@@ -21,13 +22,13 @@ const DeliveryRegistration = () => {
     vehicleType: '',
     vehicleModel: '',
     vehicleNumber: '',
-    vehicleRC: null,
+    vehicleRC: null as File | null,
     // Step 3 - Working Area & Documents
     workingArea: '',
-    idProof: null,
-    addressProof: null,
-    bankPassbook: null,
-    profilePhoto: null
+    idProof: null as File | null,
+    addressProof: null as File | null,
+    bankPassbook: null as File | null,
+    profilePhoto: null as File | null
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -59,15 +60,56 @@ const DeliveryRegistration = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real application, you would submit the form data to your backend
-    console.log('Form submitted:', formData);
-    alert('Registration submitted successfully! Your application is under review.');
+    setIsSubmitting(true);
+    
+    try {
+      // Prepare form data for submission - backend normalizes mobile number
+      const submissionData = {
+        name: formData.name.trim(),
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password,
+        mobile: formData.mobile.trim(), // Backend will normalize it
+        role: 'delivery',
+        // Include other form fields as needed
+        dob: formData.dob,
+        gender: formData.gender,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode,
+        vehicleType: formData.vehicleType,
+        vehicleModel: formData.vehicleModel,
+        vehicleNumber: formData.vehicleNumber,
+        workingArea: formData.workingArea,
+      };
+      
+      // Submit to backend API
+      const response: any = await ApiService.auth.register(submissionData);
+      
+      if (response.data && response.data.success) {
+        alert('Registration submitted successfully! Your application is under review.');
+        router.push('/registration-status');
+      } else {
+        alert(response.data?.message || 'Registration failed. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      const errorMessage = error.response?.data?.message || 'An error occurred during registration. Please try again.';
+      setError(errorMessage);
+      alert(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <Layout title="Delivery Partner Registration - TeamUp India" description="Register as a delivery partner on TeamUp India platform">
+    <div className="min-h-screen bg-gray-50">
       <Head>
         <title>Delivery Partner Registration - TeamUp India</title>
         <meta name="description" content="Register as a delivery partner on TeamUp India platform" />
@@ -75,6 +117,11 @@ const DeliveryRegistration = () => {
 
       <div className="max-w-4xl mx-auto py-12 px-6">
         <div className="bg-white rounded-lg shadow-lg p-8">
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+              <span className="block sm:inline">{error}</span>
+            </div>
+          )}
           <h1 className="text-3xl font-bold text-center text-gray-900 mb-2">Delivery Partner Registration</h1>
           <p className="text-center text-gray-600 mb-8">Become a delivery partner on TeamUp India platform</p>
           
@@ -115,12 +162,13 @@ const DeliveryRegistration = () => {
                     <label className="block text-gray-700 mb-2">Full Name *</label>
                     <input
                       type="text"
-                      name="fullName"
-                      value={formData.fullName}
+                      name="name"
+                      value={formData.name}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
-                      placeholder="Enter your full name"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
+                      placeholder="Full name"
+                      minLength={2}
                     />
                   </div>
                   
@@ -132,8 +180,8 @@ const DeliveryRegistration = () => {
                       value={formData.email}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
-                      placeholder="Enter your email"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
+                      placeholder="your.email@example.com"
                     />
                   </div>
                   
@@ -145,22 +193,42 @@ const DeliveryRegistration = () => {
                       value={formData.mobile}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
-                      placeholder="Enter your mobile number"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
+                      placeholder="10-digit mobile number (e.g., 9876543210)"
+                      pattern="[0-9]{10}"
+                      maxLength={10}
                     />
                   </div>
                   
-                  <div>
+                  <div className="relative">
                     <label className="block text-gray-700 mb-2">Password *</label>
                     <input
-                      type="password"
+                      type={passwordVisible ? "text" : "password"}
                       name="password"
                       value={formData.password}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
-                      placeholder="Create a password"
+                      className="w-full px-4 py-2 pr-10 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
+                      placeholder="Min 8 chars with uppercase, lowercase, number & special char"
+                      minLength={8}
                     />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      onClick={() => setPasswordVisible(!passwordVisible)}
+                      aria-label={passwordVisible ? "Hide password" : "Show password"}
+                    >
+                      {passwordVisible ? (
+                        <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                      ) : (
+                        <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                        </svg>
+                      )}
+                    </button>
                   </div>
                   
                   <div>
@@ -171,7 +239,7 @@ const DeliveryRegistration = () => {
                       value={formData.dob}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                     />
                   </div>
                   
@@ -182,7 +250,7 @@ const DeliveryRegistration = () => {
                       value={formData.gender}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                     >
                       <option value="">Select gender</option>
                       <option value="male">Male</option>
@@ -199,8 +267,8 @@ const DeliveryRegistration = () => {
                       onChange={handleInputChange}
                       required
                       rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
-                      placeholder="Enter your address"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
+                      placeholder="Complete address"
                     ></textarea>
                   </div>
                   
@@ -212,8 +280,8 @@ const DeliveryRegistration = () => {
                       value={formData.city}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
-                      placeholder="Enter city name"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
+                      placeholder="City name"
                     />
                   </div>
                   
@@ -224,7 +292,7 @@ const DeliveryRegistration = () => {
                       value={formData.state}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                     >
                       <option value="">Select State</option>
                       <option value="Andhra Pradesh">Andhra Pradesh</option>
@@ -273,8 +341,10 @@ const DeliveryRegistration = () => {
                       value={formData.pincode}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
-                      placeholder="Enter pincode"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
+                      placeholder="6-digit pincode"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
                     />
                   </div>
                 </div>
@@ -294,7 +364,7 @@ const DeliveryRegistration = () => {
                       value={formData.vehicleType}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                     >
                       <option value="">Select vehicle type</option>
                       <option value="bicycle">Bicycle</option>
@@ -313,8 +383,8 @@ const DeliveryRegistration = () => {
                       value={formData.vehicleModel}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
-                      placeholder="Enter vehicle model"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
+                      placeholder="Vehicle model (e.g., Activa, Splendor)"
                     />
                   </div>
                   
@@ -326,8 +396,8 @@ const DeliveryRegistration = () => {
                       value={formData.vehicleNumber}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
-                      placeholder="Enter vehicle registration number"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
+                      placeholder="Vehicle registration number (e.g., DL-01-AB-1234)"
                     />
                   </div>
                   
@@ -340,6 +410,9 @@ const DeliveryRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload Vehicle RC Book</p>
+                          {formData.vehicleRC && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.vehicleRC.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -368,8 +441,8 @@ const DeliveryRegistration = () => {
                       value={formData.workingArea}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
-                      placeholder="Enter your working area (e.g., Delhi, Mumbai, Bangalore)"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
+                      placeholder="Working area (e.g., Delhi, Mumbai, Bangalore)"
                     />
                   </div>
                   
@@ -382,6 +455,9 @@ const DeliveryRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload ID Proof (Aadhaar, PAN, Driving License)</p>
+                          {formData.idProof && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.idProof.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -402,6 +478,9 @@ const DeliveryRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload Address Proof</p>
+                          {formData.addressProof && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.addressProof.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -422,6 +501,9 @@ const DeliveryRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload Bank Passbook</p>
+                          {formData.bankPassbook && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.bankPassbook.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -442,6 +524,9 @@ const DeliveryRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload Profile Photo</p>
+                          {formData.profilePhoto && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.profilePhoto.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -483,15 +568,16 @@ const DeliveryRegistration = () => {
                 <button
                   type="submit"
                   className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  disabled={isSubmitting}
                 >
-                  Submit Registration
+                  {isSubmitting ? 'Submitting...' : 'Submit Registration'}
                 </button>
               )}
             </div>
           </form>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 };
 

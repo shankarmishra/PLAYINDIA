@@ -1,119 +1,143 @@
-const admin = require('firebase-admin');
-const logger = require('./logger');
-
-// Initialize Firebase Admin
-try {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-    })
-  });
-  logger.info('Firebase Admin initialized successfully');
-} catch (error) {
-  logger.error('Firebase Admin initialization error:', error);
-}
+const config = require('../config');
+const { admin, firestore, storage, auth, initialized } = config.firebase;
 
 /**
- * Send push notification to a single device
- * @param {string} token - FCM device token
- * @param {Object} notification - Notification payload
- * @param {Object} data - Data payload
- * @returns {Promise<Object>} FCM response
+ * Verify Firebase ID Token
+ * @param {string} idToken - Firebase ID token from client
+ * @returns {Promise<Object>} Decoded token claims
  */
-const sendPushNotification = async (token, notification, data = {}) => {
+const verifyFirebaseToken = async (idToken) => {
   try {
-    const message = {
-      token,
-      notification,
-      data: Object.keys(data).reduce((acc, key) => {
-        acc[key] = String(data[key]); // FCM requires all data values to be strings
-        return acc;
-      }, {}),
-      android: {
-        priority: 'high',
-        notification: {
-          channelId: 'default'
-        }
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default'
-          }
-        }
-      }
-    };
-
-    const response = await admin.messaging().send(message);
-    logger.info(`Push notification sent successfully: ${response}`);
-    return response;
+    if (!initialized) {
+      throw new Error('Firebase is not initialized. Please configure Firebase environment variables.');
+    }
+    
+    if (!idToken) {
+      throw new Error('No ID token provided');
+    }
+    
+    const decodedToken = await auth.verifyIdToken(idToken);
+    return decodedToken;
   } catch (error) {
-    logger.error('Error sending push notification:', error);
+    console.error('Error verifying Firebase token:', error);
+    throw new Error('Invalid Firebase token');
+  }
+};
+
+/**
+ * Upload file to Firebase Storage
+ * @param {Buffer} fileBuffer - File buffer to upload
+ * @param {string} fileName - Name of the file
+ * @param {string} folder - Folder in Firebase Storage
+ * @returns {Promise<string>} Download URL of the uploaded file
+ */
+const uploadFileToFirebaseStorage = async (fileBuffer, fileName, folder = 'files') => {
+  try {
+    if (!initialized) {
+      throw new Error('Firebase is not initialized. Please configure Firebase environment variables.');
+    }
+    
+    const bucket = storage.bucket();
+    const filePath = `${folder}/${Date.now()}_${fileName}`;
+    
+    const file = bucket.file(filePath);
+    
+    await file.save(fileBuffer, {
+      metadata: {
+        contentType: 'application/octet-stream' // Will be auto-detected
+      },
+      public: true,
+      gzip: true
+    });
+    
+    // Make file publicly readable
+    await file.makePublic();
+    
+    return `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+  } catch (error) {
+    console.error('Error uploading file to Firebase Storage:', error);
     throw error;
   }
 };
 
 /**
- * Send push notification to multiple devices
- * @param {string[]} tokens - Array of FCM device tokens
- * @param {Object} notification - Notification payload
- * @param {Object} data - Data payload
- * @returns {Promise<Object>} FCM response
+ * Delete file from Firebase Storage
+ * @param {string} fileUrl - URL of the file to delete
+ * @returns {Promise<void>}
  */
-const sendMulticastPushNotification = async (tokens, notification, data = {}) => {
+const deleteFileFromFirebaseStorage = async (fileUrl) => {
   try {
-    const message = {
-      tokens,
-      notification,
-      data: Object.keys(data).reduce((acc, key) => {
-        acc[key] = String(data[key]);
-        return acc;
-      }, {}),
-      android: {
-        priority: 'high',
-        notification: {
-          channelId: 'default'
-        }
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default'
-          }
-        }
-      }
-    };
+    if (!initialized) {
+      throw new Error('Firebase is not initialized. Please configure Firebase environment variables.');
+    }
+    
+    if (!fileUrl) return;
+    
+    // Extract file path from URL
+    const bucket = storage.bucket();
+    const fileName = fileUrl.split(`${bucket.name}/`)[1];
+    
+    if (fileName) {
+      await bucket.file(fileName).delete();
+    }
+  } catch (error) {
+    console.error('Error deleting file from Firebase Storage:', error);
+    // Don't throw error as it shouldn't break the flow
+  }
+};
 
+/**
+ * Send Firebase Cloud Message
+ * @param {string|Array} tokens - Device token(s) or array of tokens
+ * @param {Object} payload - Notification payload
+ * @param {Object} options - Message options
+ * @returns {Promise<Object>} Result of the message sending
+ */
+const sendFirebaseMessage = async (tokens, payload, options = {}) => {
+  try {
+    if (!initialized) {
+      throw new Error('Firebase is not initialized. Please configure Firebase environment variables.');
+    }
+    
+    const message = {
+      notification: payload.notification,
+      data: payload.data,
+      tokens: Array.isArray(tokens) ? tokens : [tokens],
+      ...options
+    };
+    
     const response = await admin.messaging().sendMulticast(message);
-    logger.info(`Multicast push notification sent. Success: ${response.successCount}/${tokens.length}`);
     return response;
   } catch (error) {
-    logger.error('Error sending multicast push notification:', error);
+    console.error('Error sending Firebase message:', error);
     throw error;
   }
 };
 
 /**
- * Subscribe tokens to a topic
- * @param {string[]} tokens - Array of FCM device tokens
- * @param {string} topic - Topic name
- * @returns {Promise<Object>} FCM response
+ * Create a custom Firebase token for a user
+ * @param {string} uid - User ID
+ * @param {Object} additionalClaims - Additional claims to include in the token
+ * @returns {Promise<string>} Custom token
  */
-const subscribeToTopic = async (tokens, topic) => {
+const createCustomFirebaseToken = async (uid, additionalClaims = {}) => {
   try {
-    const response = await admin.messaging().subscribeToTopic(tokens, topic);
-    logger.info(`Subscribed ${tokens.length} tokens to topic ${topic}`);
-    return response;
+    if (!initialized) {
+      throw new Error('Firebase is not initialized. Please configure Firebase environment variables.');
+    }
+    
+    const customToken = await auth.createCustomToken(uid, additionalClaims);
+    return customToken;
   } catch (error) {
-    logger.error(`Error subscribing to topic ${topic}:`, error);
+    console.error('Error creating custom Firebase token:', error);
     throw error;
   }
 };
 
 module.exports = {
-  sendPushNotification,
-  sendMulticastPushNotification,
-  subscribeToTopic
-}; 
+  verifyFirebaseToken,
+  uploadFileToFirebaseStorage,
+  deleteFileFromFirebaseStorage,
+  sendFirebaseMessage,
+  createCustomFirebaseToken
+};

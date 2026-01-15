@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
+const { authenticate: protect } = require('../middleware/auth.middleware');
 const logger = require('../utils/logger');
 
 /**

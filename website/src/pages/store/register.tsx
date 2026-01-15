@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
-import Layout from '../../components/Layout';
+import { ApiService } from '../../utils/api';
+import { useRouter } from 'next/router';
 
 const StoreRegistration = () => {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     // Step 1 - Store Details
@@ -21,11 +22,11 @@ const StoreRegistration = () => {
     businessType: '',
     category: [] as string[],
     // Step 3 - Documents
-    gstCertificate: null,
-    shopAct: null,
-    bankPassbook: null,
-    ownerPhoto: null,
-    storePhoto: null
+    gstCertificate: null as File | null,
+    shopAct: null as File | null,
+    bankPassbook: null as File | null,
+    ownerPhoto: null as File | null,
+    storePhoto: null as File | null
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -66,15 +67,134 @@ const StoreRegistration = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real application, you would submit the form data to your backend
-    console.log('Form submitted:', formData);
-    alert('Registration submitted successfully! Your application is under review.');
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      // Prepare form data for submission
+      const normalizedMobile = formData.mobile && !formData.mobile.startsWith('+') ? `+91${formData.mobile}` : formData.mobile;
+      const normalizedEmail = formData.email ? formData.email.toLowerCase().trim() : formData.email;
+      const normalizedName = (formData.storeName || formData.ownerName || '').trim();
+      
+      // Create FormData object to handle both regular fields and files
+      const submissionData = new FormData();
+      submissionData.append('name', normalizedName);
+      submissionData.append('email', normalizedEmail);
+      submissionData.append('password', formData.password);
+      submissionData.append('mobile', normalizedMobile);
+      submissionData.append('role', 'seller');
+      
+      // Add store-specific fields
+      if (formData.storeName) {
+        submissionData.append('storeName', formData.storeName);
+      }
+      if (formData.ownerName) {
+        submissionData.append('ownerName', formData.ownerName);
+      }
+      if (formData.address) {
+        submissionData.append('address', formData.address);
+      }
+      if (formData.city) {
+        submissionData.append('city', formData.city);
+      }
+      if (formData.state) {
+        submissionData.append('state', formData.state);
+      }
+      if (formData.pincode) {
+        submissionData.append('pincode', formData.pincode);
+      }
+      if (formData.gstNumber) {
+        submissionData.append('gstNumber', formData.gstNumber);
+      }
+      if (formData.businessType) {
+        submissionData.append('businessType', formData.businessType);
+      }
+      if (formData.category && formData.category.length > 0) {
+        submissionData.append('category', JSON.stringify(formData.category));
+      }
+      
+      // Add files if they exist
+      if (formData.gstCertificate) {
+        submissionData.append('gstCertificate', formData.gstCertificate, formData.gstCertificate.name);
+      }
+      if (formData.shopAct) {
+        submissionData.append('shopAct', formData.shopAct, formData.shopAct.name);
+      }
+      if (formData.bankPassbook) {
+        submissionData.append('bankPassbook', formData.bankPassbook, formData.bankPassbook.name);
+      }
+      if (formData.ownerPhoto) {
+        submissionData.append('ownerPhoto', formData.ownerPhoto, formData.ownerPhoto.name);
+      }
+      if (formData.storePhoto) {
+        submissionData.append('storePhoto', formData.storePhoto, formData.storePhoto.name);
+      }
+      
+      // Submit to backend API
+      const response = await fetch('/api/store/register', {
+        method: 'POST',
+        body: submissionData,
+      });
+      
+      // Parse response safely
+      let responseData;
+      const contentType = response.headers.get('content-type');
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          responseData = await response.json();
+        } else {
+          const text = await response.text();
+          try {
+            responseData = JSON.parse(text);
+          } catch {
+            responseData = { 
+              success: false, 
+              message: text || 'Registration failed. Please try again.' 
+            };
+          }
+        }
+      } catch (parseError: any) {
+        console.error('Error parsing response:', parseError);
+        responseData = { 
+          success: false, 
+          message: 'Failed to process registration response. Please try again.' 
+        };
+      }
+      
+      if (response.ok && responseData.success) {
+        alert('Registration submitted successfully! Your application is under review.');
+        router.push('/registration-status');
+      } else {
+        const errorMsg = responseData?.message || responseData?.error || 'Registration failed. Please try again.';
+        setError(errorMsg);
+        alert(errorMsg);
+      }
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      let errorMessage = 'An error occurred during registration. Please try again.';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      setError(errorMessage);
+      alert(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <Layout title="Store Registration - TeamUp India" description="Register as a sports store on TeamUp India platform">
+    <div className="min-h-screen bg-gray-50">
       <Head>
         <title>Store Registration - TeamUp India</title>
         <meta name="description" content="Register as a sports store on TeamUp India platform" />
@@ -82,6 +202,11 @@ const StoreRegistration = () => {
 
       <div className="max-w-4xl mx-auto py-12 px-6">
         <div className="bg-white rounded-lg shadow-lg p-8">
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+              <span className="block sm:inline">{error}</span>
+            </div>
+          )}
           <h1 className="text-3xl font-bold text-center text-gray-900 mb-2">Store Registration</h1>
           <p className="text-center text-gray-600 mb-8">Register your sports store on TeamUp India platform</p>
           
@@ -126,7 +251,7 @@ const StoreRegistration = () => {
                       value={formData.storeName}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                       placeholder="Enter your store name"
                     />
                   </div>
@@ -139,7 +264,7 @@ const StoreRegistration = () => {
                       value={formData.ownerName}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                       placeholder="Enter owner's name"
                     />
                   </div>
@@ -152,7 +277,7 @@ const StoreRegistration = () => {
                       value={formData.email}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                       placeholder="Enter your email"
                     />
                   </div>
@@ -165,7 +290,7 @@ const StoreRegistration = () => {
                       value={formData.mobile}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                       placeholder="Enter your mobile number"
                     />
                   </div>
@@ -178,7 +303,7 @@ const StoreRegistration = () => {
                       value={formData.password}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                       placeholder="Create a password"
                     />
                   </div>
@@ -191,7 +316,7 @@ const StoreRegistration = () => {
                       onChange={handleInputChange}
                       required
                       rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                       placeholder="Enter your store address"
                     ></textarea>
                   </div>
@@ -204,7 +329,7 @@ const StoreRegistration = () => {
                       value={formData.city}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                       placeholder="Enter city name"
                     />
                   </div>
@@ -216,7 +341,7 @@ const StoreRegistration = () => {
                       value={formData.state}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                     >
                       <option value="">Select State</option>
                       <option value="Andhra Pradesh">Andhra Pradesh</option>
@@ -265,7 +390,7 @@ const StoreRegistration = () => {
                       value={formData.pincode}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                       placeholder="Enter pincode"
                     />
                   </div>
@@ -287,7 +412,7 @@ const StoreRegistration = () => {
                       value={formData.gstNumber}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                       placeholder="Enter GST number"
                     />
                   </div>
@@ -299,7 +424,7 @@ const StoreRegistration = () => {
                       value={formData.businessType}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                     >
                       <option value="">Select business type</option>
                       <option value="Proprietorship">Proprietorship</option>
@@ -349,6 +474,9 @@ const StoreRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload GST Certificate</p>
+                          {formData.gstCertificate && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.gstCertificate.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -369,6 +497,9 @@ const StoreRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload Shop Act Certificate</p>
+                          {formData.shopAct && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.shopAct.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -389,6 +520,9 @@ const StoreRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload Bank Passbook</p>
+                          {formData.bankPassbook && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.bankPassbook.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -409,6 +543,9 @@ const StoreRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload Owner Photo</p>
+                          {formData.ownerPhoto && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.ownerPhoto.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -429,6 +566,9 @@ const StoreRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload Store Photo</p>
+                          {formData.storePhoto && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.storePhoto.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -470,15 +610,16 @@ const StoreRegistration = () => {
                 <button
                   type="submit"
                   className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  disabled={isSubmitting}
                 >
-                  Submit Registration
+                  {isSubmitting ? 'Submitting...' : 'Submit Registration'}
                 </button>
               )}
             </div>
           </form>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 };
 

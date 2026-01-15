@@ -74,10 +74,24 @@ const measureMongoLatency = async () => {
  * @returns {Promise<Object>} System health metrics
  */
 const getHealthMetrics = async () => {
-  const [mongoHealth, redisHealth] = await Promise.all([
-    checkMongoHealth(),
-    checkRedisHealth()
-  ]);
+  const mongoHealth = await checkMongoHealth();
+  
+  // Make Redis check non-blocking - don't wait for it
+  let redisHealth;
+  try {
+    // Try to get Redis health but with a shorter timeout
+    redisHealth = await Promise.race([
+      checkRedisHealth(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), 1000))
+    ]);
+  } catch (error) {
+    // If Redis check fails or times out, return a degraded status for Redis only
+    redisHealth = {
+      status: 'error',
+      healthy: false,
+      error: 'Redis not available'
+    };
+  }
 
   const systemHealth = {
     status: 'healthy',
@@ -90,8 +104,9 @@ const getHealthMetrics = async () => {
     }
   };
 
-  // Overall status is healthy only if all services are healthy
-  if (!mongoHealth.healthy || !redisHealth.healthy) {
+  // Overall status is healthy only if MongoDB is healthy
+  // Redis is optional, so only consider MongoDB for overall health
+  if (!mongoHealth.healthy) {
     systemHealth.status = 'degraded';
   }
 

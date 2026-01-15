@@ -1,11 +1,10 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Layout from '../components/Layout';
 
 const BlogPage = () => {
   return (
-    <Layout title="Blog & Resources - TeamUp India" description="Sports tips, training guides, and platform updates from TeamUp India">
+    <div>
       <Head>
         <title>Blog & Resources - TeamUp India</title>
         <meta name="description" content="Sports tips, training guides, and platform updates from TeamUp India" />
@@ -88,55 +87,55 @@ const BlogPage = () => {
       </section>
 
       {/* Sports Categories */}
-      <section className="py-16 bg-gray-100 px-6">
+      <section className="py-16 bg-white px-6">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Sports Categories</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Link href="/blog/category/cricket" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
-              <div className="text-4xl mb-4">🏏</div>
+              <div className="text-4xl mb-4 text-red-500">🏏</div>
               <h3 className="text-lg font-bold mb-2 text-gray-900">Cricket</h3>
               <p className="text-gray-600">Training tips, techniques, and strategies</p>
             </Link>
             
             <Link href="/blog/category/football" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
-              <div className="text-4xl mb-4">⚽</div>
+              <div className="text-4xl mb-4 text-green-500">⚽</div>
               <h3 className="text-lg font-bold mb-2 text-gray-900">Football</h3>
               <p className="text-gray-600">Fitness, skills, and match preparation</p>
             </Link>
             
             <Link href="/blog/category/tennis" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
-              <div className="text-4xl mb-4">🎾</div>
+              <div className="text-4xl mb-4 text-blue-500">🎾</div>
               <h3 className="text-lg font-bold mb-2 text-gray-900">Tennis</h3>
               <p className="text-gray-600">Techniques, equipment, and training</p>
             </Link>
             
             <Link href="/blog/category/badminton" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
-              <div className="text-4xl mb-4">🏸</div>
+              <div className="text-4xl mb-4 text-yellow-500">🏸</div>
               <h3 className="text-lg font-bold mb-2 text-gray-900">Badminton</h3>
               <p className="text-gray-600">Skills, strategies, and improvement</p>
             </Link>
             
             <Link href="/blog/category/basketball" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
-              <div className="text-4xl mb-4">🏀</div>
+              <div className="text-4xl mb-4 text-orange-500">🏀</div>
               <h3 className="text-lg font-bold mb-2 text-gray-900">Basketball</h3>
               <p className="text-gray-600">Drills, techniques, and conditioning</p>
             </Link>
             
             <Link href="/blog/category/swimming" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
-              <div className="text-4xl mb-4">🏊</div>
+              <div className="text-4xl mb-4 text-purple-500">🏊</div>
               <h3 className="text-lg font-bold mb-2 text-gray-900">Swimming</h3>
               <p className="text-gray-600">Strokes, training, and performance</p>
             </Link>
             
             <Link href="/blog/category/yoga" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
-              <div className="text-4xl mb-4">🧘</div>
+              <div className="text-4xl mb-4 text-pink-500">🧘</div>
               <h3 className="text-lg font-bold mb-2 text-gray-900">Yoga</h3>
               <p className="text-gray-600">Flexibility, strength, and mindfulness</p>
             </Link>
             
             <Link href="/blog/category/boxing" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
-              <div className="text-4xl mb-4">🥊</div>
+              <div className="text-4xl mb-4 text-indigo-500">🥊</div>
               <h3 className="text-lg font-bold mb-2 text-gray-900">Boxing</h3>
               <p className="text-gray-600">Techniques, training, and conditioning</p>
             </Link>
@@ -229,7 +228,7 @@ const BlogPage = () => {
       </section>
 
       {/* Newsletter */}
-      <section className="py-16 bg-gray-100 px-6">
+      <section className="py-16 bg-white px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Stay Updated with Sports News</h2>
           <p className="text-lg text-gray-600 mb-8">
@@ -299,7 +298,7 @@ const BlogPage = () => {
           </div>
         </div>
       </section>
-    </Layout>
+    </div>
   );
 };
 

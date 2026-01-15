@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import AsyncStorage from '../utils/AsyncStorageSafe';
 import { API_BASE_URL, API_ENDPOINTS } from '../config/constants';
-import axios from 'axios';
+import ApiService from '../services/ApiService';
 
 interface User {
   id: string;
@@ -141,8 +141,7 @@ const useAuth = () => {
           setToken(storedToken);
           setUser(JSON.parse(storedUser));
           
-          // Set default authorization header
-          axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+          // Note: ApiService handles auth headers via interceptors
         }
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -158,10 +157,7 @@ const useAuth = () => {
     try {
       setLoading(true);
       
-      const response = await axios.post(API_ENDPOINTS.AUTH.LOGIN, {
-        email,
-        password
-      });
+      const response = await ApiService.auth.login(email, password);
       
       if (response.data.success) {
         const { token, user } = response.data;
@@ -170,8 +166,7 @@ const useAuth = () => {
         await AsyncStorage.setItem('userToken', token);
         await AsyncStorage.setItem('user', JSON.stringify(user));
         
-        // Set token in axios defaults
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        // Token is handled by ApiService interceptor
         
         setUser(user);
         setToken(token);
@@ -192,13 +187,7 @@ const useAuth = () => {
     try {
       setLoading(true);
       
-      const response = await axios.post(API_ENDPOINTS.AUTH.REGISTER, {
-        name,
-        email,
-        password,
-        mobile,
-        role
-      });
+      const response = await ApiService.auth.register({ name, email, password, mobile, role });
       
       if (response.data.success) {
         const { token, user } = response.data;
@@ -207,8 +196,7 @@ const useAuth = () => {
         await AsyncStorage.setItem('userToken', token);
         await AsyncStorage.setItem('user', JSON.stringify(user));
         
-        // Set token in axios defaults
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        // Token is handled by ApiService interceptor
         
         setUser(user);
         setToken(token);
@@ -233,8 +221,7 @@ const useAuth = () => {
       await AsyncStorage.removeItem('userToken');
       await AsyncStorage.removeItem('user');
       
-      // Remove authorization header
-      delete axios.defaults.headers.common['Authorization'];
+      // AuthService handles token removal via interceptors
       
       setUser(null);
       setToken(null);
@@ -250,9 +237,7 @@ const useAuth = () => {
     try {
       if (!token) return;
       
-      const response = await axios.get(API_ENDPOINTS.AUTH.ME, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await ApiService.auth.me();
       
       if (response.data.success) {
         const user = response.data.user;
@@ -262,7 +247,7 @@ const useAuth = () => {
     } catch (error) {
       console.error('Failed to refresh user:', error);
       // If token is invalid, logout user
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
+      if ((error as any).response?.status === 401) {
         await logout();
       }
     }
@@ -280,4 +265,3 @@ const useAuth = () => {
 };
 
 export default useAuth;
-

@@ -50,6 +50,59 @@ exports.getCoaches = async (req, res, next) => {
 };
 
 /**
+ * Get current user's coach profile
+ */
+exports.getMyCoachProfile = async (req, res, next) => {
+  try {
+    const coach = await Coach.findOne({ userId: req.user.id })
+      .populate('userId', 'name mobile email')
+      .populate('achievements', 'title description date');
+
+    if (!coach) {
+      return res.status(404).json({
+        success: false,
+        message: 'Coach profile not found for current user'
+      });
+    }
+
+    // Get additional stats
+    const completedSessions = await Booking.countDocuments({
+      coachId: coach._id,
+      status: 'completed'
+    });
+
+    const totalEarnings = await Booking.aggregate([
+      { $match: { coachId: coach._id, status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$payment.amount' } } }
+    ]);
+
+    const avgRating = await Review.aggregate([
+      { $match: { 'reviewee.userId': coach.userId } },
+      { $group: { _id: null, avgRating: { $avg: '$rating' } } }
+    ]);
+
+    const profileData = {
+      ...coach.toObject(),
+      stats: {
+        completedSessions,
+        totalEarnings: totalEarnings[0] ? totalEarnings[0].total : 0,
+        averageRating: avgRating[0] ? avgRating[0].avgRating : 0
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      data: profileData
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
  * Get coach profile
  */
 exports.getCoachProfile = async (req, res, next) => {
@@ -163,13 +216,13 @@ exports.getCoachDashboard = async (req, res, next) => {
         walletBalance: wallet ? wallet.balance : 0
       },
       stats: {
-        totalSessions: coach.sessions.total,
-        completedSessions: coach.sessions.completed,
-        totalEarnings: coach.earnings.total,
-        availableEarnings: coach.earnings.available,
-        pendingEarnings: coach.earnings.pending,
-        rating: coach.ratings.average,
-        totalRatings: coach.ratings.count
+        totalSessions: coach.sessions?.total || 0,
+        completedSessions: coach.sessions?.completed || 0,
+        totalEarnings: coach.earnings?.total || 0,
+        availableEarnings: coach.earnings?.available || 0,
+        pendingEarnings: coach.earnings?.pending || 0,
+        rating: coach.ratings?.average || 0,
+        totalRatings: coach.ratings?.count || 0
       },
       sections: {
         recentBookings,
@@ -352,5 +405,187 @@ function generateTimeSlots(startTime, endTime) {
   
   return slots;
 }
+
+// Aliases for route compatibility
+exports.getAllCoaches = exports.getCoaches;
+exports.getCoachById = exports.getCoachProfile;
+exports.createCoachProfile = async (req, res, next) => {
+  try {
+    const coachData = {
+      userId: req.user.id,
+      ...req.body
+    };
+    
+    const existingCoach = await Coach.findOne({ userId: req.user.id });
+    if (existingCoach) {
+      return res.status(400).json({
+        success: false,
+        message: 'Coach profile already exists'
+      });
+    }
+    
+    const coach = await Coach.create(coachData);
+    
+    res.status(201).json({
+      success: true,
+      data: coach
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+exports.deleteCoachProfile = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const coach = await Coach.findByIdAndDelete(id);
+    
+    if (!coach) {
+      return res.status(404).json({
+        success: false,
+        message: 'Coach not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Coach profile deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+exports.getCoachSchedule = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const coach = await Coach.findById(id);
+    
+    if (!coach) {
+      return res.status(404).json({
+        success: false,
+        message: 'Coach not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: coach.availability
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+exports.updateCoachSchedule = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { schedule } = req.body;
+    
+    const coach = await Coach.findByIdAndUpdate(
+      id,
+      { 'availability.schedule': schedule },
+      { new: true, runValidators: true }
+    );
+    
+    if (!coach) {
+      return res.status(404).json({
+        success: false,
+        message: 'Coach not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: coach
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+exports.addCoachReview = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rating, comment } = req.body;
+    
+    // Check if user already reviewed this coach
+    const existingReview = await Review.findOne({
+      'reviewer.userId': req.user.id,
+      'reviewee.userId': id
+    });
+    
+    if (existingReview) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already reviewed this coach'
+      });
+    }
+    
+    const review = await Review.create({
+      reviewer: { userId: req.user.id, role: req.user.role },
+      reviewee: { userId: id, role: 'coach' },
+      rating,
+      comment,
+      anonymous: false
+    });
+    
+    // Update coach ratings
+    const coach = await Coach.findById(id);
+    if (coach) {
+      const reviews = await Review.find({ 'reviewee.userId': id });
+      const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+      
+      await Coach.findByIdAndUpdate(id, {
+        'ratings.average': avgRating,
+        'ratings.count': reviews.length
+      });
+    }
+    
+    res.status(201).json({
+      success: true,
+      data: review
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+exports.getCoachReviews = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const reviews = await Review.find({ 'reviewee.userId': id })
+      .populate('reviewer.userId', 'name');
+    
+    res.status(200).json({
+      success: true,
+      count: reviews.length,
+      data: reviews
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
 
 module.exports = exports;

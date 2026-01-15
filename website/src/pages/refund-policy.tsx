@@ -1,11 +1,10 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Layout from '../components/Layout';
 
 const RefundPage = () => {
   return (
-    <Layout title="Refund Policy - TeamUp India" description="TeamUp India refund policy for purchases and services">
+    <div>
       <Head>
         <title>Refund Policy - TeamUp India</title>
         <meta name="description" content="TeamUp India refund policy for purchases and services" />
@@ -166,7 +165,7 @@ const RefundPage = () => {
           </div>
         </div>
       </section>
-    </Layout>
+    </div>
   );
 };
 

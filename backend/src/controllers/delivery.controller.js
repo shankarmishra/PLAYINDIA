@@ -330,6 +330,41 @@ exports.updateOrderDeliveryStatus = async (req, res, next) => {
 };
 
 /**
+ * Get current user's delivery profile
+ */
+exports.getMyDeliveryProfile = async (req, res, next) => {
+  try {
+    const deliveryProfile = await Delivery.findOne({ userId: req.user.id })
+      .populate('userId', 'name mobile email');
+
+    if (!deliveryProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Delivery profile not found for current user'
+      });
+    }
+
+    // Get wallet balance
+    const wallet = await Wallet.findOne({ userId: req.user.id });
+
+    const profileData = {
+      ...deliveryProfile.toObject(),
+      walletBalance: wallet ? wallet.balance : 0
+    };
+
+    res.status(200).json({
+      success: true,
+      data: profileData
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
  * Get delivery profile
  */
 exports.getDeliveryProfile = async (req, res, next) => {
@@ -391,5 +426,224 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c; // Distance in km
 }
+
+
+/**
+ * Create a new delivery (admin only)
+ */
+exports.createDelivery = async (req, res, next) => {
+  try {
+    const { order, deliveryPartner, trackingNumber, expectedDeliveryDate } = req.body;
+    
+    // Verify order exists
+    const orderDoc = await Order.findById(order);
+    if (!orderDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Create delivery record
+    const delivery = await Delivery.create({
+      orderId: order,
+      deliveryPartner,
+      trackingNumber,
+      expectedDeliveryDate,
+      status: 'pending'
+    });
+
+    res.status(201).json({
+      success: true,
+      data: delivery
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get all deliveries (admin only)
+ */
+exports.getAllDeliveries = async (req, res, next) => {
+  try {
+    const { status, dateFrom, dateTo, limit = 50, page = 1 } = req.query;
+    
+    let query = {};
+    
+    if (status) {
+      query.status = status;
+    }
+    
+    if (dateFrom || dateTo) {
+      query['createdAt'] = {};
+      if (dateFrom) query['createdAt'].$gte = new Date(dateFrom);
+      if (dateTo) query['createdAt'].$lte = new Date(dateTo);
+    }
+    
+    const deliveries = await Delivery.find(query)
+      .populate('orderId', 'orderId totalAmount status')
+      .populate('deliveryPartner.userId', 'name mobile')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const total = await Delivery.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      count: deliveries.length,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / parseInt(limit)),
+      data: deliveries
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get deliveries by order ID
+ */
+exports.getDeliveriesByOrder = async (req, res, next) => {
+  try {
+    const { orderId } = req.params;
+    
+    const deliveries = await Delivery.find({ orderId })
+      .populate('deliveryPartner.userId', 'name mobile')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: deliveries.length,
+      data: deliveries
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Track delivery by tracking number
+ */
+exports.trackDelivery = async (req, res, next) => {
+  try {
+    const { trackingNumber } = req.params;
+    
+    const delivery = await Delivery.findOne({ trackingNumber })
+      .populate('orderId', 'orderId totalAmount status')
+      .populate('deliveryPartner.userId', 'name mobile');
+
+    if (!delivery) {
+      return res.status(404).json({
+        success: false,
+        message: 'Delivery not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: delivery
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get delivery by ID
+ */
+exports.getDeliveryById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const delivery = await Delivery.findById(id)
+      .populate('orderId', 'orderId totalAmount status')
+      .populate('deliveryPartner.userId', 'name mobile');
+
+    if (!delivery) {
+      return res.status(404).json({
+        success: false,
+        message: 'Delivery not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: delivery
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Update delivery status (admin only)
+ */
+exports.updateDeliveryStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+    
+    const validStatuses = ['Pending', 'In Transit', 'Out for Delivery', 'Delivered', 'Failed', 'Returned'];
+    
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status'
+      });
+    }
+    
+    const delivery = await Delivery.findByIdAndUpdate(
+      id,
+      { 
+        status,
+        'timeline': {
+          status,
+          timestamp: new Date(),
+          notes: notes || `Status updated to ${status}`
+        }
+      },
+      { new: true }
+    ).populate('orderId', 'orderId totalAmount status')
+     .populate('deliveryPartner.userId', 'name mobile');
+
+    if (!delivery) {
+      return res.status(404).json({
+        success: false,
+        message: 'Delivery not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: delivery
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Aliases for function compatibility
+exports.updateOrderDeliveryStatus = exports.updateDeliveryStatus;
 
 module.exports = exports;

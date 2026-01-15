@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/auth');
+const { authenticate: protect, authorize } = require('../middleware/auth.middleware');
 const {
   createTeam,
   getTeams,

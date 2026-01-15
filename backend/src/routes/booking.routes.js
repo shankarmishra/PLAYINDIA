@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
-const { coachOnly } = require('../middleware/auth.middleware');
+const { authenticate: protect, authorize } = require('../middleware/auth.middleware');
+// Note: coachOnly middleware doesn't exist, using role-based authorization instead
 const {
   createBooking,
   getUserBookings,
@@ -17,8 +17,8 @@ router.get('/user', protect, getUserBookings);
 router.post('/:id/rate', protect, rateBooking);
 
 // Coach routes (must come before /:id route to avoid route conflicts)
-router.get('/coach', protect, coachOnly, getCoachBookings);
-router.put('/:id/status', protect, coachOnly, updateBookingStatus);
+router.get('/coach', protect, authorize('coach'), getCoachBookings);
+router.put('/:id/status', protect, authorize('coach'), updateBookingStatus);
 
 // General routes (must come after specific routes)
 router.get('/:id', protect, getBooking);

@@ -4,7 +4,8 @@
  */
 
 // API Base URL
-export const API_BASE_URL = 'https://sportsbackend-n2xb.onrender.com';
+export const API_BASE_URL = 'http://10.0.2.2:4000'; // Local backend for Android emulator
+// For iOS simulator, use 'http://localhost:4000' instead
 
 // API Endpoints
 export const API_ENDPOINTS = {

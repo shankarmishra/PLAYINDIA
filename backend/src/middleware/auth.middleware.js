@@ -15,7 +15,7 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, config.jwt.secret);
+    const decoded = jwt.verify(token, config.jwtSecret);
     
     // Check if user exists based on role
     let user;
@@ -77,6 +77,25 @@ const authorize = (...roles) => {
       });
     }
 
+    // If user is an admin (userType === 'admin'), allow access for admin routes
+    // Admin roles: 'super_admin', 'admin', 'moderator', 'support_agent', 'content_manager'
+    if (req.userType === 'admin') {
+      // Check if any of the admin roles match the required roles
+      const adminRoles = ['super_admin', 'admin', 'moderator', 'support_agent', 'content_manager'];
+      const userRole = req.user.role || 'admin';
+      
+      // If 'admin' is in required roles, allow any admin userType
+      if (roles.includes('admin') && adminRoles.includes(userRole)) {
+        return next();
+      }
+      
+      // If specific admin role is required, check if user has that role
+      if (roles.includes(userRole)) {
+        return next();
+      }
+    }
+
+    // For regular users, check if their role matches
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,

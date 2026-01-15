@@ -1,11 +1,10 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Layout from '../components/Layout';
 
 const HowItWorksPage = () => {
   return (
-    <Layout title="How It Works - TeamUp India" description="Learn how TeamUp India connects players, coaches, stores, and delivery partners">
+    <div>
       <Head>
         <title>How It Works - TeamUp India</title>
         <meta name="description" content="Learn how TeamUp India connects players, coaches, stores, and delivery partners" />
@@ -44,6 +43,9 @@ const HowItWorksPage = () => {
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-red-600">1</span>
               </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3">Sign Up</h3>
               <p className="text-gray-600">
                 Create your free account as a player and set up your profile with your favorite sports and location.
@@ -52,6 +54,9 @@ const HowItWorksPage = () => {
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-red-600">2</span>
+              </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
               </div>
               <h3 className="text-xl font-bold mb-3">Find Coaches</h3>
               <p className="text-gray-600">
@@ -62,6 +67,9 @@ const HowItWorksPage = () => {
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-red-600">3</span>
               </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3">Book Sessions</h3>
               <p className="text-gray-600">
                 Book coaching sessions based on your availability and the coach's schedule.
@@ -70,6 +78,9 @@ const HowItWorksPage = () => {
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-red-600">4</span>
+              </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
               </div>
               <h3 className="text-xl font-bold mb-3">Track Progress</h3>
               <p className="text-gray-600">
@@ -89,6 +100,9 @@ const HowItWorksPage = () => {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-green-600">1</span>
               </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3">Register</h3>
               <p className="text-gray-600">
                 Sign up as a coach and verify your credentials to create a trusted profile.
@@ -97,6 +111,9 @@ const HowItWorksPage = () => {
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-green-600">2</span>
+              </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
               </div>
               <h3 className="text-xl font-bold mb-3">Set Availability</h3>
               <p className="text-gray-600">
@@ -107,6 +124,9 @@ const HowItWorksPage = () => {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-green-600">3</span>
               </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3">Receive Bookings</h3>
               <p className="text-gray-600">
                 Get booking requests from players and manage your schedule efficiently.
@@ -115,6 +135,9 @@ const HowItWorksPage = () => {
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-green-600">4</span>
+              </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
               </div>
               <h3 className="text-xl font-bold mb-3">Earn & Grow</h3>
               <p className="text-gray-600">
@@ -134,6 +157,9 @@ const HowItWorksPage = () => {
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-blue-600">1</span>
               </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3">Register Store</h3>
               <p className="text-gray-600">
                 Register your sports store and verify your business credentials.
@@ -142,6 +168,9 @@ const HowItWorksPage = () => {
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-blue-600">2</span>
+              </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
               </div>
               <h3 className="text-xl font-bold mb-3">List Products</h3>
               <p className="text-gray-600">
@@ -152,6 +181,9 @@ const HowItWorksPage = () => {
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-blue-600">3</span>
               </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3">Receive Orders</h3>
               <p className="text-gray-600">
                 Get orders from customers and manage your inventory efficiently.
@@ -160,6 +192,9 @@ const HowItWorksPage = () => {
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-blue-600">4</span>
+              </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
               </div>
               <h3 className="text-xl font-bold mb-3">Manage Delivery</h3>
               <p className="text-gray-600">
@@ -179,6 +214,9 @@ const HowItWorksPage = () => {
               <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-purple-600">1</span>
               </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3">Sign Up</h3>
               <p className="text-gray-600">
                 Register as a delivery partner and verify your identity and vehicle details.
@@ -187,6 +225,9 @@ const HowItWorksPage = () => {
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
               <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-purple-600">2</span>
+              </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
               </div>
               <h3 className="text-xl font-bold mb-3">Set Availability</h3>
               <p className="text-gray-600">
@@ -197,6 +238,9 @@ const HowItWorksPage = () => {
               <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-purple-600">3</span>
               </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3">Receive Assignments</h3>
               <p className="text-gray-600">
                 Get delivery assignments based on your location and availability.
@@ -205,6 +249,9 @@ const HowItWorksPage = () => {
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
               <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-purple-600">4</span>
+              </div>
+              <div className="mx-auto mb-3">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
               </div>
               <h3 className="text-xl font-bold mb-3">Earn Money</h3>
               <p className="text-gray-600">
@@ -216,7 +263,7 @@ const HowItWorksPage = () => {
       </section>
 
       {/* Visual Representation */}
-      <section className="py-16">
+      <section className="py-16 bg-gray-100">
         <div className="max-w-7xl mx-auto px-6">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Visual Overview of Our Ecosystem</h2>
           <div className="bg-white rounded-lg shadow-lg p-8">
@@ -224,30 +271,30 @@ const HowItWorksPage = () => {
               <div className="flex flex-col md:flex-row justify-between items-center w-full max-w-4xl mb-10">
                 <div className="text-center mb-6 md:mb-0">
                   <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <span className="text-2xl">⚽</span>
+                    <div className="text-3xl text-red-500">⚽</div>
                   </div>
-                  <p className="font-bold">Players</p>
+                  <p className="font-bold text-lg">Players</p>
                 </div>
                 <div className="text-4xl text-gray-400 mb-6 md:mb-0">⟷</div>
                 <div className="text-center mb-6 md:mb-0">
                   <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <span className="text-2xl">👨‍🏫</span>
+                    <div className="text-3xl text-green-500">🎓</div>
                   </div>
-                  <p className="font-bold">Coaches</p>
+                  <p className="font-bold text-lg">Coaches</p>
                 </div>
                 <div className="text-4xl text-gray-400 mb-6 md:mb-0">⟷</div>
                 <div className="text-center mb-6 md:mb-0">
                   <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <span className="text-2xl">🏪</span>
+                    <div className="text-3xl text-blue-500">🏪</div>
                   </div>
-                  <p className="font-bold">Stores</p>
+                  <p className="font-bold text-lg">Stores</p>
                 </div>
                 <div className="text-4xl text-gray-400 mb-6 md:mb-0">⟷</div>
                 <div className="text-center">
                   <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <span className="text-2xl">🚚</span>
+                    <div className="text-3xl text-purple-500">🚚</div>
                   </div>
-                  <p className="font-bold">Delivery</p>
+                  <p className="font-bold text-lg">Delivery</p>
                 </div>
               </div>
               <p className="text-center text-gray-700 max-w-2xl">
@@ -277,7 +324,7 @@ const HowItWorksPage = () => {
           </div>
         </div>
       </section>
-    </Layout>
+    </div>
   );
 };
 

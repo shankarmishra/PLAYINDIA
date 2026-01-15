@@ -459,4 +459,229 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c; // Distance in km
 }
 
-module.exports = exports;
+
+/**
+ * Get user's orders (alias for getUserOrders)
+ */
+exports.getMyOrders = exports.getUserOrders;
+
+/**
+ * Get seller's orders (alias for getStoreOrders)
+ */
+exports.getSellerOrders = exports.getStoreOrders;
+
+/**
+ * Update order
+ */
+exports.updateOrder = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Verify authorization
+    const store = await Store.findOne({ userId: req.user.id });
+    if (!store || order.storeId.toString() !== store._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized to modify this order'
+      });
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: updatedOrder
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get all orders (admin only)
+ */
+exports.getOrders = async (req, res, next) => {
+  try {
+    const { status, dateFrom, dateTo, limit = 50, page = 1 } = req.query;
+    
+    let query = {};
+    
+    if (status) {
+      query.status = status;
+    }
+    
+    if (dateFrom || dateTo) {
+      query['createdAt'] = {};
+      if (dateFrom) query['createdAt'].$gte = new Date(dateFrom);
+      if (dateTo) query['createdAt'].$lte = new Date(dateTo);
+    }
+    
+    const orders = await Order.find(query)
+      .populate('userId', 'name mobile')
+      .populate('storeId', 'storeName ownerName')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const total = await Order.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / parseInt(limit)),
+      data: orders
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Cancel order
+ */
+exports.cancelOrder = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Check if user is authorized to cancel (either owner or admin)
+    if (req.user.id !== order.userId.toString()) {
+      const store = await Store.findOne({ userId: req.user.id });
+      if (!store || order.storeId.toString() !== store._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Unauthorized to cancel this order'
+        });
+      }
+    }
+
+    // Only allow cancellation if status is pending or confirmed
+    if (!['pending', 'confirmed'].includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel order at this status'
+      });
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      { 
+        status: 'cancelled',
+        'timeline': {
+          status: 'cancelled',
+          timestamp: new Date(),
+          notes: `Order cancelled by user`
+        }
+      },
+      { new: true }
+    );
+
+    // Restore inventory if needed
+    for (const item of order.items) {
+      await Product.findByIdAndUpdate(
+        item.productId,
+        { 
+          $inc: { 
+            'inventory.quantity': item.quantity,
+            'inventory.totalSold': -item.quantity
+          }
+        }
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      data: updatedOrder
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Update delivery status
+ */
+exports.updateDeliveryStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { deliveryStatus } = req.body;
+    
+    const validStatuses = [
+      'assigned', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'returned'
+    ];
+    
+    if (!validStatuses.includes(deliveryStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid delivery status'
+      });
+    }
+    
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Verify delivery person is assigned to this order
+    if (order.delivery.deliveryBoyId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized to update delivery status for this order'
+      });
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      { 
+        'delivery.deliveryStatus': deliveryStatus,
+        'delivery.updatedAt': new Date(),
+        'status': deliveryStatus === 'delivered' ? 'delivered' : order.status
+      },
+      { new: true }
+    ).populate('delivery.deliveryBoyId', 'name mobile');
+
+    res.status(200).json({
+      success: true,
+      data: updatedOrder
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};

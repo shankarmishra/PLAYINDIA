@@ -1,11 +1,10 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Layout from '../components/Layout';
 
 const ContactPage = () => {
   return (
-    <Layout title="Contact Us - TeamUp India" description="Get in touch with TeamUp India for any queries or support">
+    <div>
       <Head>
         <title>Contact Us - TeamUp India</title>
         <meta name="description" content="Get in touch with TeamUp India for any queries or support" />
@@ -22,7 +21,7 @@ const ContactPage = () => {
       </section>
 
       {/* Contact Information */}
-      <section className="py-16">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             <div>
@@ -133,7 +132,7 @@ const ContactPage = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-16 bg-gray-100">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Frequently Asked Questions</h2>
           <div className="space-y-6">
@@ -176,7 +175,7 @@ const ContactPage = () => {
       </section>
 
       {/* Support Options */}
-      <section className="py-16">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Support Options</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -221,7 +220,7 @@ const ContactPage = () => {
           </div>
         </div>
       </section>
-    </Layout>
+    </div>
   );
 };
 

@@ -148,7 +148,7 @@ exports.getTournament = async (req, res, next) => {
 /**
  * Register team for tournament
  */
-exports.registerTeamForTournament = async (req, res, next) => {
+exports.registerTeam = async (req, res, next) => {
   try {
     const { id } = req.params; // tournament id
     const { teamId } = req.body;
@@ -254,22 +254,35 @@ exports.registerTeamForTournament = async (req, res, next) => {
 exports.getUserTournaments = async (req, res, next) => {
   try {
     // Find tournaments where user is organizer
-    const organizedTournaments = await Tournament.find({ organizer: req.user.id })
-      .sort({ createdAt: -1 });
+    let organizedTournaments = [];
+    let participatingTournaments = [];
+    
+    try {
+      organizedTournaments = await Tournament.find({ organizer: req.user.id })
+        .sort({ createdAt: -1 });
+    } catch (error) {
+      console.error('Error fetching organized tournaments:', error);
+    }
 
-    // Find tournaments where user's teams are participating
-    const userTeams = await Team.find({
-      $or: [
-        { owner: req.user.id },
-        { captain: req.user.id },
-        { 'members.userId': req.user.id }
-      ]
-    });
+    try {
+      // Find tournaments where user's teams are participating
+      const userTeams = await Team.find({
+        $or: [
+          { owner: req.user.id },
+          { captain: req.user.id },
+          { 'members.userId': req.user.id }
+        ]
+      });
 
-    const teamIds = userTeams.map(team => team._id);
-    const participatingTournaments = await Tournament.find({
-      'teams.teamId': { $in: teamIds }
-    }).sort({ createdAt: -1 });
+      const teamIds = userTeams.map(team => team._id);
+      if (teamIds.length > 0) {
+        participatingTournaments = await Tournament.find({
+          'teams.teamId': { $in: teamIds }
+        }).sort({ createdAt: -1 });
+      }
+    } catch (error) {
+      console.error('Error fetching participating tournaments:', error);
+    }
 
     res.status(200).json({
       success: true,
@@ -480,5 +493,209 @@ function generateLeagueBracket(teams) {
     totalMatches: matches.length
   };
 }
+
+
+/**
+ * Update tournament
+ */
+exports.updateTournament = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const tournament = await Tournament.findById(id);
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    // Verify user is organizer
+    if (tournament.organizer.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized to modify this tournament'
+      });
+    }
+
+    const updatedTournament = await Tournament.findByIdAndUpdate(
+      id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: updatedTournament
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Delete tournament
+ */
+exports.deleteTournament = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const tournament = await Tournament.findById(id);
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    // Verify user is organizer
+    if (tournament.organizer.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized to delete this tournament'
+      });
+    }
+
+    await Tournament.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Tournament deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Update team status in tournament
+ */
+exports.updateTeamStatus = async (req, res, next) => {
+  try {
+    const { id, teamId } = req.params; // tournament id and team id
+    const { status } = req.body;
+    
+    const validStatuses = ['pending', 'confirmed', 'disqualified', 'withdrawn'];
+    
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status'
+      });
+    }
+
+    const tournament = await Tournament.findById(id);
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    // Verify user is organizer
+    if (tournament.organizer.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized to modify team status'
+      });
+    }
+
+    // Update team status
+    const updatedTournament = await Tournament.findOneAndUpdate(
+      { _id: id, 'teams.teamId': teamId },
+      { $set: { 'teams.$.status': status } },
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: updatedTournament
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Search tournaments
+ */
+exports.searchTournaments = async (req, res, next) => {
+  try {
+    const { q, category, level, location, status, dateRange } = req.query;
+    
+    let query = {};
+    
+    // Add search query if provided
+    if (q) {
+      query.$or = [
+        { name: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } },
+        { category: { $regex: q, $options: 'i' } }
+      ];
+    }
+    
+    if (category) {
+      query.category = category;
+    }
+    
+    if (level) {
+      query.level = level;
+    }
+    
+    if (status) {
+      query.status = status;
+    }
+    
+    if (dateRange) {
+      const [startDate, endDate] = dateRange.split(',').map(Date.parse);
+      if (startDate) query['dates.tournamentStart'] = { $gte: new Date(startDate) };
+      if (endDate) query['dates.tournamentEnd'] = { $lte: new Date(endDate) };
+    }
+    
+    // Add location-based query if coordinates are provided
+    if (location) {
+      const [lat, lng] = location.split(',').map(Number);
+      const distance = req.query.distance || 50; // default 50km
+      const radiusInRadians = distance / 6378.1; // Earth's radius in km
+
+      query['location.coordinates'] = {
+        $geoWithin: {
+          $centerSphere: [
+            [lng, lat],
+            radiusInRadians
+          ]
+        }
+      };
+    }
+    
+    const tournaments = await Tournament.find(query)
+      .populate('organizer', 'name mobile')
+      .sort({ 'dates.tournamentStart': 1 })
+      .limit(50);
+
+    res.status(200).json({
+      success: true,
+      count: tournaments.length,
+      data: tournaments
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Aliases for route compatibility
+exports.registerTeamForTournament = exports.registerTeam;
 
 module.exports = exports;

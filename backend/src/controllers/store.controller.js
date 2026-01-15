@@ -4,6 +4,8 @@ const Product = require('../models/product.model');
 const Order = require('../models/order.model');
 const Wallet = require('../models/Wallet.model');
 const Review = require('../models/Review.model');
+const multer = require('multer');
+const { uploadToCloudinary } = require('../utils/cloudinary');
 
 /**
  * Get stores based on filters
@@ -60,6 +62,59 @@ exports.getStores = async (req, res, next) => {
       success: true,
       count: stores.length,
       data: stores
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get current user's store profile
+ */
+exports.getMyStoreProfile = async (req, res, next) => {
+  try {
+    const store = await Store.findOne({ userId: req.user.id })
+      .populate('userId', 'name mobile email');
+
+    if (!store) {
+      return res.status(404).json({
+        success: false,
+        message: 'Store profile not found for current user'
+      });
+    }
+
+    // Get additional stats
+    const totalOrders = await Order.countDocuments({ storeId: store._id });
+    const totalRevenue = await Order.aggregate([
+      { $match: { storeId: store._id, 'payment.status': 'completed' } },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+    ]);
+
+    const avgRating = await Review.aggregate([
+      { $match: { 'reviewee.userId': store.userId } },
+      { $group: { _id: null, avgRating: { $avg: '$rating' } } }
+    ]);
+
+    const products = await Product.find({ storeId: store._id })
+      .select('name price inventory.quantity ratings.average')
+      .limit(10);
+
+    const profileData = {
+      ...store.toObject(),
+      stats: {
+        totalOrders,
+        totalRevenue: totalRevenue[0] ? totalRevenue[0].total : 0,
+        averageRating: avgRating[0] ? avgRating[0].avgRating : 0
+      },
+      products
+    };
+
+    res.status(200).json({
+      success: true,
+      data: profileData
     });
   } catch (error) {
     res.status(500).json({
@@ -208,36 +263,213 @@ exports.getStoreDashboard = async (req, res, next) => {
 };
 
 /**
- * Update store profile
+ * Update store profile with file uploads
  */
-exports.updateStoreProfile = async (req, res, next) => {
-  try {
-    const updateData = req.body;
-    
-    const store = await Store.findOneAndUpdate(
-      { userId: req.user.id },
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow images and PDFs
+    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image and PDF files are allowed!'), false);
+    }
+  }
+});
 
-    if (!store) {
-      return res.status(404).json({
+exports.updateStoreProfile = [
+  upload.fields([
+    { name: 'gstCertificate', maxCount: 1 },
+    { name: 'shopAct', maxCount: 1 },
+    { name: 'bankPassbook', maxCount: 1 },
+    { name: 'ownerPhoto', maxCount: 1 },
+    { name: 'storePhoto', maxCount: 1 }
+  ]),
+  async (req, res, next) => {
+    try {
+      const store = await Store.findOne({ userId: req.user.id });
+      
+      if (!store) {
+        return res.status(404).json({
+          success: false,
+          message: 'Store profile not found'
+        });
+      }
+
+      const updateData = { ...req.body };
+      
+      // Handle file uploads
+      if (req.files) {
+        // Upload GST Certificate
+        if (req.files.gstCertificate && req.files.gstCertificate[0]) {
+          try {
+            const file = req.files.gstCertificate[0];
+            const base64 = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+            const uploadResult = await uploadToCloudinary(base64, {
+              folder: 'stores/documents',
+              resource_type: 'auto'
+            });
+            updateData['documents.gstCertificate.file'] = uploadResult.url;
+            updateData['documents.gstCertificate.verified'] = false;
+          } catch (error) {
+            console.error('Error uploading GST certificate:', error);
+          }
+        }
+
+        // Upload Shop Act License
+        if (req.files.shopAct && req.files.shopAct[0]) {
+          try {
+            const file = req.files.shopAct[0];
+            const base64 = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+            const uploadResult = await uploadToCloudinary(base64, {
+              folder: 'stores/documents',
+              resource_type: 'auto'
+            });
+            updateData['documents.shopLicense.file'] = uploadResult.url;
+            updateData['documents.shopLicense.verified'] = false;
+          } catch (error) {
+            console.error('Error uploading Shop Act:', error);
+          }
+        }
+
+        // Upload Bank Passbook
+        if (req.files.bankPassbook && req.files.bankPassbook[0]) {
+          try {
+            const file = req.files.bankPassbook[0];
+            const base64 = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+            const uploadResult = await uploadToCloudinary(base64, {
+              folder: 'stores/documents',
+              resource_type: 'auto'
+            });
+            if (!updateData['documents.additionalDocs']) {
+              updateData['documents.additionalDocs'] = [];
+            }
+            if (!Array.isArray(updateData['documents.additionalDocs'])) {
+              updateData['documents.additionalDocs'] = [updateData['documents.additionalDocs']];
+            }
+            updateData['documents.additionalDocs'].push(uploadResult.url);
+          } catch (error) {
+            console.error('Error uploading bank passbook:', error);
+          }
+        }
+
+        // Upload Owner Photo
+        if (req.files.ownerPhoto && req.files.ownerPhoto[0]) {
+          try {
+            const file = req.files.ownerPhoto[0];
+            const base64 = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+            const uploadResult = await uploadToCloudinary(base64, {
+              folder: 'stores/photos',
+              resource_type: 'image'
+            });
+            updateData['documents.ownerID.front'] = uploadResult.url;
+            updateData['documents.ownerID.verified'] = false;
+          } catch (error) {
+            console.error('Error uploading owner photo:', error);
+          }
+        }
+
+        // Upload Store Photo
+        if (req.files.storePhoto && req.files.storePhoto[0]) {
+          try {
+            const file = req.files.storePhoto[0];
+            const base64 = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+            const uploadResult = await uploadToCloudinary(base64, {
+              folder: 'stores/photos',
+              resource_type: 'image'
+            });
+            // Store photo can be saved in additionalDocs or as a separate field
+            if (!updateData['documents.additionalDocs']) {
+              updateData['documents.additionalDocs'] = [];
+            }
+            if (!Array.isArray(updateData['documents.additionalDocs'])) {
+              updateData['documents.additionalDocs'] = [updateData['documents.additionalDocs']];
+            }
+            updateData['documents.additionalDocs'].push(uploadResult.url);
+          } catch (error) {
+            console.error('Error uploading store photo:', error);
+          }
+        }
+      }
+
+      // Update store fields
+      if (updateData.storeName) {
+        store.storeName = updateData.storeName;
+      }
+      if (updateData.ownerName) {
+        store.ownerName = updateData.ownerName;
+      }
+      if (updateData.address) {
+        if (typeof updateData.address === 'string') {
+          store.address.street = updateData.address;
+        } else {
+          Object.assign(store.address, updateData.address);
+        }
+      }
+      if (updateData.city) {
+        store.address.city = updateData.city;
+      }
+      if (updateData.state) {
+        store.address.state = updateData.state;
+      }
+      if (updateData.pincode) {
+        store.address.pincode = updateData.pincode;
+      }
+      if (updateData.gstNumber) {
+        store.gst.number = updateData.gstNumber;
+      }
+      if (updateData.category) {
+        try {
+          const category = typeof updateData.category === 'string' ? JSON.parse(updateData.category) : updateData.category;
+          store.category = Array.isArray(category) ? category[0] : category;
+        } catch {
+          store.category = updateData.category;
+        }
+      }
+
+      // Update documents
+      if (updateData['documents.gstCertificate.file']) {
+        store.documents.gstCertificate.file = updateData['documents.gstCertificate.file'];
+        store.documents.gstCertificate.verified = updateData['documents.gstCertificate.verified'] || false;
+      }
+      if (updateData['documents.shopLicense.file']) {
+        store.documents.shopLicense.file = updateData['documents.shopLicense.file'];
+        store.documents.shopLicense.verified = updateData['documents.shopLicense.verified'] || false;
+      }
+      if (updateData['documents.ownerID.front']) {
+        store.documents.ownerID.front = updateData['documents.ownerID.front'];
+        store.documents.ownerID.verified = updateData['documents.ownerID.verified'] || false;
+      }
+      if (updateData['documents.additionalDocs']) {
+        const additionalDocs = Array.isArray(updateData['documents.additionalDocs']) 
+          ? updateData['documents.additionalDocs'] 
+          : [updateData['documents.additionalDocs']];
+        store.documents.additionalDocs = [
+          ...(store.documents.additionalDocs || []),
+          ...additionalDocs
+        ];
+      }
+
+      await store.save();
+
+      res.status(200).json({
+        success: true,
+        data: store
+      });
+    } catch (error) {
+      console.error('Update store profile error:', error);
+      res.status(400).json({
         success: false,
-        message: 'Store profile not found'
+        message: error.message
       });
     }
-
-    res.status(200).json({
-      success: true,
-      data: store
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message
-    });
   }
-};
+];
 
 /**
  * Get store products

@@ -1,11 +1,10 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Layout from '../components/Layout';
 
 const ProfilePage = () => {
   return (
-    <Layout title="Player Profile - TeamUp India" description="Manage your player profile on TeamUp India">
+    <div>
       <Head>
         <title>Player Profile - TeamUp India</title>
         <meta name="description" content="Manage your player profile on TeamUp India" />
@@ -162,7 +161,7 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 };
 

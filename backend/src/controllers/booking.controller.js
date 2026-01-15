@@ -411,4 +411,123 @@ exports.getBooking = async (req, res, next) => {
   }
 };
 
+
+/**
+ * Rate a booking (user action)
+ */
+exports.rateBooking = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rating, review } = req.body;
+    
+    // Validate rating
+    if (rating < 1 || rating > 5 || !Number.isInteger(rating)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be an integer between 1 and 5'
+      });
+    }
+    
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+    
+    // Verify this user owns this booking
+    if (req.user.id !== booking.userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized to rate this booking'
+      });
+    }
+    
+    // Check if booking is completed (can only rate completed bookings)
+    if (booking.status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only rate completed bookings'
+      });
+    }
+    
+    // Update booking with user rating
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      id,
+      { 
+        'ratings.user.rating': rating,
+        'ratings.user.review': review,
+        'ratings.user.date': new Date()
+      },
+      { new: true }
+    );
+    
+    // Create review record
+    await Review.create({
+      reviewer: {
+        userId: req.user.id,
+        role: 'user'
+      },
+      reviewee: {
+        userId: booking.coachId,
+        role: 'coach'
+      },
+      bookingId: booking._id,
+      rating,
+      review,
+      type: 'booking'
+    });
+    
+    // Update coach ratings
+    const coach = await Coach.findById(booking.coachId);
+    if (coach) {
+      await Coach.findByIdAndUpdate(
+        booking.coachId,
+        { 
+          $inc: { 
+            'ratings.count': 1,
+            [`ratings.breakdown.${rating}`]: 1
+          },
+          $push: {
+            'ratings.recentReviews': {
+              userId: req.user.id,
+              rating: rating,
+              comment: review,
+              date: new Date()
+            }
+          }
+        }
+      );
+      
+      // Calculate new average
+      const updatedCoach = await Coach.findById(booking.coachId);
+      const totalRatings = updatedCoach.ratings.count;
+      const newAvg = (updatedCoach.ratings.breakdown[5]*5 + 
+                     updatedCoach.ratings.breakdown[4]*4 + 
+                     updatedCoach.ratings.breakdown[3]*3 + 
+                     updatedCoach.ratings.breakdown[2]*2 + 
+                     updatedCoach.ratings.breakdown[1]*1) / totalRatings;
+      
+      await Coach.findByIdAndUpdate(
+        booking.coachId,
+        { 'ratings.average': Math.round(newAvg * 10) / 10 } // Round to 1 decimal
+      );
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: updatedBooking
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Aliases for function compatibility
+exports.getCoachBookings = exports.getCoachBookings;
+
 module.exports = exports;

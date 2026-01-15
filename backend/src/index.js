@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const config = require('./config/index');
 const logger = require('./utils/logger');
 const app = require('./app');
+const createDefaultAdmin = require('./utils/createDefaultAdmin');
 
 // Create uploads and logs directories if they don't exist
 const fs = require('fs');
@@ -26,8 +27,11 @@ process.on('uncaughtException', (err) => {
 logger.info('Connecting to MongoDB...');
 mongoose
   .connect(config.mongoURI)
-  .then(() => {
+  .then(async () => {
     logger.info('Connected to MongoDB');
+
+    // Create default admin account if it doesn't exist
+    await createDefaultAdmin();
 
     // Start server
     const server = app.listen(config.port, () => {
@@ -44,7 +48,7 @@ mongoose
       });
     });
 
-    // Handle SIGTERM
+    // Handle SIGTERM (nodemon restart trigger)
     process.on('SIGTERM', () => {
       logger.info('👋 SIGTERM RECEIVED. Shutting down gracefully');
       server.close(() => {

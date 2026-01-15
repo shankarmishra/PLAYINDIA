@@ -34,6 +34,11 @@ const deliveryRoutes = require('./routes/delivery.routes');
 const bookingRoutes = require('./routes/booking.routes');
 const nearbyPlayersRoutes = require('./routes/nearby-players.routes');
 const apiRoutes = require('./routes/api.routes');
+const documentVerificationRoutes = require('./routes/document.verification.routes');
+const vehicleVerificationRoutes = require('./routes/vehicle.verification.routes');
+const bankVerificationRoutes = require('./routes/bank.verification.routes');
+const addressRoutes = require('./routes/address.routes');
+const verificationRoutes = require('./routes/verification.routes');
 
 // Import error handler
 const errorHandler = require('./middleware/error');
@@ -72,6 +77,11 @@ app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/nearby-players', nearbyPlayersRoutes);
 app.use('/api', apiRoutes);
+app.use('/api/verification', documentVerificationRoutes);
+app.use('/api/vehicle-verification', vehicleVerificationRoutes);
+app.use('/api/bank-verification', bankVerificationRoutes);
+app.use('/api/address', addressRoutes);
+app.use('/api/verifications', verificationRoutes);
 
 // Health check endpoint
 app.get('/health', async (req, res) => {

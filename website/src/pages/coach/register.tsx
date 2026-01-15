@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
-import Layout from '../../components/Layout';
+import { useRouter } from 'next/router';
 
 const CoachRegistration = () => {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [formData, setFormData] = useState({
     // Step 1 - Personal Details
-    fullName: '',
+    name: '',
     mobile: '',
     email: '',
     password: '',
-    profilePhoto: null,
+    profilePhoto: null as File | null,
     // Step 2 - Professional Details
     sportsCategory: [] as string[],
     experience: '',
@@ -19,10 +20,10 @@ const CoachRegistration = () => {
     bio: '',
     languages: [] as string[],
     // Step 3 - Documents
-    aadhaar: null,
-    pan: null,
-    coachingCertificate: null,
-    achievementProof: null,
+    aadhaar: null as File | null,
+    pan: null as File | null,
+    coachingCertificate: null as File | null,
+    achievementProof: null as File | null,
     bankAccount: '',
     bankIFSC: '',
     // Step 4 - Location & Fees
@@ -42,9 +43,24 @@ const CoachRegistration = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
     if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`File size too large. Please select a file smaller than 5MB.`);
+        return;
+      }
+      
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        alert(`Invalid file type. Please upload an image (JPG, PNG) or PDF file.`);
+        return;
+      }
+      
       setFormData({
         ...formData,
-        [field]: e.target.files[0]
+        [field]: file
       });
     }
   };
@@ -61,15 +77,137 @@ const CoachRegistration = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real application, you would submit the form data to your backend
-    console.log('Form submitted:', formData);
-    alert('Registration submitted successfully! Your application is under review.');
+    setError(null); // Clear previous errors
+    setIsSubmitting(true);
+    
+    try {
+      // Basic validation
+      if (!formData.name || !formData.email || !formData.password || !formData.mobile) {
+        setError('Please fill in all required fields');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (formData.sportsCategory.length === 0) {
+        setError('Please select at least one sports category');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!formData.aadhaar || !formData.pan || !formData.coachingCertificate) {
+        setError('Please upload all required documents (Aadhaar, PAN, and Coaching Certificate)');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Prepare form data for submission
+      const normalizedMobile = formData.mobile && !formData.mobile.startsWith('+') ? `+91${formData.mobile}` : formData.mobile;
+      
+      // Create FormData object to handle both regular fields and files
+      const submissionData = new FormData();
+      submissionData.append('name', formData.name);
+      submissionData.append('email', formData.email);
+      submissionData.append('password', formData.password);
+      submissionData.append('mobile', normalizedMobile);
+      submissionData.append('role', 'coach');
+      
+      // Add other form fields
+      submissionData.append('sportsCategory', JSON.stringify(formData.sportsCategory));
+      submissionData.append('languages', JSON.stringify(formData.languages));
+      submissionData.append('availableDays', JSON.stringify(formData.availableDays));
+      submissionData.append('experience', formData.experience);
+      submissionData.append('coachingType', formData.coachingType);
+      submissionData.append('bio', formData.bio);
+      submissionData.append('coachingArea', formData.coachingArea);
+      submissionData.append('radius', formData.radius);
+      submissionData.append('feePerSession', formData.feePerSession);
+      submissionData.append('bankAccount', formData.bankAccount);
+      submissionData.append('bankIFSC', formData.bankIFSC);
+      
+      // Add files if they exist
+      if (formData.profilePhoto) {
+        submissionData.append('profilePhoto', formData.profilePhoto, formData.profilePhoto.name);
+      }
+      if (formData.aadhaar) {
+        submissionData.append('aadhaar', formData.aadhaar, formData.aadhaar.name);
+      }
+      if (formData.pan) {
+        submissionData.append('pan', formData.pan, formData.pan.name);
+      }
+      if (formData.coachingCertificate) {
+        submissionData.append('coachingCertificate', formData.coachingCertificate, formData.coachingCertificate.name);
+      }
+      if (formData.achievementProof) {
+        submissionData.append('achievementProof', formData.achievementProof, formData.achievementProof.name);
+      }
+      
+      // Submit to backend API
+      const response = await fetch('/api/coach/register', {
+        method: 'POST',
+        body: submissionData,
+      });
+      
+      // Parse response safely
+      let responseData;
+      const contentType = response.headers.get('content-type');
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          responseData = await response.json();
+        } else {
+          const text = await response.text();
+          // Try to parse as JSON if it looks like JSON
+          try {
+            responseData = JSON.parse(text);
+          } catch {
+            // If not JSON, create error object
+            responseData = { 
+              success: false, 
+              message: text || 'Registration failed. Please try again.' 
+            };
+          }
+        }
+      } catch (parseError: any) {
+        console.error('Error parsing response:', parseError);
+        responseData = { 
+          success: false, 
+          message: 'Failed to process registration response. Please try again.' 
+        };
+      }
+      
+      if (response.ok && responseData.success) {
+        alert('Registration submitted successfully! Your application is under review.');
+        router.push('/registration-status');
+      } else {
+        const errorMsg = responseData?.message || responseData?.error || 'Registration failed. Please try again.';
+        setError(errorMsg);
+        alert(errorMsg);
+      }
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      let errorMessage = 'An error occurred during registration. Please try again.';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      setError(errorMessage);
+      alert(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <Layout title="Coach Registration - TeamUp India" description="Register as a coach on TeamUp India sports platform">
+    <div className="min-h-screen bg-gray-50">
       <Head>
         <title>Coach Registration - TeamUp India</title>
         <meta name="description" content="Register as a coach on TeamUp India sports platform" />
@@ -77,6 +215,11 @@ const CoachRegistration = () => {
 
       <div className="max-w-4xl mx-auto py-12 px-6">
         <div className="bg-white rounded-lg shadow-lg p-8">
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+              <span className="block sm:inline">{error}</span>
+            </div>
+          )}
           <h1 className="text-3xl font-bold text-center text-gray-900 mb-2">Coach Registration</h1>
           <p className="text-center text-gray-600 mb-8">Join TeamUp India as a verified coach</p>
           
@@ -118,11 +261,11 @@ const CoachRegistration = () => {
                     <label className="block text-gray-700 mb-2">Full Name *</label>
                     <input
                       type="text"
-                      name="fullName"
-                      value={formData.fullName}
+                      name="name"
+                      value={formData.name}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                     />
                   </div>
                   
@@ -134,7 +277,7 @@ const CoachRegistration = () => {
                       value={formData.mobile}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                     />
                   </div>
                   
@@ -146,20 +289,37 @@ const CoachRegistration = () => {
                       value={formData.email}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                     />
                   </div>
                   
-                  <div>
+                  <div className="relative">
                     <label className="block text-gray-700 mb-2">Password *</label>
                     <input
-                      type="password"
+                      type={passwordVisible ? "text" : "password"}
                       name="password"
                       value={formData.password}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 pr-10 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                     />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      onClick={() => setPasswordVisible(!passwordVisible)}
+                      aria-label={passwordVisible ? "Hide password" : "Show password"}
+                    >
+                      {passwordVisible ? (
+                        <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                      ) : (
+                        <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                        </svg>
+                      )}
+                    </button>
                   </div>
                   
                   <div className="md:col-span-2">
@@ -171,6 +331,9 @@ const CoachRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload profile photo</p>
+                          {formData.profilePhoto && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.profilePhoto.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -221,7 +384,7 @@ const CoachRegistration = () => {
                       value={formData.experience}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                     >
                       <option value="">Select years of experience</option>
                       {[...Array(30)].map((_, i) => (
@@ -237,7 +400,7 @@ const CoachRegistration = () => {
                       value={formData.coachingType}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                     >
                       <option value="">Select coaching type</option>
                       <option value="personal">Personal Coaching</option>
@@ -254,7 +417,7 @@ const CoachRegistration = () => {
                       onChange={handleInputChange}
                       required
                       rows={4}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                       placeholder="Tell us about your coaching philosophy, achievements, and what makes you unique"
                     ></textarea>
                   </div>
@@ -301,6 +464,9 @@ const CoachRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload Aadhaar Card</p>
+                          {formData.aadhaar && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.aadhaar.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -321,6 +487,9 @@ const CoachRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload PAN Card</p>
+                          {formData.pan && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.pan.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -341,6 +510,9 @@ const CoachRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload Coaching Certificate</p>
+                          {formData.coachingCertificate && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.coachingCertificate.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -361,6 +533,9 @@ const CoachRegistration = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
                           <p className="text-sm text-gray-500">Click to upload Achievement Proof</p>
+                          {formData.achievementProof && (
+                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.achievementProof.name}</p>
+                          )}
                         </div>
                         <input 
                           type="file" 
@@ -381,7 +556,7 @@ const CoachRegistration = () => {
                         value={formData.bankAccount}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                        className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                         placeholder="Enter your bank account number"
                       />
                     </div>
@@ -394,7 +569,7 @@ const CoachRegistration = () => {
                         value={formData.bankIFSC}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                        className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                         placeholder="Enter your bank IFSC code"
                       />
                     </div>
@@ -417,7 +592,7 @@ const CoachRegistration = () => {
                       value={formData.coachingArea}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                       placeholder="Enter your coaching area (e.g., Delhi, Mumbai, Bangalore)"
                     />
                   </div>
@@ -429,7 +604,7 @@ const CoachRegistration = () => {
                       value={formData.radius}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                     >
                       <option value="">Select radius</option>
                       <option value="5">5 km</option>
@@ -451,7 +626,7 @@ const CoachRegistration = () => {
                       onChange={handleInputChange}
                       required
                       min="0"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
                       placeholder="Enter your fee per session"
                     />
                   </div>
@@ -509,15 +684,16 @@ const CoachRegistration = () => {
                 <button
                   type="submit"
                   className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  disabled={isSubmitting}
                 >
-                  Submit Registration
+                  {isSubmitting ? 'Submitting...' : 'Submit Registration'}
                 </button>
               )}
             </div>
           </form>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 };
 

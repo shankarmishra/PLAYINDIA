@@ -5,7 +5,7 @@ const Store = require('../models/Store.model');
 const Delivery = require('../models/delivery.model');
 const Admin = require('../models/Admin.model');
 const Wallet = require('../models/Wallet.model');
-const Achievement = require('../models/Achievement.model');
+const Achievement = require('../models/achievement.model');
 const PlayPoint = require('../models/PlayPoint.model');
 const Notification = require('../models/Notification.model');
 const config = require('../config');
@@ -14,11 +14,12 @@ const { sendEmail } = require('../utils/email');
 const { generateToken } = require('../utils/security');
 const { generateReferralCode } = require('../utils/referral');
 const bcrypt = require('bcryptjs');
+const { verifyFirebaseToken, createCustomFirebaseToken } = require('../utils/firebase');
 
 // Generate JWT token
 const signToken = (id, userType) => {
-  return jwt.sign({ id, userType }, config.jwt.secret, {
-    expiresIn: config.jwt.expiresIn
+  return jwt.sign({ id, userType }, config.jwtSecret, {
+    expiresIn: config.jwtExpiresIn
   });
 };
 
@@ -56,15 +57,58 @@ exports.register = async (req, res, next) => {
   try {
     const { name, email, password, mobile, role = 'user' } = req.body;
 
+    // Normalize email to lowercase for consistent checking
+    const normalizedEmail = email ? email.toLowerCase().trim() : email;
+
+    // Normalize mobile number - remove country code and keep only 10 digits
+    let normalizedMobile = mobile;
+    if (normalizedMobile) {
+      // Remove all non-digit characters
+      normalizedMobile = normalizedMobile.replace(/\D/g, '');
+      // If it starts with 91 and has 12 digits, remove the 91 prefix
+      if (normalizedMobile.length === 12 && normalizedMobile.startsWith('91')) {
+        normalizedMobile = normalizedMobile.substring(2);
+      }
+      // If it starts with 0 and has 11 digits, remove the 0
+      if (normalizedMobile.length === 11 && normalizedMobile.startsWith('0')) {
+        normalizedMobile = normalizedMobile.substring(1);
+      }
+      // Ensure it's exactly 10 digits
+      if (normalizedMobile.length !== 10) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide a valid 10-digit mobile number'
+        });
+      }
+    }
+
     // Check if user already exists
+    // Email is already stored in lowercase due to schema, so use normalized email directly
+    // Mobile is stored as 10 digits, so use normalized mobile
     const existingUser = await User.findOne({
-      $or: [{ email }, { mobile }]
+      $or: [
+        { email: normalizedEmail }, // Email is already lowercase in DB
+        { mobile: normalizedMobile }
+      ]
     });
 
     if (existingUser) {
+      // Check which field matched to provide better error message
+      const emailMatch = existingUser.email && existingUser.email.toLowerCase() === normalizedEmail;
+      const mobileMatch = existingUser.mobile && existingUser.mobile === normalizedMobile;
+      
+      let errorMessage = 'User with this email or mobile already exists.';
+      if (emailMatch && mobileMatch) {
+        errorMessage = 'User with this email and mobile number already exists.';
+      } else if (emailMatch) {
+        errorMessage = 'User with this email already exists.';
+      } else if (mobileMatch) {
+        errorMessage = 'User with this mobile number already exists.';
+      }
+      
       return res.status(400).json({
         success: false,
-        message: 'User with this email or mobile already exists.'
+        message: errorMessage
       });
     }
 
@@ -73,10 +117,10 @@ exports.register = async (req, res, next) => {
 
     // Create user with enhanced enterprise features
     const user = await User.create({
-      name,
-      email,
+      name: name ? name.trim() : name,
+      email: normalizedEmail, // Use normalized email
       password,
-      mobile,
+      mobile: normalizedMobile,
       role: role.toLowerCase(),
       status: role.toLowerCase() === 'user' ? 'active' : 'pending', // Users are active by default, others pending for approval
       referral: {
@@ -114,12 +158,28 @@ exports.register = async (req, res, next) => {
         }
       });
     } else if (role === 'seller' || role === 'store') {
+      // Get store details from request body if available
+      const storeName = req.body.storeName || `${name}'s Store`;
+      const ownerName = req.body.ownerName || name;
+      const gstNumber = req.body.gstNumber || '';
+      const category = req.body.category || 'multi-sports';
+      const address = req.body.address || '';
+      const city = req.body.city || '';
+      const state = req.body.state || '';
+      const pincode = req.body.pincode || '';
+      
       await Store.create({
         userId: user._id,
-        storeName: `${name}'s Store`,
-        ownerName: name,
-        gst: { number: '' },
-        category: 'multi-sports',
+        storeName: storeName,
+        ownerName: ownerName,
+        gst: { number: gstNumber },
+        category: Array.isArray(category) ? category[0] : (typeof category === 'string' ? (category.startsWith('[') ? JSON.parse(category)[0] : category) : category),
+        address: {
+          street: address,
+          city: city,
+          state: state,
+          pincode: pincode
+        },
         verified: false,
         earnings: {
           total: 0,
@@ -130,7 +190,11 @@ exports.register = async (req, res, next) => {
     } else if (role === 'delivery') {
       await Delivery.create({
         userId: user._id,
-        vehicle: { type: 'bicycle' },
+        vehicle: { 
+          type: 'bicycle',
+          number: 'XX00XX0000', // Placeholder - should be updated during profile completion
+          licenseNumber: 'TEMP-LICENSE' // Placeholder - should be updated during profile completion
+        },
         verified: false,
         earnings: {
           total: 0,
@@ -183,10 +247,19 @@ exports.login = async (req, res, next) => {
     }
 
     // Check if account is active
+    // Regular users can login even if pending, but coaches, sellers, and delivery partners need approval
     if (user.status === 'suspended' || user.status === 'rejected') {
       return res.status(401).json({
         success: false,
         message: 'Account is inactive or suspended'
+      });
+    }
+
+    // For coach, seller, and delivery roles, they must be approved (active) to login
+    if ((user.role === 'coach' || user.role === 'seller' || user.role === 'delivery') && user.status === 'pending') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is pending approval. Please wait for admin approval before logging in. You will receive an email notification once your account is approved.'
       });
     }
 
@@ -216,9 +289,29 @@ exports.adminLogin = async (req, res, next) => {
       });
     }
 
-    const admin = await Admin.findOne({ email }).select('+password');
+    const normalizedEmail = email.toLowerCase().trim();
+    const admin = await Admin.findOne({ email: normalizedEmail }).select('+password');
 
-    if (!admin || !(await admin.comparePassword(password))) {
+    if (!admin) {
+      console.error(`Admin login failed: Admin not found with email: ${normalizedEmail}`);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    // Check if password is already hashed (shouldn't be, but just in case)
+    if (!admin.password || admin.password.length < 20) {
+      console.error(`Admin login failed: Password not properly hashed for email: ${normalizedEmail}`);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    const isPasswordValid = await admin.comparePassword(password);
+    if (!isPasswordValid) {
+      console.error(`Admin login failed: Invalid password for email: ${normalizedEmail}`);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -535,6 +628,109 @@ exports.sendMobileOTP = async (req, res, next) => {
       message: 'OTP sent successfully'
     });
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+}
+
+// Firebase Authentication Methods
+
+// Login with Firebase ID token
+exports.firebaseLogin = async (req, res, next) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Firebase ID token is required'
+      });
+    }
+
+    // Verify Firebase token
+    const decodedToken = await verifyFirebaseToken(idToken);
+    const { uid, email, name, phone_number } = decodedToken;
+
+    // Find or create user based on Firebase UID
+    let user = await User.findOne({ firebaseUid: uid });
+
+    if (!user) {
+      // Create new user if doesn't exist
+      const referralCode = await generateReferralCode();
+      
+      user = await User.create({
+        name: name || 'New User',
+        email: email || '',
+        mobile: phone_number || '',
+        firebaseUid: uid,
+        role: 'user', // Default role for Firebase users
+        status: 'active',
+        referral: {
+          code: referralCode
+        },
+        preferences: {
+          favoriteGames: [],
+          skillLevel: 'beginner',
+          notificationSettings: {
+            push: true,
+            email: true,
+            sms: false,
+            whatsapp: false
+          }
+        }
+      });
+
+      // Create user wallet
+      await Wallet.create({
+        userId: user._id,
+        balance: 0
+      });
+    }
+
+    // Update last login
+    user.security.lastLogin = new Date();
+    user.security.loginCount = (user.security.loginCount || 0) + 1;
+    await user.save({ validateBeforeSave: false });
+
+    createSendToken(user, 200, res, 'Firebase login successful');
+  } catch (error) {
+    console.error('Firebase login error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Generate Firebase custom token
+exports.generateFirebaseCustomToken = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Create custom Firebase token
+    const customToken = await createCustomFirebaseToken(user._id.toString(), {
+      role: user.role,
+      email: user.email,
+      name: user.name
+    });
+
+    res.status(200).json({
+      success: true,
+      customToken
+    });
+  } catch (error) {
+    console.error('Generate custom token error:', error);
     res.status(500).json({
       success: false,
       message: error.message

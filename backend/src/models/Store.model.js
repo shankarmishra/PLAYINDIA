@@ -114,14 +114,7 @@ const storeSchema = new mongoose.Schema({
     autoOrder: { type: Boolean, default: false },
     supplierIntegration: { type: Boolean, default: false }
   },
-  promotions: [{
-    title: String,
-    description: String,
-    discount: Number, // percentage
-    startDate: Date,
-    endDate: Date,
-    active: { type: Boolean, default: false }
-  }],
+
   earnings: {
     total: { type: Number, default: 0 },
     available: { type: Number, default: 0 },
@@ -138,11 +131,7 @@ const storeSchema = new mongoose.Schema({
     bankName: String,
     accountHolderName: String
   },
-  analytics: {
-    views: { type: Number, default: 0 },
-    orders: { type: Number, default: 0 },
-    revenue: { type: Number, default: 0 }
-  },
+
   inventory: {
     autoReorder: { type: Boolean, default: false },
     reorderThreshold: { type: Number, default: 5 },
@@ -238,11 +227,11 @@ const storeSchema = new mongoose.Schema({
 });
 
 // Indexes for efficient queries
-storeSchema.index({ userId: 1 });
+// userId already has unique index via schema definition
 storeSchema.index({ storeName: 'text' });
 storeSchema.index({ category: 1 });
 storeSchema.index({ verified: 1 });
-storeSchema.index({ 'address.coordinates': '2dsphere' });
+// address.coordinates already has 2dsphere index via schema definition
 storeSchema.index({ status: 1 });
 storeSchema.index({ 'ratings.average': 1 });
 storeSchema.index({ 'analytics.revenue': -1 });

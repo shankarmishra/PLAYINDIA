@@ -32,7 +32,9 @@ const Layout: React.FC<LayoutProps> = ({
               <Link href="/about" className="hover:text-red-400">About</Link>
               <Link href="/features" className="hover:text-red-400">Features</Link>
               <Link href="/how-it-works" className="hover:text-red-400">How It Works</Link>
+
               <Link href="/contact" className="hover:text-red-400">Contact</Link>
+              <Link href="/support" className="hover:text-red-400">Support</Link>
               <Link href="/login" className="hover:text-red-400">Login</Link>
             </nav>
             <div className="md:hidden">
@@ -80,6 +82,7 @@ const Layout: React.FC<LayoutProps> = ({
               <li><Link href="/privacy" className="hover:text-red-400">Privacy Policy</Link></li>
               <li><Link href="/terms" className="hover:text-red-400">Terms of Service</Link></li>
               <li><Link href="/help" className="hover:text-red-400">Help Center</Link></li>
+              <li><Link href="/support" className="hover:text-red-400">Support Tickets</Link></li>
             </ul>
           </div>
         </div>

@@ -1,5 +1,5 @@
 const express = require('express');
-const { protect, authorize } = require('../middleware/auth.middleware');
+const { authenticate: protect, authorize } = require('../middleware/auth.middleware');
 const userController = require('../controllers/user.controller');
 const coachController = require('../controllers/coach.controller');
 const storeController = require('../controllers/store.controller');
@@ -38,11 +38,14 @@ router.route('/users/achievements')
 router.route('/coaches')
   .get(protect, coachController.getCoaches);
 
+router.route('/coaches/profile')
+  .get(protect, coachController.getMyCoachProfile);
+
 router.route('/coaches/:id')
   .get(protect, coachController.getCoachProfile);
 
 router.route('/coaches/dashboard')
-  .get(protect, protect, coachController.getCoachDashboard);
+  .get(protect, coachController.getCoachDashboard);
 
 router.route('/coaches/availability')
   .put(protect, coachController.updateAvailability);
@@ -53,6 +56,10 @@ router.route('/coaches/:id/availability/:date')
 // Store routes
 router.route('/stores')
   .get(protect, storeController.getStores);
+
+router.route('/stores/profile')
+  .get(protect, storeController.getMyStoreProfile)
+  .put(protect, authorize('seller', 'store'), storeController.updateStoreProfile);
 
 router.route('/stores/:id')
   .get(protect, storeController.getStoreProfile);
@@ -71,6 +78,9 @@ router.route('/stores/products/:id')
 // Delivery routes
 router.route('/delivery/available')
   .get(protect, deliveryController.getAvailableDeliveryBoys);
+
+router.route('/delivery/profile')
+  .get(protect, deliveryController.getMyDeliveryProfile);
 
 router.route('/delivery/dashboard')
   .get(protect, authorize('delivery'), deliveryController.getDeliveryDashboard);

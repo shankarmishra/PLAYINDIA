@@ -1,11 +1,10 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Layout from '../components/Layout';
 
 const FeaturesPage = () => {
   return (
-    <Layout title="Platform Features - TeamUp India" description="Explore the comprehensive features of TeamUp India sports platform">
+    <div>
       <Head>
         <title>Platform Features - TeamUp India</title>
         <meta name="description" content="Explore the comprehensive features of TeamUp India sports platform" />
@@ -22,7 +21,7 @@ const FeaturesPage = () => {
       </section>
 
       {/* Player Features */}
-      <section className="py-16 bg-gray-100">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Features for Players</h2>
@@ -30,7 +29,9 @@ const FeaturesPage = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">🔍</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Find Players</h3>
               <p className="text-gray-700">
                 Connect with other players in your area who share your passion for sports. 
@@ -38,7 +39,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">教练</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Book Coaches</h3>
               <p className="text-gray-700">
                 Discover verified coaches in your area with the right expertise for your sport. 
@@ -46,7 +49,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">🏆</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Join Tournaments</h3>
               <p className="text-gray-700">
                 Participate in local and regional tournaments organized by verified coaches and sports organizations. 
@@ -54,7 +59,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">🛒</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Buy Equipment</h3>
               <p className="text-gray-700">
                 Purchase quality sports equipment from verified stores. Compare prices, check availability, 
@@ -62,7 +69,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">📊</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Track Fitness</h3>
               <p className="text-gray-700">
                 Monitor your performance, track your progress, and set goals with our comprehensive analytics tools. 
@@ -70,7 +79,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">💬</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Community Connect</h3>
               <p className="text-gray-700">
                 Join our vibrant sports community. Share experiences, get advice, and stay updated with 
@@ -82,7 +93,7 @@ const FeaturesPage = () => {
       </section>
 
       {/* Coach Features */}
-      <section className="py-16">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Features for Coaches</h2>
@@ -90,7 +101,9 @@ const FeaturesPage = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">✅</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Verified Profiles</h3>
               <p className="text-gray-700">
                 Create a professional profile that showcases your expertise, experience, and achievements. 
@@ -98,7 +111,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">📅</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Booking Calendar</h3>
               <p className="text-gray-700">
                 Manage your schedule with our intuitive calendar. Set availability, block time slots, 
@@ -106,7 +121,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">🏆</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Tournament Hosting</h3>
               <p className="text-gray-700">
                 Organize and host tournaments on our platform. Manage registrations, schedules, 
@@ -114,7 +131,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">💰</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Earnings Dashboard</h3>
               <p className="text-gray-700">
                 Track your earnings, view payment history, and manage payouts. Get insights into 
@@ -122,7 +141,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">📈</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Performance Analytics</h3>
               <p className="text-gray-700">
                 Access detailed analytics about your students' progress, session attendance, 
@@ -130,7 +151,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">⭐</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Rating System</h3>
               <p className="text-gray-700">
                 Build your reputation through genuine reviews and ratings from your students. 
@@ -142,7 +165,7 @@ const FeaturesPage = () => {
       </section>
 
       {/* Store Features */}
-      <section className="py-16 bg-gray-100">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Features for Stores</h2>
@@ -150,7 +173,9 @@ const FeaturesPage = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">🏪</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Product Listings</h3>
               <p className="text-gray-700">
                 List your sports equipment with detailed descriptions, images, and pricing. 
@@ -158,7 +183,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">📦</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Order Management</h3>
               <p className="text-gray-700">
                 Efficiently manage incoming orders, track fulfillment status, and communicate 
@@ -166,7 +193,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">🚚</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Delivery Assignment</h3>
               <p className="text-gray-700">
                 Assign orders to reliable delivery partners for prompt and efficient delivery. 
@@ -174,7 +203,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">📊</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Sales Analytics</h3>
               <p className="text-gray-700">
                 Access detailed analytics about your sales, popular products, customer demographics, 
@@ -182,7 +213,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">👥</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Customer Management</h3>
               <p className="text-gray-700">
                 Build relationships with your customers, track purchase history, and offer 
@@ -190,7 +223,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">📱</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Mobile Optimization</h3>
               <p className="text-gray-700">
                 Manage your store on-the-go with our mobile-optimized dashboard. 
@@ -202,7 +237,7 @@ const FeaturesPage = () => {
       </section>
 
       {/* Delivery Features */}
-      <section className="py-16">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Features for Delivery Partners</h2>
@@ -210,7 +245,9 @@ const FeaturesPage = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">🎯</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Smart Delivery</h3>
               <p className="text-gray-700">
                 Receive delivery assignments based on your location and availability. 
@@ -218,7 +255,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">💰</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Earnings Tracking</h3>
               <p className="text-gray-700">
                 Track your daily, weekly, and monthly earnings. View payment history and 
@@ -226,7 +265,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">📍</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Location Services</h3>
               <p className="text-gray-700">
                 Enable location services to receive nearby delivery assignments. 
@@ -234,7 +275,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">⭐</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Rating System</h3>
               <p className="text-gray-700">
                 Build your reputation with ratings from stores and customers. 
@@ -242,7 +285,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">📞</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Communication</h3>
               <p className="text-gray-700">
                 Communicate with stores and customers during the delivery process. 
@@ -250,7 +295,9 @@ const FeaturesPage = () => {
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">📋</div>
+              <div className="mx-auto mb-4">
+                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+              </div>
               <h3 className="text-xl font-bold mb-3 text-red-600">Delivery History</h3>
               <p className="text-gray-700">
                 Maintain a record of all completed deliveries. Access proof of delivery 
@@ -262,7 +309,7 @@ const FeaturesPage = () => {
       </section>
 
       {/* Call to Action */}
-      <section className="py-16 bg-gray-100">
+      <section className="py-16 bg-white">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Ready to Experience Our Features?</h2>
           <p className="text-lg text-gray-700 mb-8">
@@ -278,7 +325,7 @@ const FeaturesPage = () => {
           </div>
         </div>
       </section>
-    </Layout>
+    </div>
   );
 };
 

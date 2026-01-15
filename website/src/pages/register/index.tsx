@@ -1,10 +1,9 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import Layout from '@/components/Layout';
 
 export default function Register() {
   return (
-    <Layout title="Register - TeamUp India Sports Platform" description="Register as player, coach, store, or delivery partner on TeamUp India">
+    <div>
       <Head>
         <title>Register - TeamUp India Sports Platform</title>
         <meta name="description" content="Register as player, coach, store, or delivery partner on TeamUp India" />
@@ -107,6 +106,6 @@ export default function Register() {
           </div>
         </div>
       </section>
-      </Layout>
+      </div>
   );
 }

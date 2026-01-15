@@ -1,11 +1,10 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Layout from '../components/Layout';
 
 const HelpPage = () => {
   return (
-    <Layout title="Help Center - TeamUp India" description="Get help and support for TeamUp India platform">
+    <div>
       <Head>
         <title>Help Center - TeamUp India</title>
         <meta name="description" content="Get help and support for TeamUp India platform" />
@@ -22,7 +21,7 @@ const HelpPage = () => {
       </section>
 
       {/* Search Bar */}
-      <section className="py-8 px-6 bg-gray-50">
+      <section className="py-8 px-6 bg-white">
         <div className="max-w-3xl mx-auto">
           <div className="relative">
             <input
@@ -40,12 +39,12 @@ const HelpPage = () => {
       </section>
 
       {/* Help Categories */}
-      <section className="py-16 px-6">
+      <section className="py-16 bg-white px-6">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">How can we help you?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <Link href="/help/account" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-              <div className="text-4xl mb-4">👤</div>
+              <div className="text-4xl mb-4 text-red-500">👤</div>
               <h3 className="text-xl font-bold mb-3 text-gray-900">Account Help</h3>
               <p className="text-gray-600">
                 Registration, login, profile management, and account security
@@ -53,7 +52,7 @@ const HelpPage = () => {
             </Link>
             
             <Link href="/help/coach" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-              <div className="text-4xl mb-4">👨‍🏫</div>
+              <div className="text-4xl mb-4 text-green-500">👨‍🏫</div>
               <h3 className="text-xl font-bold mb-3 text-gray-900">Coach Support</h3>
               <p className="text-gray-600">
                 Booking management, earnings, profile setup, and coaching tools
@@ -61,7 +60,7 @@ const HelpPage = () => {
             </Link>
             
             <Link href="/help/store" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-              <div className="text-4xl mb-4">🏪</div>
+              <div className="text-4xl mb-4 text-blue-500">🏪</div>
               <h3 className="text-xl font-bold mb-3 text-gray-900">Store Support</h3>
               <p className="text-gray-600">
                 Product listings, orders, inventory, and sales management
@@ -69,7 +68,7 @@ const HelpPage = () => {
             </Link>
             
             <Link href="/help/delivery" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-              <div className="text-4xl mb-4">🚚</div>
+              <div className="text-4xl mb-4 text-purple-500">🚚</div>
               <h3 className="text-xl font-bold mb-3 text-gray-900">Delivery Support</h3>
               <p className="text-gray-600">
                 Delivery assignments, earnings, and route optimization
@@ -77,7 +76,7 @@ const HelpPage = () => {
             </Link>
             
             <Link href="/help/payment" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-              <div className="text-4xl mb-4">💳</div>
+              <div className="text-4xl mb-4 text-yellow-500">💳</div>
               <h3 className="text-xl font-bold mb-3 text-gray-900">Payment Issues</h3>
               <p className="text-gray-600">
                 Payment methods, refunds, billing, and transaction history
@@ -85,7 +84,7 @@ const HelpPage = () => {
             </Link>
             
             <Link href="/help/technical" className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-              <div className="text-4xl mb-4">💻</div>
+              <div className="text-4xl mb-4 text-indigo-500">💻</div>
               <h3 className="text-xl font-bold mb-3 text-gray-900">Technical Support</h3>
               <p className="text-gray-600">
                 App issues, website problems, and technical troubleshooting
@@ -96,7 +95,7 @@ const HelpPage = () => {
       </section>
 
       {/* Popular Help Topics */}
-      <section className="py-16 bg-gray-100 px-6">
+      <section className="py-16 bg-white px-6">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Popular Help Topics</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -136,7 +135,7 @@ const HelpPage = () => {
       </section>
 
       {/* Contact Support */}
-      <section className="py-16 px-6">
+      <section className="py-16 bg-white px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Still need help?</h2>
           <p className="text-lg text-gray-700 mb-8">
@@ -179,7 +178,7 @@ const HelpPage = () => {
           </div>
         </div>
       </section>
-    </Layout>
+    </div>
   );
 };
 

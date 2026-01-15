@@ -1,11 +1,10 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Layout from '../components/Layout';
 
 const TermsPage = () => {
   return (
-    <Layout title="Terms and Conditions - TeamUp India" description="TeamUp India terms and conditions for using our platform">
+    <div>
       <Head>
         <title>Terms and Conditions - TeamUp India</title>
         <meta name="description" content="TeamUp India terms and conditions for using our platform" />
@@ -171,7 +170,7 @@ const TermsPage = () => {
           </div>
         </div>
       </section>
-    </Layout>
+    </div>
   );
 };
 

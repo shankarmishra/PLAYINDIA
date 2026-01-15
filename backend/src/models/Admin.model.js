@@ -1,16 +1,40 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const adminSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-    unique: true
+  name: {
+    type: String,
+    required: [true, 'Please provide admin name'],
+    trim: true
   },
-  adminType: {
+  email: {
+    type: String,
+    required: [true, 'Please provide admin email'],
+    unique: true,
+    lowercase: true,
+    match: [/\S+@\S+\.\S+/, 'Please provide a valid email address']
+  },
+  password: {
+    type: String,
+    required: [true, 'Please provide a password'],
+    minlength: [6, 'Password must be at least 6 characters long'],
+    select: false // Don't return password in queries by default
+  },
+  role: {
     type: String,
     enum: ['super_admin', 'admin', 'moderator', 'support_agent', 'content_manager'],
     default: 'admin'
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'suspended'],
+    default: 'active'
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    sparse: true, // Optional - can link to User if needed
+    unique: true
   },
   permissions: {
     users: {
@@ -94,13 +118,13 @@ const adminSchema = new mongoose.Schema({
   performance: {
     rating: {
       type: Number,
-      min: 1,
+      min: 0,
       max: 5,
       default: 0
     },
     satisfaction: {
       type: Number,
-      min: 1,
+      min: 0,
       max: 5,
       default: 0
     }
@@ -127,15 +151,30 @@ const adminSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Update the updatedAt timestamp before saving
-adminSchema.pre('save', function(next) {
+// Hash password before saving
+adminSchema.pre('save', async function(next) {
+  // Only hash the password if it has been modified (or is new)
+  if (!this.isModified('password')) {
+    this.updatedAt = Date.now();
+    return next();
+  }
+  
+  // Hash the password with cost of 12
+  this.password = await bcrypt.hash(this.password, 12);
   this.updatedAt = Date.now();
   next();
 });
 
+// Compare password method
+adminSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
 // Indexes for efficient queries
+adminSchema.index({ email: 1 });
 adminSchema.index({ userId: 1 });
-adminSchema.index({ adminType: 1 });
+adminSchema.index({ role: 1 });
+adminSchema.index({ status: 1 });
 adminSchema.index({ isActive: 1 });
 adminSchema.index({ lastLogin: -1 });
 

@@ -18,20 +18,43 @@ jest.mock('../utils/firebase', () => ({
   verifyIdToken: jest.fn().mockResolvedValue({ uid: 'test-uid' })
 }));
 
-// Global test setup
+// Global test setup helpers
 let mongoServer;
 
-beforeAll(async () => {
+async function connect() {
+  if (mongoServer && mongoose.connection.readyState === 1) {
+    // already connected
+    return;
+  }
   mongoServer = await MongoMemoryServer.create();
   const mongoUri = mongoServer.getUri();
   await mongoose.connect(mongoUri);
-});
+}
 
-afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
-});
+async function closeDatabase() {
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.connection.dropDatabase();
+    await mongoose.connection.close();
+  }
+  if (mongoServer) {
+    await mongoServer.stop();
+    mongoServer = null;
+  }
+}
 
+async function clearDatabase() {
+  const collections = mongoose.connection.collections;
+  for (const key in collections) {
+    const collection = collections[key];
+    try {
+      await collection.deleteMany();
+    } catch (err) {
+      // ignore
+    }
+  }
+}
+
+// Jest lifecycle hooks to keep backwards compatibility
 beforeEach(() => {
   jest.clearAllMocks();
 });
@@ -59,4 +82,13 @@ global.createTestUser = async (User, data = {}) => {
 // Global error handler for unhandled promise rejections
 process.on('unhandledRejection', (error) => {
   console.error('Unhandled Promise Rejection in tests:', error);
-}); 
+});
+
+module.exports = {
+  connect,
+  closeDatabase,
+  clearDatabase,
+  // expose mocks to other test helpers if needed
+  mockCloudinaryUpload,
+  mockCloudinaryDelete
+}; 

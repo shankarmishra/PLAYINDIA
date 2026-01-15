@@ -1,11 +1,10 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Layout from '../components/Layout';
 
 const AboutPage = () => {
   return (
-    <Layout title="About Us - TeamUp India" description="Learn about TeamUp India's mission to connect the sports ecosystem in India">
+    <div>
       <Head>
         <title>About Us - TeamUp India</title>
         <meta name="description" content="Learn about TeamUp India's mission to connect the sports ecosystem in India" />
@@ -22,7 +21,7 @@ const AboutPage = () => {
       </section>
 
       {/* Vision & Mission */}
-      <section className="py-16 bg-gray-100">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div>
@@ -47,26 +46,26 @@ const AboutPage = () => {
       </section>
 
       {/* Problem We Solve */}
-      <section className="py-16">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">The Problem We Solve</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-white p-8 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">🔍</div>
+              <div className="text-4xl mb-4 text-red-500">🔍</div>
               <h3 className="text-xl font-bold mb-3">Finding the Right Coach</h3>
               <p className="text-gray-600">
                 Players struggle to find verified, experienced coaches in their locality with the right expertise for their sport.
               </p>
             </div>
             <div className="bg-white p-8 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">🏪</div>
+              <div className="text-4xl mb-4 text-green-500">🏪</div>
               <h3 className="text-xl font-bold mb-3">Access to Quality Equipment</h3>
               <p className="text-gray-600">
                 Getting access to quality sports equipment from verified stores with reliable delivery options.
               </p>
             </div>
             <div className="bg-white p-8 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">🤝</div>
+              <div className="text-4xl mb-4 text-blue-500">🤝</div>
               <h3 className="text-xl font-bold mb-3">Connecting the Ecosystem</h3>
               <p className="text-gray-600">
                 Creating a unified platform where all sports stakeholders can connect, collaborate, and grow together.
@@ -77,7 +76,7 @@ const AboutPage = () => {
       </section>
 
       {/* Why TeamUp India */}
-      <section className="py-16 bg-gray-100">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Why TeamUp India is Different</h2>
           <div className="space-y-12">
@@ -125,7 +124,7 @@ const AboutPage = () => {
       </section>
 
       {/* Founders Message */}
-      <section className="py-16">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Message from Our Founders</h2>
           <div className="max-w-3xl mx-auto">
@@ -142,7 +141,7 @@ const AboutPage = () => {
       </section>
 
       {/* Call to Action */}
-      <section className="py-16 bg-gray-100">
+      <section className="py-16 bg-white">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Join Our Sports Ecosystem</h2>
           <p className="text-lg text-gray-700 mb-8">
@@ -160,7 +159,7 @@ const AboutPage = () => {
           </div>
         </div>
       </section>
-    </Layout>
+    </div>
   );
 };
 

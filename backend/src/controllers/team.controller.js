@@ -416,18 +416,30 @@ exports.getTeamsBySportAndLocation = async (req, res, next) => {
     
     // Add location-based query if coordinates are provided
     if (location) {
-      const [lat, lng] = location.split(',').map(Number);
-      const distance = req.query.distance || 50; // default 50km
-      const radiusInRadians = distance / 6378.1; // Earth's radius in km
-
-      query['location.coordinates'] = {
-        $geoWithin: {
-          $centerSphere: [
-            [lng, lat],
-            radiusInRadians
-          ]
+      try {
+        const [lat, lng] = location.split(',').map(Number);
+        if (isNaN(lat) || isNaN(lng)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid coordinates format. Expected: lat,lng'
+          });
         }
-      };
+        
+        const distance = req.query.distance ? Number(req.query.distance) : 50; // default 50km
+        const radiusInRadians = distance / 6378.1; // Earth's radius in km
+
+        query['location.coordinates'] = {
+          $geoWithin: {
+            $centerSphere: [
+              [lng, lat],
+              radiusInRadians
+            ]
+          }
+        };
+      } catch (error) {
+        console.error('Error parsing location:', error);
+        // Continue without location filter
+      }
     }
     
     const teams = await Team.find(query)
@@ -448,5 +460,45 @@ exports.getTeamsBySportAndLocation = async (req, res, next) => {
     });
   }
 };
+
+// Aliases for route compatibility
+exports.getTeams = exports.getUserTeams;
+exports.deleteTeam = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const team = await Team.findById(id);
+    if (!team) {
+      return res.status(404).json({
+        success: false,
+        message: 'Team not found'
+      });
+    }
+    
+    // Check if user is owner
+    if (team.owner.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized to delete this team'
+      });
+    }
+    
+    await Team.findByIdAndDelete(id);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Team deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+exports.addPlayer = exports.addMember;
+exports.removePlayer = exports.removeMember;
+exports.updatePlayerRole = exports.updateMemberRole;
 
 module.exports = exports;

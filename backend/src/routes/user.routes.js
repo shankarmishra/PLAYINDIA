@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth.middleware');
 const User = require('../models/user.model');
 const logger = require('../utils/logger');
 
@@ -9,6 +9,7 @@ const {
   getUserProfile,
   updateUserProfile,
   updateUserRole,
+  updateUserStatus,
   changePassword
 } = require('../controllers/user.controller');
 
@@ -64,12 +65,13 @@ router.get('/leaderboard', async (req, res) => {
 });
 
 // User routes
-router.get('/profile', protect, getUserProfile);
-router.put('/profile', protect, updateUserProfile);
-router.put('/change-password', protect, changePassword);
+router.get('/profile', authenticate, getUserProfile);
+router.put('/profile', authenticate, updateUserProfile);
+router.put('/change-password', authenticate, changePassword);
 
 // Admin routes
-router.get('/', protect, authorize('admin'), getUsers);
-router.put('/:id/role', protect, authorize('admin'), updateUserRole);
+router.get('/', authenticate, authorize('admin'), getUsers);
+router.put('/:id/role', authenticate, authorize('admin'), updateUserRole);
+router.put('/:id', authenticate, authorize('admin'), updateUserStatus);
 
 module.exports = router;

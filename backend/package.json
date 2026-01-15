@@ -15,7 +15,10 @@
     "test:all": "node src/tests/scripts/test-all-apis.js",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{js,json}\"",
-    "queue:worker": "node src/workers/queue.worker.js"
+    "queue:worker": "node src/workers/queue.worker.js",
+    "create-admin": "node create-admin.js",
+    "check-admin": "node check-admin.js",
+    "reset-admin": "node reset-admin-password.js"
   },
   "dependencies": {
     "@sentry/node": "^7.120.3",
@@ -41,7 +44,7 @@
   "devDependencies": {
     "@babel/core": "^7.27.4",
     "@babel/preset-env": "^7.27.2",
-    "axios": "^1.10.0",
+    "axios": "^1.13.2",
     "dotenv": "^16.5.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
-const { protect, authorize } = require('../middleware/auth');
+const { authenticate: protect, authorize } = require('../middleware/auth.middleware');
 const {
   createOrder,
   getOrders,

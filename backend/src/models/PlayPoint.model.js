@@ -197,9 +197,9 @@ playPointSchema.pre('save', function(next) {
 });
 
 // Indexes for efficient queries
-playPointSchema.index({ playPointId: 1, unique: true });
+// playPointId already has unique index via schema definition
 playPointSchema.index({ type: 1 });
-playPointSchema.index({ 'location.coordinates': '2dsphere' });
+// location.coordinates already has 2dsphere index via schema definition
 playPointSchema.index({ 'location.address.city': 1 });
 playPointSchema.index({ 'location.address.state': 1 });
 playPointSchema.index({ ratings: 1 });

@@ -19,8 +19,9 @@ const walletSchema = new mongoose.Schema({
   transactions: [{
     transactionId: {
       type: String,
-      required: true,
-      unique: true
+      required: true
+      // Note: Uniqueness should be enforced at application level, not schema level for array subdocuments
+      // Sparse index is defined below to allow null values
     },
     type: {
       type: String,
@@ -94,5 +95,7 @@ walletSchema.index({ 'transactions.transactionDate': -1 });
 walletSchema.index({ 'transactions.type': 1 });
 walletSchema.index({ 'transactions.category': 1 });
 walletSchema.index({ 'transactions.status': 1 });
+// Sparse index on transactionId to allow null values and avoid duplicate key errors
+walletSchema.index({ 'transactions.transactionId': 1 }, { sparse: true, unique: false });
 
 module.exports = mongoose.model('Wallet', walletSchema);

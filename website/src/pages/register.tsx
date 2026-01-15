@@ -1,11 +1,10 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Layout from '../components/Layout';
 
 const RegisterPage = () => {
   return (
-    <Layout title="Register - TeamUp India Sports Platform" description="Register as player, coach, store, or delivery partner on TeamUp India">
+    <div>
       <Head>
         <title>Register - TeamUp India Sports Platform</title>
         <meta name="description" content="Register as player, coach, store, or delivery partner on TeamUp India" />
@@ -21,7 +20,7 @@ const RegisterPage = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Link href="/coach/register" className="bg-white border border-gray-200 rounded-xl p-8 shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
-            <div className="text-5xl mb-4">👨‍🏫</div>
+            <div className="text-5xl mb-4 text-red-500">👨‍🏫</div>
             <h2 className="text-2xl font-bold text-gray-900 mb-3">Register as Coach</h2>
             <p className="text-gray-600 mb-4">
               Are you a certified coach looking to grow your business? Register to create your profile and start accepting bookings.
@@ -32,7 +31,7 @@ const RegisterPage = () => {
           </Link>
 
           <Link href="/store/register" className="bg-white border border-gray-200 rounded-xl p-8 shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
-            <div className="text-5xl mb-4">🏪</div>
+            <div className="text-5xl mb-4 text-green-500">🏪</div>
             <h2 className="text-2xl font-bold text-gray-900 mb-3">Register as Store</h2>
             <p className="text-gray-600 mb-4">
               Own a sports equipment store? Register to list your products and reach customers in your area.
@@ -43,7 +42,7 @@ const RegisterPage = () => {
           </Link>
 
           <Link href="/delivery/register" className="bg-white border border-gray-200 rounded-xl p-8 shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
-            <div className="text-5xl mb-4">🚚</div>
+            <div className="text-5xl mb-4 text-blue-500">🚚</div>
             <h2 className="text-2xl font-bold text-gray-900 mb-3">Register as Delivery Partner</h2>
             <p className="text-gray-600 mb-4">
               Want to earn by delivering sports equipment? Register to start accepting delivery assignments.
@@ -54,7 +53,7 @@ const RegisterPage = () => {
           </Link>
 
           <Link href="/register/player" className="bg-white border border-gray-200 rounded-xl p-8 shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
-            <div className="text-5xl mb-4">⚽</div>
+            <div className="text-5xl mb-4 text-purple-500">⚽</div>
             <h2 className="text-2xl font-bold text-gray-900 mb-3">Register as Player</h2>
             <p className="text-gray-600 mb-4">
               Are you a sports enthusiast looking for coaches or equipment? Register as a player to get started.
@@ -77,7 +76,7 @@ const RegisterPage = () => {
           </p>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 };
 

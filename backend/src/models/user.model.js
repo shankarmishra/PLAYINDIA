@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -7,6 +8,11 @@ const userSchema = new mongoose.Schema({
     trim: true,
     minlength: [2, 'Name must be at least 2 characters long'],
     maxlength: [50, 'Name cannot be more than 50 characters']
+  },
+  firebaseUid: {
+    type: String,
+    unique: true,
+    sparse: true // Allows multiple null values
   },
   mobile: {
     type: String,
@@ -280,16 +286,30 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Hash password before saving
+userSchema.pre('save', async function(next) {
+  // Only hash the password if it has been modified (or is new)
+  if (!this.isModified('password')) return next();
+  
+  // Hash the password with cost of 12
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+
+// Compare password method
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
 // Index for efficient queries
-userSchema.index({ mobile: 1 });
-userSchema.index({ email: 1 });
+// mobile and email already have unique indexes via schema definition
 userSchema.index({ role: 1 });
 userSchema.index({ status: 1 });
 userSchema.index({ trustScore: 1 });
-userSchema.index({ 'location.coordinates': '2dsphere' });
+// location.coordinates already has 2dsphere index via schema definition
 userSchema.index({ 'verification.email.verified': 1 });
 userSchema.index({ 'verification.mobile.verified': 1 });
 userSchema.index({ 'security.lastLogin': -1 });
-userSchema.index({ 'referral.code': 1, unique: true });
+// referral.code already has unique index via schema definition
 
 module.exports = mongoose.model('User', userSchema);

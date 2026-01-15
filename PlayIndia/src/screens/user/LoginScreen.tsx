@@ -15,11 +15,10 @@ import {
 import AsyncStorage from '../../utils/AsyncStorageSafe';
 import { CommonActions } from '@react-navigation/native';
 import { StackScreenProps } from '@react-navigation/stack';
-import axios from 'axios';
 import { RootStackParamList } from '../../navigation/AppNavigator';
-import { API_ENDPOINTS, API_BASE_URL } from '../../config/constants';
 import BrandLogo from '../../components/BrandLogo';
 import Icon from 'react-native-vector-icons/Ionicons';
+import useAuth from '../../hooks/useAuth';
 
 type Props = StackScreenProps<RootStackParamList, 'Login'>;
 
@@ -27,6 +26,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  const { login } = useAuth();
 
   // Premium Animation Refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -56,14 +57,15 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     }
     setIsLoading(true);
     try {
-      const response = await axios.post(API_ENDPOINTS.AUTH.LOGIN, formData);
-      const { token, userType } = response.data;
-      await AsyncStorage.setItem('userToken', token);
-      await AsyncStorage.setItem('userType', userType || 'user');
+      const response = await login(formData.email, formData.password);
+      const { token, user } = response;
+      
+      // Store user type separately for navigation
+      await AsyncStorage.setItem('userType', user.role || 'user');
       
       // Determine the correct main route based on user type
       let mainRouteName: string;
-      switch(userType) {
+      switch(user.role) {
         case 'coach':
           mainRouteName = 'CoachMain';
           break;

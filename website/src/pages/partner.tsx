@@ -1,11 +1,10 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Layout from '../components/Layout';
 
 const PartnerPage = () => {
   return (
-    <Layout title="Partner with Us - TeamUp India" description="Learn about partnership and franchise opportunities with TeamUp India">
+    <div>
       <Head>
         <title>Partner with Us - TeamUp India</title>
         <meta name="description" content="Learn about partnership and franchise opportunities with TeamUp India" />
@@ -72,7 +71,7 @@ const PartnerPage = () => {
       </section>
 
       {/* Franchise Benefits */}
-      <section className="py-16 bg-gray-100 px-6">
+      <section className="py-16 bg-white px-6">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Franchise Benefits</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -229,13 +228,13 @@ const PartnerPage = () => {
       </section>
 
       {/* Requirements */}
-      <section className="py-16 bg-gray-100 px-6">
+      <section className="py-16 bg-white px-6">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Requirements to Partner</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
-              <div className="text-4xl mb-4">💼</div>
+              <div className="text-4xl mb-4 text-red-500">💼</div>
               <h3 className="text-lg font-bold mb-3 text-gray-900">Business Experience</h3>
               <p className="text-gray-600 text-sm">
                 Prior experience in sports, fitness, retail, or service industry preferred
@@ -243,7 +242,7 @@ const PartnerPage = () => {
             </div>
             
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
-              <div className="text-4xl mb-4">💰</div>
+              <div className="text-4xl mb-4 text-green-500">💰</div>
               <h3 className="text-lg font-bold mb-3 text-gray-900">Investment</h3>
               <p className="text-gray-600 text-sm">
                 Minimum investment capacity of ₹5 Lakhs for a PlayPoint setup
@@ -251,7 +250,7 @@ const PartnerPage = () => {
             </div>
             
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
-              <div className="text-4xl mb-4">📍</div>
+              <div className="text-4xl mb-4 text-blue-500">📍</div>
               <h3 className="text-lg font-bold mb-3 text-gray-900">Location</h3>
               <p className="text-gray-600 text-sm">
                 Access to high-traffic area with good connectivity and parking
@@ -259,7 +258,7 @@ const PartnerPage = () => {
             </div>
             
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
-              <div className="text-4xl mb-4">🤝</div>
+              <div className="text-4xl mb-4 text-purple-500">🤝</div>
               <h3 className="text-lg font-bold mb-3 text-gray-900">Commitment</h3>
               <p className="text-gray-600 text-sm">
                 Long-term commitment to grow the sports ecosystem in your area
@@ -319,7 +318,7 @@ const PartnerPage = () => {
           </div>
         </div>
       </section>
-    </Layout>
+    </div>
   );
 };
 
