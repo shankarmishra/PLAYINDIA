@@ -12,19 +12,27 @@ if (vectorIconsFontsDir.exists()) {
     android.sourceSets.main.assets.srcDirs += file("$buildDir/intermediates/ReactNativeVectorIcons")
     
     // Create custom fonts task that handles OneDrive symlinks
+    // Must use afterEvaluate to ensure android block is evaluated
     afterEvaluate {
-        def fontCopyTask = tasks.create(
-            name: "copyReactNativeVectorIconFonts",
-            type: Copy) {
-            description = "copy vector icon fonts."
-            into "$buildDir/intermediates/ReactNativeVectorIcons/fonts"
-            
-            from(vectorIconsFontsDir.getAbsolutePath()) {
-                include("*.ttf")
+        // Check if task already exists (from fonts.gradle if it was applied)
+        def fontCopyTask = tasks.findByName("copyReactNativeVectorIconFonts")
+        
+        if (!fontCopyTask) {
+            // Create task if it doesn't exist
+            fontCopyTask = tasks.create(
+                name: "copyReactNativeVectorIconFonts",
+                type: Copy) {
+                description = "copy vector icon fonts."
+                into "$buildDir/intermediates/ReactNativeVectorIcons/fonts"
+                
+                from(vectorIconsFontsDir.getAbsolutePath()) {
+                    include("*.ttf")
+                }
             }
         }
         
-        // Disable state tracking to work around OneDrive symlink issue
+        // CRITICAL: Apply doNotTrackState BEFORE task configuration
+        // This must be done immediately after task creation/finding
         fontCopyTask.doNotTrackState("Workaround for OneDrive symlink issue with font files")
         
         // Make sure this runs before resource generation (same as fonts.gradle)
