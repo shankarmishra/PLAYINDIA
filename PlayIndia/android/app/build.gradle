@@ -9,6 +9,15 @@ apply plugin: "com.facebook.react"
 def vectorIconsFontsGradle = new File(projectDir, "../../node_modules/react-native-vector-icons/fonts.gradle")
 if (vectorIconsFontsGradle.exists()) {
     apply from: vectorIconsFontsGradle.getAbsolutePath()
+    
+    // Fix for OneDrive symlink issue - disable state tracking for fonts task
+    afterEvaluate {
+        tasks.configureEach { task ->
+            if (task.name.contains("copyReactNativeVectorIconFonts")) {
+                task.doNotTrackState("Workaround for OneDrive symlink issue with font files")
+            }
+        }
+    }
 } else {
     // Fallback: Manual font copying if fonts.gradle doesn't exist
     android.applicationVariants.all { variant ->
@@ -17,6 +26,7 @@ if (vectorIconsFontsGradle.exists()) {
             from("../../node_modules/react-native-vector-icons/Fonts")
             into("${buildDir}/generated/assets/react/release")
         }
+        copyFontsTask.doNotTrackState("Workaround for OneDrive symlink issue")
         variant.mergeResourcesProvider.get().dependsOn(copyFontsTask)
     }
 }
