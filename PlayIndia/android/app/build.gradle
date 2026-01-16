@@ -8,19 +8,44 @@ apply plugin: "com.facebook.react"
  */
 def vectorIconsFontsDir = new File(projectDir, "../../node_modules/react-native-vector-icons/Fonts")
 if (vectorIconsFontsDir.exists()) {
+    // Register font asset source folder (same as fonts.gradle)
+    android.sourceSets.main.assets.srcDirs += file("$buildDir/intermediates/ReactNativeVectorIcons")
+    
     // Create custom fonts task that handles OneDrive symlinks
-    android.applicationVariants.all { variant ->
-        def variantName = variant.name.capitalize()
-        def copyFontsTask = tasks.create("copy${variantName}ReactNativeVectorIconFonts", Copy) {
-            from(vectorIconsFontsDir.getAbsolutePath())
-            into("${buildDir}/generated/assets/react/${variant.name}")
-            include("*.ttf")
+    afterEvaluate {
+        def fontCopyTask = tasks.create(
+            name: "copyReactNativeVectorIconFonts",
+            type: Copy) {
+            description = "copy vector icon fonts."
+            into "$buildDir/intermediates/ReactNativeVectorIcons/fonts"
+            
+            from(vectorIconsFontsDir.getAbsolutePath()) {
+                include("*.ttf")
+            }
         }
-        // Disable state tracking to work around OneDrive symlink issue
-        copyFontsTask.doNotTrackState("Workaround for OneDrive symlink issue with font files")
         
-        // Make sure this runs before mergeResources
-        variant.mergeResourcesProvider.get().dependsOn(copyFontsTask)
+        // Disable state tracking to work around OneDrive symlink issue
+        fontCopyTask.doNotTrackState("Workaround for OneDrive symlink issue with font files")
+        
+        // Make sure this runs before resource generation (same as fonts.gradle)
+        android.applicationVariants.all { variant ->
+            def variantName = variant.name.capitalize()
+            def taskNames = [
+                "generate${variantName}Assets",
+                "generate${variantName}LintModel",
+                "generate${variantName}LintReportModel",
+                "generate${variantName}LintVitalReportModel",
+                "lintAnalyze${variantName}",
+                "lintVitalAnalyze${variantName}",
+            ]
+            
+            taskNames.each { taskName ->
+                def task = tasks.findByName(taskName)
+                if (task) {
+                    task.dependsOn(fontCopyTask)
+                }
+            }
+        }
     }
 }
 
