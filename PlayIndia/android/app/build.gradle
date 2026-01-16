@@ -4,8 +4,22 @@ apply plugin: "com.facebook.react"
 
 /**
  * React Native Vector Icons configuration
+ * Using absolute path to avoid OneDrive symlink issues
  */
-apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
+def vectorIconsFontsGradle = new File(projectDir, "../../node_modules/react-native-vector-icons/fonts.gradle")
+if (vectorIconsFontsGradle.exists()) {
+    apply from: vectorIconsFontsGradle.getAbsolutePath()
+} else {
+    // Fallback: Manual font copying if fonts.gradle doesn't exist
+    android.applicationVariants.all { variant ->
+        def variantName = variant.name.capitalize()
+        def copyFontsTask = tasks.create("copy${variantName}ReactNativeVectorIconFonts", Copy) {
+            from("../../node_modules/react-native-vector-icons/Fonts")
+            into("${buildDir}/generated/assets/react/release")
+        }
+        variant.mergeResourcesProvider.get().dependsOn(copyFontsTask)
+    }
+}
 
 /**
  * React Native configuration
