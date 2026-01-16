@@ -66,8 +66,8 @@ const TabNavigator = () => {
 
           return <Icon name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#00B8D4',
-        tabBarInactiveTintColor: '#718096',
+        tabBarActiveTintColor: '#1ED760',
+        tabBarInactiveTintColor: '#9CA3AF',
         tabBarStyle: {
           height: 60,
           paddingBottom: 8,

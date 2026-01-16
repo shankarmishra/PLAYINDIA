@@ -8,7 +8,6 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import QuickActionCard from '../../components/QuickActionCard';
 import StatCard from '../../components/StatCard';
 import ActivityItem from '../../components/ActivityItem';
-import AnimatedHeroBanner from '../../components/AnimatedHeroBanner';
 import useAuth from '../../hooks/useAuth';
 import ApiService from '../../services/ApiService';
 import { UserTabParamList } from '../../navigation/UserNav';
@@ -200,40 +199,6 @@ const UserHomeDashboard = () => {
     },
   ];
 
-  // Hero Banner Data - Similar to e-commerce mockup
-  const heroBanners = [
-    {
-      id: '1',
-      title: 'Join Premium Tournaments',
-      subtitle: 'Compete with the best players and win exciting prizes',
-      image: 'https://images.unsplash.com/photo-1541252260730-0412e8e2108e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-      ctaText: 'Explore Tournaments',
-      badge: 'New',
-      rating: 4.9,
-      onPress: () => navigation.navigate('Tournaments'),
-    },
-    {
-      id: '2',
-      title: 'Book Expert Coaches',
-      subtitle: 'Learn from certified professionals and improve your game',
-      image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-      ctaText: 'Find Coaches',
-      badge: 'Popular',
-      rating: 4.8,
-      onPress: () => navigation.navigate('FindCoach'),
-    },
-    {
-      id: '3',
-      title: 'Shop Sports Gear',
-      subtitle: 'Premium quality equipment for all your sporting needs',
-      image: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-      ctaText: 'Shop Now',
-      badge: 'Sale',
-      rating: 4.7,
-      onPress: () => navigation.navigate('ShopHome'),
-    },
-  ];
-
   return (
     <View style={styles.container}>
       {/* Header with location and notification */}
@@ -270,14 +235,24 @@ const UserHomeDashboard = () => {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          {/* Animated Hero Banner Section */}
-          <AnimatedHeroBanner
-            banners={heroBanners}
-            autoPlay={true}
-            autoPlayInterval={7000}
-            showPagination={true}
-            height={180}
-          />
+          {/* Welcome Card */}
+          <View style={styles.welcomeCard}>
+            <View style={styles.welcomeContent}>
+              <Text style={styles.welcomeText}>
+                {new Date().getHours() < 12 ? 'Good Morning' : 
+                 new Date().getHours() < 18 ? 'Good Afternoon' : 'Good Evening'} 👋
+              </Text>
+              <Text style={styles.userName}>{user?.name || 'Player'}</Text>
+              <Text style={styles.welcomeSubtitle}>
+                {user?.preferences?.favoriteGames && user.preferences.favoriteGames.length > 0
+                  ? `Ready to play ${user.preferences.favoriteGames[0]} today?`
+                  : 'Ready to play some sports today?'}
+              </Text>
+            </View>
+            <View style={styles.welcomeIconContainer}>
+              <Ionicons name="fitness" size={48} color="#1ED760" />
+            </View>
+          </View>
 
         {/* Quick action cards */}
         <View style={styles.sectionHeader}>
