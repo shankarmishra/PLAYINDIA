@@ -57,6 +57,10 @@ gradle.projectsEvaluated {
                 if (task.name.contains("generateCodegenSchemaFromJavaScript")) {
                     task.doNotTrackState("Workaround for OneDrive symlink issue")
                 }
+                // Fix for vector-icons fonts task on Windows/OneDrive
+                if (task.name.contains("copyReactNativeVectorIconFonts")) {
+                    task.doNotTrackState("Workaround for OneDrive symlink issue with font files")
+                }
             }
         }
     }

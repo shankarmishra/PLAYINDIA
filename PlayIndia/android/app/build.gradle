@@ -4,29 +4,22 @@ apply plugin: "com.facebook.react"
 
 /**
  * React Native Vector Icons configuration
- * Using absolute path to avoid OneDrive symlink issues
+ * Custom implementation to handle OneDrive symlink issues
  */
-def vectorIconsFontsGradle = new File(projectDir, "../../node_modules/react-native-vector-icons/fonts.gradle")
-if (vectorIconsFontsGradle.exists()) {
-    apply from: vectorIconsFontsGradle.getAbsolutePath()
-    
-    // Fix for OneDrive symlink issue - disable state tracking for fonts task
-    afterEvaluate {
-        tasks.configureEach { task ->
-            if (task.name.contains("copyReactNativeVectorIconFonts")) {
-                task.doNotTrackState("Workaround for OneDrive symlink issue with font files")
-            }
-        }
-    }
-} else {
-    // Fallback: Manual font copying if fonts.gradle doesn't exist
+def vectorIconsFontsDir = new File(projectDir, "../../node_modules/react-native-vector-icons/Fonts")
+if (vectorIconsFontsDir.exists()) {
+    // Create custom fonts task that handles OneDrive symlinks
     android.applicationVariants.all { variant ->
         def variantName = variant.name.capitalize()
         def copyFontsTask = tasks.create("copy${variantName}ReactNativeVectorIconFonts", Copy) {
-            from("../../node_modules/react-native-vector-icons/Fonts")
-            into("${buildDir}/generated/assets/react/release")
+            from(vectorIconsFontsDir.getAbsolutePath())
+            into("${buildDir}/generated/assets/react/${variant.name}")
+            include("*.ttf")
         }
-        copyFontsTask.doNotTrackState("Workaround for OneDrive symlink issue")
+        // Disable state tracking to work around OneDrive symlink issue
+        copyFontsTask.doNotTrackState("Workaround for OneDrive symlink issue with font files")
+        
+        // Make sure this runs before mergeResources
         variant.mergeResourcesProvider.get().dependsOn(copyFontsTask)
     }
 }
