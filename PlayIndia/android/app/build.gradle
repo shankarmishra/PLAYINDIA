@@ -19,21 +19,21 @@ if (vectorIconsFontsDir.exists()) {
         
         if (!fontCopyTask) {
             // Create task if it doesn't exist
-            fontCopyTask = tasks.create(
-                name: "copyReactNativeVectorIconFonts",
-                type: Copy) {
-                description = "copy vector icon fonts."
-                into "$buildDir/intermediates/ReactNativeVectorIcons/fonts"
-                
-                from(vectorIconsFontsDir.getAbsolutePath()) {
-                    include("*.ttf")
-                }
+            fontCopyTask = tasks.create("copyReactNativeVectorIconFonts", Copy)
+            
+            // CRITICAL: Apply doNotTrackState IMMEDIATELY after creation, BEFORE any configuration
+            fontCopyTask.doNotTrackState("Workaround for OneDrive symlink issue with font files")
+            
+            // Now configure the task
+            fontCopyTask.description = "copy vector icon fonts."
+            fontCopyTask.into("$buildDir/intermediates/ReactNativeVectorIcons/fonts")
+            fontCopyTask.from(vectorIconsFontsDir.getAbsolutePath()) {
+                include("*.ttf")
             }
+        } else {
+            // Task exists, apply doNotTrackState to it
+            fontCopyTask.doNotTrackState("Workaround for OneDrive symlink issue with font files")
         }
-        
-        // CRITICAL: Apply doNotTrackState BEFORE task configuration
-        // This must be done immediately after task creation/finding
-        fontCopyTask.doNotTrackState("Workaround for OneDrive symlink issue with font files")
         
         // Make sure this runs before resource generation (same as fonts.gradle)
         android.applicationVariants.all { variant ->
