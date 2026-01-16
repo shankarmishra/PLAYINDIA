@@ -47,4 +47,15 @@ subprojects {
             }
         }
     }
+
+    // Fix for async-storage codegen issue on Windows/OneDrive
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.tasks.configureEach { task ->
+                if (task.name.contains("generateCodegenSchemaFromJavaScript")) {
+                    task.doNotTrackState("Workaround for OneDrive symlink issue")
+                }
+            }
+        }
+    }
 }
