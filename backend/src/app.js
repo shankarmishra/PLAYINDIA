@@ -12,16 +12,16 @@ const app = express();
 
 // Initialize Sentry (only if DSN is provided)
 if (process.env.SENTRY_DSN && process.env.SENTRY_DSN !== 'your_sentry_dsn') {
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    integrations: [
-      new Sentry.Integrations.Http({ tracing: true }),
-      new Sentry.Integrations.Express({ app }),
-      new ProfilingIntegration(),
-    ],
-    tracesSampleRate: 1.0,
-    profilesSampleRate: 1.0,
-  });
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  integrations: [
+    new Sentry.Integrations.Http({ tracing: true }),
+    new Sentry.Integrations.Express({ app }),
+    new ProfilingIntegration(),
+  ],
+  tracesSampleRate: 1.0,
+  profilesSampleRate: 1.0,
+});
 }
 
 // Import routes
@@ -47,8 +47,8 @@ const errorHandler = require('./middleware/error');
 
 // Sentry request handler must be the first middleware (only if Sentry is initialized)
 if (process.env.SENTRY_DSN && process.env.SENTRY_DSN !== 'your_sentry_dsn') {
-  app.use(Sentry.Handlers.requestHandler());
-  app.use(Sentry.Handlers.tracingHandler());
+app.use(Sentry.Handlers.requestHandler());
+app.use(Sentry.Handlers.tracingHandler());
 }
 
 // Security middleware
@@ -114,7 +114,7 @@ app.use((req, res) => {
 
 // Error handling middleware
 if (process.env.SENTRY_DSN && process.env.SENTRY_DSN !== 'your_sentry_dsn') {
-  app.use(Sentry.Handlers.errorHandler());
+app.use(Sentry.Handlers.errorHandler());
 }
 app.use(errorHandler);
 

@@ -1,7 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, TextInput } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../navigation/AppNavigator';
 
-const LoginWelcome = ({ navigation }: any) => {
+type NavigationProp = StackNavigationProp<RootStackParamList, 'LoginWelcome'>;
+
+const LoginWelcome = () => {
+    const navigation = useNavigation<NavigationProp>();
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.imageContainer}>
@@ -43,14 +49,14 @@ const LoginWelcome = ({ navigation }: any) => {
 
                 <TouchableOpacity
                     style={styles.button}
-                    onPress={() => navigation.navigate('Main')}
+                    onPress={() => navigation.navigate('Login')}
                 >
                     <Text style={styles.buttonText}>Send Code →</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                     style={styles.devBypass}
-                    onPress={() => navigation.navigate('Main')}
+                    onPress={() => navigation.navigate('Login')}
                 >
                     <Text style={styles.devText}>Testing Bypass (Login as Guest)</Text>
                 </TouchableOpacity>

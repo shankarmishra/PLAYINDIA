@@ -1,7 +1,14 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, StatusBar, ActivityIndicator, Image } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../navigation/AppNavigator';
 
-const SplashScreen = ({ navigation }: any) => {
+type NavigationProp = StackNavigationProp<RootStackParamList, 'Splash'>;
+
+const SplashScreen = () => {
+  const navigation = useNavigation<NavigationProp>();
+
   useEffect(() => {
     const timer = setTimeout(() => {
       navigation.navigate('OnboardingOne');

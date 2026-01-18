@@ -1,7 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../navigation/AppNavigator';
 
-const OnboardingThree = ({ navigation }: any) => {
+type NavigationProp = StackNavigationProp<RootStackParamList, 'OnboardingThree'>;
+
+const OnboardingThree = () => {
+    const navigation = useNavigation<NavigationProp>();
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.imageContainer}>
@@ -29,14 +35,14 @@ const OnboardingThree = ({ navigation }: any) => {
 
                 <TouchableOpacity
                     style={styles.button}
-                    onPress={() => navigation.navigate('Main')}
+                    onPress={() => navigation.navigate('LoginWelcome')}
                 >
                     <Text style={styles.buttonText}>Get Started →</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                     style={styles.skipButton}
-                    onPress={() => navigation.navigate('Main')}
+                    onPress={() => navigation.navigate('LoginWelcome')}
                 >
                     <Text style={styles.skipText}>Skip</Text>
                 </TouchableOpacity>

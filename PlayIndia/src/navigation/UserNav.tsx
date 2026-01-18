@@ -19,17 +19,18 @@ import SettingsScreen from '../screens/user/SettingsScreen';
 import HelpSupportScreen from '../screens/user/HelpSupportScreen';
 import NotificationsScreen from '../screens/user/NotificationsScreen';
 import ChatScreen from '../screens/user/ChatScreen';
+import LeaderBoardScreen from '../screens/user/LeaderBoardScreen';
 
 export type UserTabParamList = {
   HomeTab: undefined;
   Home: undefined;
   Tournaments: undefined;
   TournamentDetail: { tournamentId: string };
-  NearbyPlayers: undefined;
-  Profile: undefined;
-  FindCoach: undefined;
-  CoachProfile: { coachId?: string };
+  FindNearbyPlayers: undefined;
   ShopHome: undefined;
+  FindCoach: undefined;
+  Profile: undefined;
+  CoachProfile: { coachId?: string };
   ProductDetail: { productId?: string };
   Cart: undefined;
   OrderTracking: { orderId?: string };
@@ -38,6 +39,8 @@ export type UserTabParamList = {
   HelpSupport: undefined;
   Notifications: undefined;
   Chat: { userId?: string };
+  NearbyPlayers: undefined; // Still accessible from stack, not as tab
+  PlayersRank: undefined; // Still accessible from stack, not as tab
 };
 
 const Tab = createBottomTabNavigator();
@@ -56,8 +59,12 @@ const TabNavigator = () => {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Tournaments') {
             iconName = focused ? 'trophy' : 'trophy-outline';
-          } else if (route.name === 'NearbyPlayers') {
-            iconName = focused ? 'people' : 'people-outline';
+          } else if (route.name === 'FindNearbyPlayers') {
+            iconName = focused ? 'location' : 'location-outline';
+          } else if (route.name === 'ShopHome') {
+            iconName = focused ? 'bag' : 'bag-outline';
+          } else if (route.name === 'FindCoach') {
+            iconName = focused ? 'fitness' : 'fitness-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           } else {
@@ -82,15 +89,41 @@ const TabNavigator = () => {
           shadowRadius: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 10,
           fontWeight: '600',
         },
       })}
     >
-      <Tab.Screen name="Home" component={UserHomeDashboard} />
-      <Tab.Screen name="Tournaments" component={TournamentScreen} />
-      <Tab.Screen name="NearbyPlayers" component={NearbyPlayersMap} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen 
+        name="Home" 
+        component={UserHomeDashboard}
+        options={{ tabBarLabel: 'Home' }}
+      />
+      <Tab.Screen 
+        name="Tournaments" 
+        component={TournamentScreen}
+        options={{ tabBarLabel: 'Tournaments' }}
+      />
+      <Tab.Screen 
+        name="FindNearbyPlayers" 
+        component={NearbyPlayersMap}
+        options={{ tabBarLabel: 'Find Players' }}
+      />
+      <Tab.Screen 
+        name="ShopHome" 
+        component={ShopHomeScreen}
+        options={{ tabBarLabel: 'Shop' }}
+      />
+      <Tab.Screen 
+        name="FindCoach" 
+        component={FindCoachScreen}
+        options={{ tabBarLabel: 'Coach' }}
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileScreen}
+        options={{ tabBarLabel: 'Profile' }}
+      />
     </Tab.Navigator>
   );
 };
@@ -105,9 +138,9 @@ const UserNav = () => {
     >
       <Stack.Screen name="HomeTab" component={TabNavigator} />
       <Stack.Screen name="TournamentDetail" component={TournamentDetailScreen} />
-      <Stack.Screen name="FindCoach" component={FindCoachScreen} />
+      <Stack.Screen name="NearbyPlayers" component={NearbyPlayersMap} />
       <Stack.Screen name="CoachProfile" component={CoachProfileScreen} />
-      <Stack.Screen name="ShopHome" component={ShopHomeScreen} />
+      <Stack.Screen name="PlayersRank" component={LeaderBoardScreen} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
       <Stack.Screen name="Cart" component={CartScreen} />
       <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />

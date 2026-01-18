@@ -183,11 +183,23 @@ const useAuth = () => {
     }
   };
 
-  const register = async (name: string, email: string, password: string, mobile: string, role: string = 'user') => {
+  const register = async (name: string, email: string, password: string, mobile: string, role: string = 'user', additionalData?: { city?: string; favoriteGames?: string[] }) => {
     try {
       setLoading(true);
       
-      const response = await ApiService.auth.register({ name, email, password, mobile, role });
+      const registerData: any = { name, email, password, mobile, role };
+      
+      // Add optional fields if provided
+      if (additionalData) {
+        if (additionalData.city) {
+          registerData.city = additionalData.city;
+        }
+        if (additionalData.favoriteGames && additionalData.favoriteGames.length > 0) {
+          registerData.favoriteGames = additionalData.favoriteGames;
+        }
+      }
+      
+      const response = await ApiService.auth.register(registerData);
       
       if (response.data.success) {
         const { token, user } = response.data;
@@ -195,6 +207,7 @@ const useAuth = () => {
         // Store token and user in AsyncStorage
         await AsyncStorage.setItem('userToken', token);
         await AsyncStorage.setItem('user', JSON.stringify(user));
+        await AsyncStorage.setItem('userType', user.role || 'user');
         
         // Token is handled by ApiService interceptor
         

@@ -1,7 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../navigation/AppNavigator';
 
-const OnboardingTwo = ({ navigation }: any) => {
+type NavigationProp = StackNavigationProp<RootStackParamList, 'OnboardingTwo'>;
+
+const OnboardingTwo = () => {
+    const navigation = useNavigation<NavigationProp>();
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.imageContainer}>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert, ActivityIndicator, SafeAreaView, Animated, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Alert, ActivityIndicator, Animated, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '../../utils/AsyncStorageSafe';
@@ -73,8 +74,11 @@ const LeaderBoardScreen = () => {
 
         setUsers(response.data.leaderboard || []);
         setUserRank(response.data.userRank || null);
-      } catch (error) {
-        console.error('Error fetching leaderboard:', error);
+      } catch (error: any) {
+        // Silently use dummy data on network error
+        if (error.message && !error.message.includes('Network')) {
+          console.log('Leaderboard API error:', error.message);
+        }
         
         // Set dummy data if API fails
         const dummyUsers: User[] = [

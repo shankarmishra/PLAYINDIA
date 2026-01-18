@@ -13,9 +13,19 @@ import StoreNav from './StoreNav'; // Store dashboard
 import DeliveryNav from './DeliveryNav'; // Delivery dashboard
 import AdminNav from './AdminNav'; // Admin dashboard
 
+// Onboarding screens
+import OnboardingOne from '../screens/SPLASH/OnboardingOne';
+import OnboardingTwo from '../screens/SPLASH/OnboardingTwo';
+import OnboardingThree from '../screens/SPLASH/OnboardingThree';
+import LoginWelcome from '../screens/SPLASH/LoginWelcome';
+
 // Define stack param list
 export type RootStackParamList = {
   Splash: undefined;
+  OnboardingOne: undefined;
+  OnboardingTwo: undefined;
+  OnboardingThree: undefined;
+  LoginWelcome: undefined;
   Login: undefined;
   Register: undefined;
   UserMain: undefined;
@@ -28,7 +38,7 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
-  const [initialRoute, setInitialRoute] = useState<'Splash' | 'Login' | 'UserMain' | 'CoachMain' | 'StoreMain' | 'DeliveryMain' | 'AdminMain'>('Splash');
+  const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>('Splash');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,11 +69,11 @@ const AppNavigator = () => {
               setInitialRoute('UserMain');
           }
         } else {
-          setInitialRoute('Login');
+          setInitialRoute('Splash');
         }
       } catch (error) {
         console.error('Error checking user status:', error);
-        setInitialRoute('Login');
+        setInitialRoute('Splash');
       } finally {
         setLoading(false);
       }
@@ -72,10 +82,8 @@ const AppNavigator = () => {
     checkUserStatus();
   }, []);
 
-  if (loading) {
-    return <SplashScreen />; // Show splash while checking
-  }
-
+  // Always render NavigationContainer, even during loading
+  // The SplashScreen will handle the initial navigation
   return (
     <NavigationContainer>
       <Stack.Navigator
@@ -83,6 +91,10 @@ const AppNavigator = () => {
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="OnboardingOne" component={OnboardingOne} />
+        <Stack.Screen name="OnboardingTwo" component={OnboardingTwo} />
+        <Stack.Screen name="OnboardingThree" component={OnboardingThree} />
+        <Stack.Screen name="LoginWelcome" component={LoginWelcome} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="UserMain" component={UserTabNavigator} />

@@ -15,6 +15,7 @@ const notificationController = require('../controllers/notification.controller')
 const supportController = require('../controllers/support.controller');
 const achievementController = require('../controllers/achievement.controller');
 const playpointController = require('../controllers/playpoint.controller');
+const bannerController = require('../controllers/banner.controller');
 
 const router = express.Router();
 
@@ -313,5 +314,25 @@ router.route('/playpoints/bookings')
 
 router.route('/playpoints/:id/bookings')
   .get(protect, playpointController.getPlayPointBookings);
+
+// Banner routes
+// Public routes - get active banners
+router.route('/banners')
+  .get(bannerController.getBanners);
+
+router.route('/banners/:id')
+  .get(bannerController.getBanner);
+
+router.route('/banners/:id/click')
+  .post(bannerController.trackBannerClick);
+
+// Admin routes - manage banners
+router.route('/admin/banners')
+  .get(protect, authorize('admin'), bannerController.getAllBanners)
+  .post(protect, authorize('admin'), bannerController.createBanner);
+
+router.route('/admin/banners/:id')
+  .put(protect, authorize('admin'), bannerController.updateBanner)
+  .delete(protect, authorize('admin'), bannerController.deleteBanner);
 
 module.exports = router;

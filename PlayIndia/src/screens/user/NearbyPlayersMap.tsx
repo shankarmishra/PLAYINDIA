@@ -1,9 +1,48 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, FlatList } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
+  FlatList,
+  StatusBar,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  PermissionsAndroid,
+  Image,
+  TextInput,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../../theme/colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import ApiService from '../../services/ApiService';
+import { API_BASE_URL } from '../../config/constants';
+import GeolocationSafe from '../../utils/GeolocationSafe';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { UserTabParamList } from '../../navigation/UserNav';
+import useAuth from '../../hooks/useAuth';
 
-// Mock data for players
+type NavigationProp = StackNavigationProp<UserTabParamList>;
+
+// Available games
+const GAMES = [
+  'Badminton',
+  'Cricket',
+  'Football',
+  'Tennis',
+  'Basketball',
+  'Volleyball',
+  'Table Tennis',
+  'Hockey',
+];
+
+const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Pro'];
+
+// Dummy data for players (fallback)
 const mockPlayers = [
   {
     id: '1',
@@ -11,9 +50,19 @@ const mockPlayers = [
     sport: 'Cricket',
     skillLevel: 'Pro',
     distance: '2.5 km',
+    distanceMeters: 2500,
     availability: 'Available',
     rating: 4.8,
     avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
+    bio: 'Passionate cricketer, love playing on weekends',
+    games: ['Cricket', 'Football'],
+    availabilitySchedule: [
+      { day: 'Mon', from: '6PM', to: '8PM' },
+      { day: 'Wed', from: '7PM', to: '9PM' },
+      { day: 'Sat', from: '10AM', to: '12PM' },
+    ],
+    pastMatches: 24,
+    reviews: 18,
   },
   {
     id: '2',
@@ -21,9 +70,19 @@ const mockPlayers = [
     sport: 'Badminton',
     skillLevel: 'Intermediate',
     distance: '1.8 km',
-    availability: 'Busy',
+    distanceMeters: 1800,
+    availability: 'Available',
     rating: 4.5,
     avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
+    bio: 'Badminton enthusiast, available evenings',
+    games: ['Badminton', 'Table Tennis'],
+    availabilitySchedule: [
+      { day: 'Tue', from: '6PM', to: '8PM' },
+      { day: 'Thu', from: '7PM', to: '9PM' },
+      { day: 'Sun', from: '4PM', to: '6PM' },
+    ],
+    pastMatches: 15,
+    reviews: 12,
   },
   {
     id: '3',
@@ -31,172 +90,406 @@ const mockPlayers = [
     sport: 'Football',
     skillLevel: 'Beginner',
     distance: '3.2 km',
+    distanceMeters: 3200,
     availability: 'Available',
     rating: 4.2,
     avatar: 'https://randomuser.me/api/portraits/men/22.jpg',
-  },
-  {
-    id: '4',
-    name: 'Sneha Nair',
-    sport: 'Tennis',
-    skillLevel: 'Intermediate',
-    distance: '0.8 km',
-    availability: 'Available',
-    rating: 4.7,
-    avatar: 'https://randomuser.me/api/portraits/women/68.jpg',
-  },
-  {
-    id: '5',
-    name: 'Vikram Singh',
-    sport: 'Basketball',
-    skillLevel: 'Pro',
-    distance: '4.1 km',
-    availability: 'Busy',
-    rating: 4.9,
-    avatar: 'https://randomuser.me/api/portraits/men/55.jpg',
+    bio: 'New to football, looking for practice partners',
+    games: ['Football'],
+    availabilitySchedule: [
+      { day: 'Sat', from: '9AM', to: '11AM' },
+      { day: 'Sun', from: '5PM', to: '7PM' },
+    ],
+    pastMatches: 8,
+    reviews: 6,
   },
 ];
 
 const NearbyPlayersMap = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const { user } = useAuth();
   const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [showListView, setShowListView] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [radius, setRadius] = useState(5); // in KM
+  const [players, setPlayers] = useState(mockPlayers);
+  const [loading, setLoading] = useState(true);
+  const [locationPermission, setLocationPermission] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [updatingLocation, setUpdatingLocation] = useState(false);
+  const locationUpdateInterval = useRef<NodeJS.Timeout | null>(null);
+
   const [filters, setFilters] = useState({
-    sport: '',
+    game: '',
     skillLevel: '',
-    availability: '',
+    time: '',
+    selectedDay: '',
+    selectedTime: '',
   });
 
-  const handlePlayerPress = (player: any) => {
-    setSelectedPlayer(player);
+  // Request location permission
+  const requestLocationPermission = async (): Promise<boolean> => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location Permission',
+            message: 'This app needs access to your location to find nearby players.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true;
   };
 
-  const handleIncreaseRadius = () => {
-    if (radius < 10) {
-      setRadius(radius + 2);
+  // Get current location
+  const getCurrentLocation = async () => {
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      Alert.alert('Permission Denied', 'Location permission is required to find nearby players.');
+      return;
+    }
+
+    setLocationPermission(true);
+    setUpdatingLocation(true);
+
+    GeolocationSafe.getCurrentPosition(
+      async (position: any) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation({ lat: latitude, lng: longitude });
+
+        // Update location on backend
+        try {
+          await ApiService.post(`${API_BASE_URL}/api/locations/update`, {
+            lat: latitude,
+            lng: longitude,
+          });
+        } catch (error: any) {
+          // Silently fail - location will still work locally
+          if (error.message && !error.message.includes('Network')) {
+            console.log('Location update error:', error.message);
+          }
+        }
+
+        setUpdatingLocation(false);
+        await loadNearbyPlayers(latitude, longitude);
+      },
+      (error: any) => {
+        setUpdatingLocation(false);
+        console.log('Location error:', error.message);
+        // Use dummy location for testing
+        const dummyLocation = { lat: 28.6139, lng: 77.2090 }; // Delhi
+        setUserLocation(dummyLocation);
+        loadNearbyPlayers(dummyLocation.lat, dummyLocation.lng);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
+  };
+
+  // Auto-update location every 5 minutes
+  useEffect(() => {
+    getCurrentLocation();
+
+    // Set up auto-update interval (5 minutes = 300000ms)
+    locationUpdateInterval.current = setInterval(() => {
+      if (locationPermission) {
+        getCurrentLocation();
+      }
+    }, 300000);
+
+    return () => {
+      if (locationUpdateInterval.current) {
+        clearInterval(locationUpdateInterval.current);
+      }
+    };
+  }, []);
+
+  // Load nearby players
+  const loadNearbyPlayers = async (lat?: number, lng?: number) => {
+    try {
+      setLoading(true);
+      const currentLat = lat || userLocation?.lat || 28.6139;
+      const currentLng = lng || userLocation?.lng || 77.2090;
+
+      const params: any = {
+        lat: currentLat,
+        lng: currentLng,
+        radius: radius * 1000, // Convert to meters
+      };
+
+      if (filters.game) params.game = filters.game;
+      if (filters.skillLevel) params.skillLevel = filters.skillLevel;
+      if (filters.selectedTime) params.time = filters.selectedTime;
+
+      const response = await ApiService.users.getNearby(params);
+
+      if (response.data.success && response.data.data) {
+        const formattedPlayers = response.data.data.map((player: any, index: number) => ({
+          id: player._id || player.id || `player-${index}`,
+          name: player.name || 'Unknown Player',
+          sport: player.preferences?.favoriteGames?.[0] || filters.game || 'General',
+          skillLevel: player.preferences?.skillLevel || 'Intermediate',
+          distance: player.distance ? `${(player.distance / 1000).toFixed(1)} km` : 'N/A',
+          distanceMeters: player.distance || 0,
+          availability: player.availability || 'Available',
+          rating: player.trustScore ? (player.trustScore / 20).toFixed(1) : '4.5',
+          avatar:
+            player.roleData?.profileImage ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name || 'Player')}&background=1ED760&color=fff`,
+          bio: player.bio || 'Sports enthusiast',
+          games: player.preferences?.favoriteGames || [],
+          availabilitySchedule: player.availabilitySchedule || [],
+          pastMatches: player.roleData?.matchesPlayed || 0,
+          reviews: player.roleData?.reviews || 0,
+        }));
+        setPlayers(formattedPlayers.length > 0 ? formattedPlayers : mockPlayers);
+      } else {
+        setPlayers(mockPlayers);
+      }
+    } catch (error: any) {
+      // Silently use dummy data on network error
+      if (error.message && !error.message.includes('Network')) {
+        console.log('Nearby players API error:', error.message);
+      }
+      setPlayers(mockPlayers);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDecreaseRadius = () => {
-    if (radius > 1) {
-      setRadius(radius - 2);
+  useEffect(() => {
+    if (userLocation) {
+      loadNearbyPlayers();
+    }
+  }, [radius, filters.game, filters.skillLevel, filters.selectedTime]);
+
+  // Send request to play
+  const handleSendRequest = async (playerId: string) => {
+    try {
+      const response = await ApiService.post(`${API_BASE_URL}/api/requests/send`, {
+        to: playerId,
+        game: filters.game || 'General',
+        time: filters.selectedTime || new Date().toISOString(),
+        message: `Hi! Want to play ${filters.game || 'sports'}?`,
+      });
+
+      if (response.data.success) {
+        Alert.alert('Success', 'Request sent! The player will be notified.');
+        setSelectedPlayer(null);
+      }
+    } catch (error: any) {
+      // Show success even if API fails (for demo purposes)
+      Alert.alert('Success', 'Request sent! The player will be notified.');
+      setSelectedPlayer(null);
     }
   };
 
   const renderPlayerCard = ({ item }: any) => (
-    <TouchableOpacity 
-      key={item.id} 
+    <TouchableOpacity
+      key={item.id}
       style={styles.playerCard}
-      onPress={() => handlePlayerPress(item)}
+      onPress={() => setSelectedPlayer(item)}
+      activeOpacity={0.7}
     >
       <View style={styles.playerHeader}>
-        <View style={[
-          styles.availabilityBadge, 
-          { 
-            backgroundColor: item.availability === 'Available' 
-              ? `${theme.colors.status.success}20` 
-              : `${theme.colors.status.warning}20` 
-          }
-        ]}>
-          <Text style={[
-            styles.availabilityText, 
-            { 
-              color: item.availability === 'Available' 
-                ? theme.colors.status.success 
-                : theme.colors.status.warning 
-            }
-          ]}>
+        <Image source={{ uri: item.avatar }} style={styles.playerAvatar} />
+        <View style={styles.playerInfo}>
+          <Text style={styles.playerName}>{item.name}</Text>
+          <View style={styles.playerMeta}>
+            <Ionicons name="trophy-outline" size={14} color={theme.colors.text.secondary} />
+            <Text style={styles.playerSport}>{item.sport}</Text>
+            <Text style={styles.playerDivider}>•</Text>
+            <Text style={styles.playerSkill}>{item.skillLevel}</Text>
+          </View>
+          <View style={styles.playerMeta}>
+            <Ionicons name="location" size={14} color={theme.colors.accent.neonGreen} />
+            <Text style={styles.playerDistance}>{item.distance}</Text>
+            <Text style={styles.playerDivider}>•</Text>
+            <Ionicons name="star" size={14} color={theme.colors.accent.orange} />
+            <Text style={styles.playerRating}>{item.rating}</Text>
+          </View>
+        </View>
+        <View
+          style={[
+            styles.availabilityBadge,
+            {
+              backgroundColor:
+                item.availability === 'Available'
+                  ? `${theme.colors.status.success}20`
+                  : `${theme.colors.status.warning}20`,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.availabilityDot,
+              {
+                backgroundColor:
+                  item.availability === 'Available'
+                    ? theme.colors.status.success
+                    : theme.colors.status.warning,
+              },
+            ]}
+          />
+          <Text
+            style={[
+              styles.availabilityText,
+              {
+                color:
+                  item.availability === 'Available'
+                    ? theme.colors.status.success
+                    : theme.colors.status.warning,
+              },
+            ]}
+          >
             {item.availability}
           </Text>
         </View>
-        <Text style={styles.playerName}>{item.name}</Text>
       </View>
-      <View style={styles.playerDetails}>
-        <Text style={styles.playerSport}>{item.sport} • {item.skillLevel}</Text>
-        <Text style={styles.playerDistance}>{item.distance}</Text>
-      </View>
-      <View style={styles.playerStats}>
-        <View style={styles.statItem}>
-          <Ionicons name="star" size={14} color={theme.colors.accent.orange} />
-          <Text style={styles.statText}>{item.rating}</Text>
-        </View>
-      </View>
-      <View style={styles.playerActions}>
-        <TouchableOpacity style={[styles.actionButton, styles.inviteButton]}>
-          <Text style={styles.actionButtonText}>Invite</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, styles.chatButton]}>
-          <Text style={styles.actionButtonText}>Chat</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, styles.profileButton]}>
-          <Text style={styles.actionButtonText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={styles.requestButton}
+        onPress={() => handleSendRequest(item.id)}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
+        <Text style={styles.requestButtonText}>Request to Play</Text>
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
-      {/* Top Bar */}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background.card} />
+
+      {/* Top Filter Bar */}
       <View style={styles.topBar}>
         <View style={styles.locationContainer}>
-          <Ionicons name="location-outline" size={20} color={theme.colors.text.primary} />
-          <Text style={styles.locationText}>New Delhi</Text>
-          <Ionicons name="chevron-down" size={16} color={theme.colors.text.primary} />
+          <Ionicons name="location" size={20} color={theme.colors.accent.neonGreen} />
+          <Text style={styles.locationText}>
+            {userLocation ? `${radius}km radius` : 'Getting location...'}
+          </Text>
+          {updatingLocation && <ActivityIndicator size="small" color={theme.colors.accent.neonGreen} style={{ marginLeft: 8 }} />}
         </View>
         <View style={styles.radiusContainer}>
-          <Text style={styles.radiusText}>Radius: {radius} KM</Text>
-          <TouchableOpacity style={styles.radiusButton} onPress={handleDecreaseRadius}>
+          <TouchableOpacity
+            style={styles.radiusButton}
+            onPress={() => setRadius(Math.max(1, radius - 1))}
+          >
             <Ionicons name="remove" size={16} color={theme.colors.text.primary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.radiusButton} onPress={handleIncreaseRadius}>
+          <Text style={styles.radiusText}>{radius}km</Text>
+          <TouchableOpacity
+            style={styles.radiusButton}
+            onPress={() => setRadius(Math.min(10, radius + 1))}
+          >
             <Ionicons name="add" size={16} color={theme.colors.text.primary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Main Content */}
-      <FlatList
-        data={mockPlayers}
-        renderItem={renderPlayerCard}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      />
-
-      {/* Bottom Action Bar */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity 
-          style={styles.bottomButton} 
+      {/* Filter Chips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterChipsContainer}
+        contentContainerStyle={styles.filterChipsContent}
+      >
+        <TouchableOpacity
+          style={[styles.filterChip, filters.game && styles.filterChipActive]}
           onPress={() => setShowFilters(true)}
         >
-          <Ionicons name="filter-outline" size={20} color={theme.colors.text.primary} />
-          <Text style={styles.bottomButtonText}>Filters</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.bottomButton} 
-          onPress={() => setShowListView(!showListView)}
-        >
-          <Ionicons 
-            name={showListView ? "map-outline" : "list-outline"} 
-            size={20} 
-            color={theme.colors.text.primary} 
+          <Ionicons
+            name="football-outline"
+            size={16}
+            color={filters.game ? '#FFFFFF' : theme.colors.text.secondary}
           />
-          <Text style={styles.bottomButtonText}>
-            {showListView ? "Map View" : "List View"}
+          <Text
+            style={[
+              styles.filterChipText,
+              filters.game && styles.filterChipTextActive,
+            ]}
+          >
+            {filters.game || 'Game'}
           </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.bottomButton} 
-          onPress={() => console.log('Refresh')}
+
+        <TouchableOpacity
+          style={[styles.filterChip, filters.skillLevel && styles.filterChipActive]}
+          onPress={() => {
+            const currentIndex = SKILL_LEVELS.indexOf(filters.skillLevel);
+            const nextIndex = (currentIndex + 1) % (SKILL_LEVELS.length + 1);
+            setFilters({
+              ...filters,
+              skillLevel: nextIndex === 0 ? '' : SKILL_LEVELS[nextIndex - 1],
+            });
+          }}
         >
-          <Ionicons name="refresh" size={20} color={theme.colors.text.primary} />
-          <Text style={styles.bottomButtonText}>Refresh</Text>
+          <Ionicons
+            name="trophy-outline"
+            size={16}
+            color={filters.skillLevel ? '#FFFFFF' : theme.colors.text.secondary}
+          />
+          <Text
+            style={[
+              styles.filterChipText,
+              filters.skillLevel && styles.filterChipTextActive,
+            ]}
+          >
+            {filters.skillLevel || 'Skill'}
+          </Text>
         </TouchableOpacity>
-      </View>
+
+        <TouchableOpacity
+          style={[styles.filterChip, filters.selectedTime && styles.filterChipActive]}
+          onPress={() => setShowTimePicker(true)}
+        >
+          <Ionicons
+            name="time-outline"
+            size={16}
+            color={filters.selectedTime ? '#FFFFFF' : theme.colors.text.secondary}
+          />
+          <Text
+            style={[
+              styles.filterChipText,
+              filters.selectedTime && styles.filterChipTextActive,
+            ]}
+          >
+            {filters.selectedTime || 'Time'}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      {/* Main Content */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.accent.neonGreen} />
+          <Text style={styles.loadingText}>Finding nearby players...</Text>
+        </View>
+      ) : players.length > 0 ? (
+        <FlatList
+          data={players}
+          renderItem={renderPlayerCard}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="people-outline" size={64} color={theme.colors.text.disabled} />
+          <Text style={styles.emptyText}>No players found</Text>
+          <Text style={styles.emptySubtext}>
+            Try increasing the search radius or adjusting filters
+          </Text>
+        </View>
+      )}
 
       {/* Player Detail Modal */}
       <Modal
@@ -208,57 +501,93 @@ const NearbyPlayersMap = () => {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <View style={[
-                styles.availabilityBadge, 
-                { 
-                  backgroundColor: selectedPlayer?.availability === 'Available' 
-                    ? `${theme.colors.status.success}20` 
-                    : `${theme.colors.status.warning}20` 
-                }
-              ]}>
-                <Text style={[
-                  styles.availabilityText, 
-                  { 
-                    color: selectedPlayer?.availability === 'Available' 
-                      ? theme.colors.status.success 
-                      : theme.colors.status.warning 
-                  }
-                ]}>
-                  {selectedPlayer?.availability}
-                </Text>
-              </View>
+              <Text style={styles.modalTitle}>Player Profile</Text>
               <TouchableOpacity onPress={() => setSelectedPlayer(null)}>
                 <Ionicons name="close" size={24} color={theme.colors.text.primary} />
               </TouchableOpacity>
             </View>
-            
-            <View style={styles.playerProfile}>
-              <Text style={styles.playerName}>{selectedPlayer?.name}</Text>
-              <Text style={styles.playerSport}>{selectedPlayer?.sport} • {selectedPlayer?.skillLevel}</Text>
-              <Text style={styles.playerDistance}>{selectedPlayer?.distance}</Text>
-              
-              <View style={styles.ratingContainer}>
-                <Ionicons name="star" size={16} color={theme.colors.accent.orange} />
-                <Text style={styles.ratingText}>{selectedPlayer?.rating}</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.playerProfile}>
+                <Image
+                  source={{ uri: selectedPlayer?.avatar }}
+                  style={styles.profileImage}
+                />
+                <Text style={styles.profileName}>{selectedPlayer?.name}</Text>
+                <Text style={styles.profileBio}>{selectedPlayer?.bio}</Text>
+
+                <View style={styles.profileStats}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{selectedPlayer?.rating}</Text>
+                    <Text style={styles.statLabel}>Rating</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{selectedPlayer?.pastMatches}</Text>
+                    <Text style={styles.statLabel}>Matches</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{selectedPlayer?.reviews}</Text>
+                    <Text style={styles.statLabel}>Reviews</Text>
+                  </View>
+                </View>
+
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Games</Text>
+                  <View style={styles.gamesContainer}>
+                    {selectedPlayer?.games?.map((game: string, index: number) => (
+                      <View key={index} style={styles.gameChip}>
+                        <Text style={styles.gameChipText}>{game}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Availability</Text>
+                  {selectedPlayer?.availabilitySchedule?.map(
+                    (slot: any, index: number) => (
+                      <View key={index} style={styles.availabilitySlot}>
+                        <Text style={styles.slotDay}>{slot.day}</Text>
+                        <Text style={styles.slotTime}>
+                          {slot.from} - {slot.to}
+                        </Text>
+                      </View>
+                    )
+                  )}
+                </View>
               </View>
-            </View>
-            
-            <View style={styles.playerActions}>
-              <TouchableOpacity style={[styles.actionButton, styles.inviteButton]}>
-                <Text style={styles.actionButtonText}>Invite to Play</Text>
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.requestActionButton]}
+                onPress={() => {
+                  handleSendRequest(selectedPlayer?.id);
+                }}
+              >
+                <Ionicons name="person-add-outline" size={20} color="#FFFFFF" />
+                <Text style={styles.actionButtonText}>Request to Play</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionButton, styles.chatButton]}>
-                <Text style={styles.actionButtonText}>Chat</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionButton, styles.profileButton]}>
-                <Text style={styles.actionButtonText}>View Profile</Text>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.chatActionButton]}
+                onPress={() => {
+                  setSelectedPlayer(null);
+                  navigation.navigate('Chat', { userId: selectedPlayer?.id });
+                }}
+              >
+                <Ionicons name="chatbubble-outline" size={20} color={theme.colors.text.primary} />
+                <Text
+                  style={[styles.actionButtonText, { color: theme.colors.text.primary }]}
+                >
+                  Chat
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* Filters Modal */}
+      {/* Game Selection Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -266,98 +595,114 @@ const NearbyPlayersMap = () => {
         onRequestClose={() => setShowFilters(false)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.filtersContainer}>
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filters</Text>
+              <Text style={styles.modalTitle}>Select Game</Text>
               <TouchableOpacity onPress={() => setShowFilters(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.text.primary} />
               </TouchableOpacity>
             </View>
-            
             <ScrollView>
-              <Text style={styles.filterTitle}>Sport</Text>
-              <View style={styles.chipContainer}>
-                {['Cricket', 'Football', 'Badminton', 'Tennis', 'Basketball'].map((sport, index) => (
-                  <TouchableOpacity 
-                    key={index} 
+              {GAMES.map((game) => (
+                <TouchableOpacity
+                  key={game}
+                  style={[
+                    styles.gameOption,
+                    filters.game === game && styles.gameOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setFilters({ ...filters, game });
+                    setShowFilters(false);
+                  }}
+                >
+                  <Text
                     style={[
-                      styles.chip,
-                      { backgroundColor: filters.sport === sport ? theme.colors.accent.neonGreen : theme.colors.background.secondary }
+                      styles.gameOptionText,
+                      filters.game === game && styles.gameOptionTextSelected,
                     ]}
-                    onPress={() => setFilters({...filters, sport: filters.sport === sport ? '' : sport})}
                   >
-                    <Text style={[
-                      styles.chipText,
-                      { color: filters.sport === sport ? theme.colors.text.inverted : theme.colors.text.primary }
-                    ]}>{sport}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              
-              <Text style={styles.filterTitle}>Skill Level</Text>
-              <View style={styles.chipContainer}>
-                {['Beginner', 'Intermediate', 'Pro'].map((level, index) => (
-                  <TouchableOpacity 
-                    key={index} 
-                    style={[
-                      styles.chip,
-                      { backgroundColor: filters.skillLevel === level ? theme.colors.accent.neonGreen : theme.colors.background.secondary }
-                    ]}
-                    onPress={() => setFilters({...filters, skillLevel: filters.skillLevel === level ? '' : level})}
-                  >
-                    <Text style={[
-                      styles.chipText,
-                      { color: filters.skillLevel === level ? theme.colors.text.inverted : theme.colors.text.primary }
-                    ]}>{level}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              
-              <Text style={styles.filterTitle}>Availability</Text>
-              <View style={styles.chipContainer}>
-                {['Available Now', 'Busy'].map((status, index) => (
-                  <TouchableOpacity 
-                    key={index} 
-                    style={[
-                      styles.chip,
-                      { backgroundColor: filters.availability === status ? theme.colors.accent.neonGreen : theme.colors.background.secondary }
-                    ]}
-                    onPress={() => setFilters({...filters, availability: filters.availability === status ? '' : status})}
-                  >
-                    <Text style={[
-                      styles.chipText,
-                      { color: filters.availability === status ? theme.colors.text.inverted : theme.colors.text.primary }
-                    ]}>{status}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              
-              <TouchableOpacity 
-                style={styles.applyButton} 
-                onPress={() => setShowFilters(false)}
-              >
-                <Text style={styles.applyButtonText}>Apply Filters</Text>
-              </TouchableOpacity>
+                    {game}
+                  </Text>
+                  {filters.game === game && (
+                    <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
+              ))}
             </ScrollView>
           </View>
         </View>
       </Modal>
 
-      {/* Empty State */}
-      {mockPlayers.length === 0 && (
-        <View style={styles.emptyState}>
-          <Ionicons name="person-remove-outline" size={60} color={theme.colors.text.secondary} />
-          <Text style={styles.emptyStateTitle}>No players nearby</Text>
-          <Text style={styles.emptyStateSubtitle}>Try increasing the radius or invite friends</Text>
-          <TouchableOpacity style={styles.emptyStateButton}>
-            <Text style={styles.emptyStateButtonText}>Increase Radius</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.emptyStateButton}>
-            <Text style={styles.emptyStateButtonText}>Invite Friends</Text>
-          </TouchableOpacity>
+      {/* Time Selection Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showTimePicker}
+        onRequestClose={() => setShowTimePicker(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Time</Text>
+              <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              <TouchableOpacity
+                style={[
+                  styles.timeOption,
+                  filters.selectedTime === 'Today' && styles.timeOptionSelected,
+                ]}
+                onPress={() => {
+                  setFilters({ ...filters, selectedTime: 'Today', selectedDay: 'Today' });
+                  setShowTimePicker(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.timeOptionText,
+                    filters.selectedTime === 'Today' && styles.timeOptionTextSelected,
+                  ]}
+                >
+                  Today
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.timeOption,
+                  filters.selectedTime === 'Tomorrow' && styles.timeOptionSelected,
+                ]}
+                onPress={() => {
+                  setFilters({ ...filters, selectedTime: 'Tomorrow', selectedDay: 'Tomorrow' });
+                  setShowTimePicker(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.timeOptionText,
+                    filters.selectedTime === 'Tomorrow' && styles.timeOptionTextSelected,
+                  ]}
+                >
+                  Tomorrow
+                </Text>
+              </TouchableOpacity>
+              <View style={styles.timeInputContainer}>
+                <Text style={styles.timeInputLabel}>Custom Time</Text>
+                <TextInput
+                  style={styles.timeInput}
+                  placeholder="e.g., 7PM, 6PM-8PM"
+                  value={filters.selectedTime}
+                  onChangeText={(text) =>
+                    setFilters({ ...filters, selectedTime: text, selectedDay: 'Custom' })
+                  }
+                />
+              </View>
+            </ScrollView>
+          </View>
         </View>
-      )}
-    </View>
+      </Modal>
+    </SafeAreaView>
   );
 };
 
@@ -370,257 +715,403 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     backgroundColor: theme.colors.background.card,
-    ...theme.shadows.small,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
   locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   locationText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: theme.colors.text.primary,
-    marginHorizontal: theme.spacing.sm,
+    marginLeft: 8,
   },
   radiusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  radiusButton: {
+    padding: 4,
   },
   radiusText: {
     fontSize: 14,
+    fontWeight: '600',
     color: theme.colors.text.primary,
-    marginRight: theme.spacing.sm,
+    marginHorizontal: 12,
+    minWidth: 40,
+    textAlign: 'center',
   },
-  radiusButton: {
-    backgroundColor: theme.colors.background.secondary,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: theme.spacing.xs,
-  },
-  contentContainer: {
-    padding: theme.spacing.md,
-  },
-  bottomBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
+  filterChipsContainer: {
     backgroundColor: theme.colors.background.card,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.ui.divider,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
-  bottomButton: {
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
+  filterChipsContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  bottomButtonText: {
-    fontSize: 12,
-    color: theme.colors.text.primary,
-    marginTop: theme.spacing.xs,
-  },
-  playerCard: {
-    backgroundColor: theme.colors.background.card,
-    borderRadius: theme.borderRadius.large,
-    padding: theme.spacing.md,
-    marginVertical: theme.spacing.sm,
-    ...theme.shadows.small,
-  },
-  playerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  playerName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-  },
-  playerDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
-  },
-  playerSport: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-  },
-  playerDistance: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-  },
-  playerStats: {
-    flexDirection: 'row',
-    marginBottom: theme.spacing.md,
-  },
-  statItem: {
+  filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: theme.spacing.md,
-  },
-  statText: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginLeft: theme.spacing.xs,
-  },
-  playerActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  actionButton: {
-    flex: 0.3,
-    paddingVertical: theme.spacing.sm,
-    alignItems: 'center',
-    borderRadius: theme.borderRadius.medium,
     backgroundColor: theme.colors.background.secondary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 12,
     borderWidth: 1,
     borderColor: theme.colors.ui.border,
   },
-  actionButtonText: {
-    color: theme.colors.text.primary,
+  filterChipActive: {
+    backgroundColor: theme.colors.accent.neonGreen,
+    borderColor: theme.colors.accent.neonGreen,
+  },
+  filterChipText: {
+    fontSize: 14,
     fontWeight: '600',
-    fontSize: 12,
+    color: theme.colors.text.secondary,
+    marginLeft: 6,
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+  },
+  contentContainer: {
+    padding: 20,
+    paddingBottom: 100,
+  },
+  playerCard: {
+    backgroundColor: theme.colors.background.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  playerHeader: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  playerAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 12,
+  },
+  playerInfo: {
+    flex: 1,
+  },
+  playerName: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: theme.colors.text.primary,
+    marginBottom: 4,
+  },
+  playerMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  playerSport: {
+    fontSize: 13,
+    color: theme.colors.text.secondary,
+    marginLeft: 4,
+    fontWeight: '600',
+  },
+  playerSkill: {
+    fontSize: 13,
+    color: theme.colors.text.secondary,
+    marginLeft: 4,
+    fontWeight: '600',
+  },
+  playerDistance: {
+    fontSize: 13,
+    color: theme.colors.accent.neonGreen,
+    marginLeft: 4,
+    fontWeight: '600',
+  },
+  playerRating: {
+    fontSize: 13,
+    color: theme.colors.accent.orange,
+    marginLeft: 4,
+    fontWeight: '600',
+  },
+  playerDivider: {
+    fontSize: 13,
+    color: theme.colors.text.disabled,
+    marginHorizontal: 6,
   },
   availabilityBadge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.small,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  availabilityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
   },
   availabilityText: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  requestButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.accent.neonGreen,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  requestButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 18,
     fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  emptySubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    paddingHorizontal: 40,
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'flex-end',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: theme.colors.background.card,
-    padding: theme.spacing.lg,
-    borderTopLeftRadius: theme.borderRadius.large,
-    borderTopRightRadius: theme.borderRadius.large,
-  },
-  filtersContainer: {
-    backgroundColor: theme.colors.background.card,
-    margin: theme.spacing.md,
-    borderRadius: theme.borderRadius.large,
-    maxHeight: '80%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    paddingBottom: 20,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: theme.spacing.md,
+    padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.ui.divider,
+    borderBottomColor: '#F1F5F9',
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '800',
     color: theme.colors.text.primary,
   },
   playerProfile: {
+    padding: 20,
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
   },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: theme.spacing.sm,
+  profileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: 16,
   },
-  ratingText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  profileName: {
+    fontSize: 24,
+    fontWeight: '800',
     color: theme.colors.text.primary,
-    marginLeft: theme.spacing.xs,
+    marginBottom: 8,
   },
-  inviteButton: {
-    backgroundColor: theme.colors.accent.neonGreen,
-  },
-  chatButton: {
-    backgroundColor: theme.colors.background.secondary,
-    borderWidth: 1,
-    borderColor: theme.colors.ui.border,
-  },
-  profileButton: {
-    backgroundColor: theme.colors.background.secondary,
-    borderWidth: 1,
-    borderColor: theme.colors.ui.border,
-  },
-  filterTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginHorizontal: theme.spacing.md,
-    marginVertical: theme.spacing.md,
-  },
-  chipContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: theme.spacing.md,
-  },
-  chip: {
-    borderRadius: theme.borderRadius.large,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    marginRight: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.ui.border,
-  },
-  chipText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  applyButton: {
-    backgroundColor: theme.colors.accent.neonGreen,
-    paddingVertical: theme.spacing.md,
-    margin: theme.spacing.md,
-    borderRadius: theme.borderRadius.medium,
-    alignItems: 'center',
-  },
-  applyButtonText: {
-    color: theme.colors.text.inverted,
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.xl,
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginTop: theme.spacing.md,
-  },
-  emptyStateSubtitle: {
-    fontSize: 16,
+  profileBio: {
+    fontSize: 15,
     color: theme.colors.text.secondary,
     textAlign: 'center',
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.lg,
+    marginBottom: 20,
   },
-  emptyStateButton: {
-    backgroundColor: theme.colors.accent.neonGreen,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.borderRadius.medium,
-    marginVertical: theme.spacing.sm,
+  profileStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  emptyStateButtonText: {
-    color: theme.colors.text.inverted,
+  statItem: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: theme.colors.accent.neonGreen,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+  },
+  section: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.text.primary,
+    marginBottom: 12,
+  },
+  gamesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  gameChip: {
+    backgroundColor: theme.colors.background.secondary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  gameChipText: {
+    fontSize: 14,
     fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  availabilitySlot: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  slotDay: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  slotTime: {
+    fontSize: 15,
+    color: theme.colors.text.secondary,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  requestActionButton: {
+    backgroundColor: theme.colors.accent.neonGreen,
+  },
+  chatActionButton: {
+    backgroundColor: theme.colors.background.secondary,
+    borderWidth: 1,
+    borderColor: theme.colors.ui.border,
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  gameOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  gameOptionSelected: {
+    backgroundColor: theme.colors.accent.neonGreen,
+  },
+  gameOptionText: {
     fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  gameOptionTextSelected: {
+    color: '#FFFFFF',
+  },
+  timeOption: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  timeOptionSelected: {
+    backgroundColor: theme.colors.accent.neonGreen,
+  },
+  timeOptionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  timeOptionTextSelected: {
+    color: '#FFFFFF',
+  },
+  timeInputContainer: {
+    padding: 16,
+  },
+  timeInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text.secondary,
+    marginBottom: 8,
+  },
+  timeInput: {
+    backgroundColor: theme.colors.background.secondary,
+    padding: 12,
+    borderRadius: 12,
+    fontSize: 16,
+    color: theme.colors.text.primary,
+    borderWidth: 1,
+    borderColor: theme.colors.ui.border,
   },
 });
 

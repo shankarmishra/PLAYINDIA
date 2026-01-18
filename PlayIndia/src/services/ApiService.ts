@@ -176,6 +176,31 @@ const ApiService = {
     
     getDashboardStats: () => 
       apiClient.get(`${API_ENDPOINTS.ADMIN.BASE}/dashboard`),
+    
+    // Banner management
+    getBanners: (params?: any) => 
+      apiClient.get(API_ENDPOINTS.ADMIN.BANNERS, { params }),
+    
+    createBanner: (bannerData: any) => 
+      apiClient.post(API_ENDPOINTS.ADMIN.BANNERS, bannerData),
+    
+    updateBanner: (id: string, bannerData: any) => 
+      apiClient.put(`${API_ENDPOINTS.ADMIN.BANNERS}/${id}`, bannerData),
+    
+    deleteBanner: (id: string) => 
+      apiClient.delete(`${API_ENDPOINTS.ADMIN.BANNERS}/${id}`),
+  },
+
+  // Banner API methods (public)
+  banners: {
+    getAll: (params?: any) => 
+      apiClient.get(API_ENDPOINTS.BANNERS.BASE, { params }),
+    
+    getById: (id: string) => 
+      apiClient.get(`${API_ENDPOINTS.BANNERS.BASE}/${id}`),
+    
+    trackClick: (id: string) => 
+      apiClient.post(API_ENDPOINTS.BANNERS.CLICK(id)),
   },
 
   // Generic methods

@@ -47,6 +47,15 @@ subprojects {
             }
         }
     }
+    
+    // Early fix for vector-icons fonts task - catch it as soon as it's added
+    if (project.hasProperty("android")) {
+        tasks.whenTaskAdded { task ->
+            if (task.name.contains("copyReactNativeVectorIconFonts")) {
+                task.doNotTrackState("Workaround for OneDrive symlink issue with font files")
+            }
+        }
+    }
 }
 
 // Fix for async-storage codegen issue on Windows/OneDrive

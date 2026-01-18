@@ -13,8 +13,9 @@ export const API_ENDPOINTS = {
         BASE: `${API_BASE_URL}/api/auth`,
         LOGIN: `${API_BASE_URL}/api/auth/login`,
         REGISTER: `${API_BASE_URL}/api/auth/register`,
-        PROFILE: `${API_BASE_URL}/api/auth/profile`,
+        PROFILE: `${API_BASE_URL}/api/auth/me`, // Backend uses /me endpoint
         ME: `${API_BASE_URL}/api/auth/me`,
+        UPDATE: `${API_BASE_URL}/api/auth/update`,
     },
 
     // User endpoints
@@ -70,6 +71,13 @@ export const API_ENDPOINTS = {
         USERS: `${API_BASE_URL}/api/admin/users`,
         APPROVE_COACH: (coachId: string) =>
             `${API_BASE_URL}/api/admin/coaches/${coachId}/approve`,
+        BANNERS: `${API_BASE_URL}/api/admin/banners`,
+    },
+
+    // Banner endpoints
+    BANNERS: {
+        BASE: `${API_BASE_URL}/api/banners`,
+        CLICK: (id: string) => `${API_BASE_URL}/api/banners/${id}/click`,
     },
 };
 

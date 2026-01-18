@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList, StatusBar, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../../theme/colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import useAuth from '../../hooks/useAuth';
 
 // Mock data for achievements and stats
 const mockAchievements = [
@@ -20,18 +22,65 @@ const mockStats = [
 ];
 
 const ProfileScreen = () => {
+  const { user, refreshUser, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('Profile');
+  const [loading, setLoading] = useState(true);
 
-  const user = {
-    name: 'Rahul Sharma',
-    email: 'rahul.sharma@example.com',
-    phone: '+91 98765 43210',
-    city: 'New Delhi',
-    sports: ['Cricket', 'Badminton', 'Tennis'],
-    skillLevel: 'Intermediate',
-    joinDate: 'Jan 2023',
-    rating: 4.5,
-  };
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        if (user) {
+          await refreshUser();
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProfile();
+  }, []);
+
+  // Get user data with fallbacks
+  const userName = user?.name || 'Player';
+  const userEmail = user?.email || 'No email';
+  const userPhone = user?.mobile || 'No phone';
+  const userCity = user?.location?.city || user?.preferences?.city || 'Not set';
+  const userSports = user?.preferences?.favoriteGames || [];
+  const userSkillLevel = user?.preferences?.skillLevel || 'Not set';
+  const userJoinDate = user?.createdAt 
+    ? new Date(user.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+    : 'Recently';
+  const userRating = user?.trustScore ? (user.trustScore / 20).toFixed(1) : '4.5';
+  
+  // Calculate stats from user data
+  const userStats = [
+    { 
+      label: 'Matches Played', 
+      value: user?.roleData?.matchesPlayed?.toString() || '0' 
+    },
+    { 
+      label: 'Wins', 
+      value: user?.roleData?.wins?.toString() || '0' 
+    },
+    { 
+      label: 'Win Rate', 
+      value: user?.roleData?.winRate ? `${user.roleData.winRate}%` : '0%' 
+    },
+    { 
+      label: 'Calories Burned', 
+      value: user?.roleData?.caloriesBurned?.toLocaleString() || '0' 
+    },
+  ];
+
+  // Get achievements from user data
+  const userAchievements = user?.achievements?.filter(a => a.unlocked).map(a => ({
+    id: a.achievementId?._id || a.achievementId?._id || 'unknown',
+    name: a.achievementId?.name || 'Achievement',
+    description: a.achievementId?.description || 'Great job!',
+    icon: a.achievementId?.icon || 'trophy',
+    earned: a.unlocked,
+  })) || [];
 
   const profileOptions = [
     { id: '1', title: 'Edit Profile', icon: 'person-outline', screen: 'EditProfile' },
@@ -82,13 +131,43 @@ const ProfileScreen = () => {
     </View>
   );
 
+  if (loading || authLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background.card} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.accent.neonGreen} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background.card} />
+        <View style={styles.loadingContainer}>
+          <Ionicons name="person-outline" size={48} color={theme.colors.text.disabled} />
+          <Text style={styles.loadingText}>No user data available</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background.card} />
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerPlaceholder} />
         <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity style={styles.headerButton}>
+        <TouchableOpacity 
+          style={styles.headerButton}
+          onPress={() => {
+            // Navigate to settings if needed
+          }}
+        >
           <Ionicons name="settings-outline" size={22} color={theme.colors.text.primary} />
         </TouchableOpacity>
       </View>
@@ -97,34 +176,51 @@ const ProfileScreen = () => {
         {/* Profile Header with gradient effect */}
         <View style={styles.profileHeader}>
           <View style={styles.profileImageContainer}>
-            <Image 
-              source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} 
-              style={styles.profileImage} 
-            />
-            <View style={styles.profileImageBadge}>
-              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-            </View>
+          <Image 
+            source={{ 
+              uri: user?.roleData?.profileImage || 
+                   'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=1ED760&color=fff&size=200'
+            }} 
+            style={styles.profileImage}
+            onError={(error) => {
+              // If image fails, it will use the generated avatar URL from UI Avatars
+              console.log('Profile image failed to load, using generated avatar');
+            }}
+          />
+            {user?.verification?.email?.verified && (
+              <View style={styles.profileImageBadge}>
+                <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+              </View>
+            )}
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user.name}</Text>
+            <Text style={styles.profileName}>{userName}</Text>
             <View style={styles.profileLocationContainer}>
               <Ionicons name="location" size={14} color={theme.colors.text.secondary} />
-              <Text style={styles.profileLocation}>{user.city}</Text>
+            <Text style={styles.profileLocation}>{userCity}</Text>
             </View>
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={16} color={theme.colors.accent.orange} />
-              <Text style={styles.ratingText}>{user.rating}</Text>
-              <Text style={styles.ratingCount}>(24 reviews)</Text>
+              <Text style={styles.ratingText}>{userRating}</Text>
+              <Text style={styles.ratingCount}>
+                ({user?.level || 'rookie'})
+              </Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.editButton} activeOpacity={0.7}>
+          <TouchableOpacity 
+            style={styles.editButton} 
+            activeOpacity={0.7}
+            onPress={() => {
+              // Navigate to edit profile
+            }}
+          >
             <Ionicons name="create-outline" size={18} color={theme.colors.text.inverted} />
           </TouchableOpacity>
         </View>
 
         {/* Stats Row */}
         <View style={styles.statsContainer}>
-          {mockStats.map((stat, index) => (
+          {userStats.map((stat, index) => (
             <View key={index} style={styles.statItem}>
               <Text style={styles.statValue}>{stat.value}</Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
@@ -133,16 +229,18 @@ const ProfileScreen = () => {
         </View>
 
         {/* Sports Chips */}
-        <View style={styles.sportsContainer}>
-          <Text style={styles.sportsLabel}>Sports</Text>
-          <View style={styles.sportsChips}>
-            {user.sports.map((sport, index) => (
-              <View key={index} style={styles.sportChip}>
-                <Text style={styles.sportChipText}>{sport}</Text>
-              </View>
-            ))}
+        {userSports.length > 0 && (
+          <View style={styles.sportsContainer}>
+            <Text style={styles.sportsLabel}>Favorite Sports</Text>
+            <View style={styles.sportsChips}>
+              {userSports.map((sport, index) => (
+                <View key={index} style={styles.sportChip}>
+                  <Text style={styles.sportChipText}>{sport}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Navigation Tabs */}
         <View style={styles.tabsContainer}>
@@ -180,22 +278,38 @@ const ProfileScreen = () => {
               <View style={styles.infoItem}>
                 <Ionicons name="person-outline" size={20} color={theme.colors.text.secondary} />
                 <Text style={styles.infoLabel}>Name</Text>
-                <Text style={styles.infoValue}>{user.name}</Text>
+                <Text style={styles.infoValue}>{userName}</Text>
               </View>
               <View style={styles.infoItem}>
                 <Ionicons name="mail-outline" size={20} color={theme.colors.text.secondary} />
                 <Text style={styles.infoLabel}>Email</Text>
-                <Text style={styles.infoValue}>{user.email}</Text>
+                <Text style={styles.infoValue}>{userEmail}</Text>
+                {user?.verification?.email?.verified && (
+                  <Ionicons name="checkmark-circle" size={16} color={theme.colors.status.success} style={{ marginLeft: 8 }} />
+                )}
               </View>
               <View style={styles.infoItem}>
                 <Ionicons name="call-outline" size={20} color={theme.colors.text.secondary} />
                 <Text style={styles.infoLabel}>Phone</Text>
-                <Text style={styles.infoValue}>{user.phone}</Text>
+                <Text style={styles.infoValue}>{userPhone}</Text>
+                {user?.verification?.mobile?.verified && (
+                  <Ionicons name="checkmark-circle" size={16} color={theme.colors.status.success} style={{ marginLeft: 8 }} />
+                )}
               </View>
               <View style={styles.infoItem}>
                 <Ionicons name="location-outline" size={20} color={theme.colors.text.secondary} />
                 <Text style={styles.infoLabel}>Location</Text>
-                <Text style={styles.infoValue}>{user.city}</Text>
+                <Text style={styles.infoValue}>{userCity}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Ionicons name="trophy-outline" size={20} color={theme.colors.text.secondary} />
+                <Text style={styles.infoLabel}>Skill Level</Text>
+                <Text style={styles.infoValue}>{userSkillLevel}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Ionicons name="calendar-outline" size={20} color={theme.colors.text.secondary} />
+                <Text style={styles.infoLabel}>Member Since</Text>
+                <Text style={styles.infoValue}>{userJoinDate}</Text>
               </View>
             </View>
 
@@ -220,14 +334,22 @@ const ProfileScreen = () => {
         {activeTab === 'Achievements' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Achievements</Text>
-            <FlatList
-              data={mockAchievements}
-              renderItem={renderAchievement}
-              keyExtractor={(item) => item.id}
-              numColumns={2}
-              showsVerticalScrollIndicator={false}
-              scrollEnabled={false}
-            />
+            {userAchievements.length > 0 ? (
+              <FlatList
+                data={userAchievements}
+                renderItem={renderAchievement}
+                keyExtractor={(item) => item.id}
+                numColumns={2}
+                showsVerticalScrollIndicator={false}
+                scrollEnabled={false}
+              />
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="trophy-outline" size={48} color={theme.colors.text.disabled} />
+                <Text style={styles.emptyText}>No achievements yet</Text>
+                <Text style={styles.emptySubtext}>Start playing to earn achievements!</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -271,7 +393,7 @@ const ProfileScreen = () => {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -561,6 +683,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.text.secondary,
     marginTop: theme.spacing.xs,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  emptySubtext: {
+    marginTop: 4,
+    fontSize: 14,
+    color: theme.colors.text.secondary,
   },
 });
 

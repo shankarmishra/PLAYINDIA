@@ -115,6 +115,11 @@ exports.register = async (req, res, next) => {
     // Generate referral code
     const referralCode = await generateReferralCode();
 
+    // Extract additional fields from request body
+    const city = req.body.city || '';
+    const favoriteGames = req.body.favoriteGames || req.body.favoriteSports || [];
+    const skillLevel = req.body.skillLevel || 'beginner';
+
     // Create user with enhanced enterprise features
     const user = await User.create({
       name: name ? name.trim() : name,
@@ -127,15 +132,24 @@ exports.register = async (req, res, next) => {
         code: referralCode
       },
       preferences: {
-        favoriteGames: [],
-        skillLevel: 'beginner',
+        favoriteGames: Array.isArray(favoriteGames) ? favoriteGames : (favoriteGames ? [favoriteGames] : []),
+        skillLevel: skillLevel,
+        city: city,
         notificationSettings: {
           push: true,
           email: true,
           sms: false,
           whatsapp: false
         }
-      }
+      },
+      // Set location city if provided (coordinates can be updated later)
+      ...(city && {
+        location: {
+          type: 'Point',
+          city: city,
+          coordinates: [0, 0] // Placeholder - can be updated when user provides actual location
+        }
+      })
     });
 
     // Create user wallet
