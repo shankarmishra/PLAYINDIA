@@ -194,13 +194,16 @@ exports.getStoreDashboard = async (req, res, next) => {
       });
     }
 
+    // Use store._id directly (MongoDB ObjectId)
+    const storeId = store._id;
+
     // Get store wallet
     const wallet = await Wallet.findOne({ userId: req.user.id });
 
     // Get recent orders with error handling
     let recentOrders = [];
     try {
-      recentOrders = await Order.find({ storeId: store._id })
+      recentOrders = await Order.find({ storeId: storeId })
         .populate('userId', 'name email')
         .sort({ createdAt: -1 })
         .limit(10)
@@ -216,7 +219,7 @@ exports.getStoreDashboard = async (req, res, next) => {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       orderAnalytics = await Order.aggregate([
         { $match: { 
-            storeId: store._id,
+            storeId: storeId,
             createdAt: { $gte: thirtyDaysAgo }
           }
         },
@@ -236,7 +239,7 @@ exports.getStoreDashboard = async (req, res, next) => {
     // Get top selling products with error handling
     let topSellingProducts = [];
     try {
-      topSellingProducts = await Product.find({ storeId: store._id })
+      topSellingProducts = await Product.find({ storeId: storeId })
         .sort({ 'analytics.purchases': -1 })
         .limit(5)
         .lean() || [];
@@ -244,7 +247,7 @@ exports.getStoreDashboard = async (req, res, next) => {
       console.error('Error fetching top selling products:', err);
       // Try without analytics field
       try {
-        topSellingProducts = await Product.find({ storeId: store._id })
+        topSellingProducts = await Product.find({ storeId: storeId })
           .sort({ createdAt: -1 })
           .limit(5)
           .lean() || [];
@@ -262,12 +265,12 @@ exports.getStoreDashboard = async (req, res, next) => {
     let totalProducts = 0;
 
     try {
-      totalOrdersCount = await Order.countDocuments({ storeId: store._id }) || 0;
-      completedOrdersCount = await Order.countDocuments({ storeId: store._id, status: 'delivered' }) || 0;
+      totalOrdersCount = await Order.countDocuments({ storeId: storeId }) || 0;
+      completedOrdersCount = await Order.countDocuments({ storeId: storeId, status: 'delivered' }) || 0;
       
       // Calculate revenue from completed orders
       const revenueData = await Order.aggregate([
-        { $match: { storeId: store._id, status: 'delivered' } },
+        { $match: { storeId: storeId, status: 'delivered' } },
         { $group: { _id: null, total: { $sum: '$totalAmount' } } }
       ]);
       totalRevenue = revenueData[0]?.total || 0;
@@ -276,18 +279,18 @@ exports.getStoreDashboard = async (req, res, next) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       todayOrders = await Order.countDocuments({ 
-        storeId: store._id, 
+        storeId: storeId, 
         createdAt: { $gte: today } 
       }) || 0;
 
       // Get pending orders count
       pendingOrders = await Order.countDocuments({ 
-        storeId: store._id, 
+        storeId: storeId, 
         status: { $in: ['pending', 'confirmed', 'processing'] } 
       }) || 0;
 
       // Get total products count
-      totalProducts = await Product.countDocuments({ storeId: store._id }) || 0;
+      totalProducts = await Product.countDocuments({ storeId: storeId }) || 0;
     } catch (statsError) {
       console.error('Error calculating dashboard stats:', statsError);
       // Use defaults if calculation fails
@@ -323,9 +326,12 @@ exports.getStoreDashboard = async (req, res, next) => {
       data: dashboardData
     });
   } catch (error) {
+    console.error('Store dashboard error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message || 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
