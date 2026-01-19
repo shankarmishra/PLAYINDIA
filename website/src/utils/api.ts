@@ -1,13 +1,11 @@
 // API utility for connecting to backend
 import axios from 'axios';
-
-// Get backend API URL from environment variable or default to production URL
-const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
+import { BACKEND_API_URL } from '../config/constants';
 
 // Create axios instance with defaults
 const apiClient = axios.create({
   baseURL: BACKEND_API_URL,
-  timeout: 30000, // 30 seconds timeout
+  timeout: 20000, // 20 seconds timeout (reduced from 30s)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -61,6 +59,13 @@ apiClient.interceptors.response.use(
       const backendError = error.response.data;
       if (backendError.message) {
         error.message = backendError.message;
+      }
+    }
+    
+    // For 404 errors, ensure message is clear
+    if (error.response?.status === 404) {
+      if (!error.message || error.message === 'Request failed with status code 404') {
+        error.message = error.response?.data?.message || 'Resource not found';
       }
     }
     
@@ -149,8 +154,42 @@ export const ApiService = {
     getDashboard: () => 
       apiClient.get('/api/stores/dashboard'),
     
-    getProducts: () => 
-      apiClient.get('/api/stores/products'),
+    getProducts: (storeId: string, params?: any) => 
+      apiClient.get(`/api/stores/${storeId}/products`, { params }),
+    
+    getMyProducts: (params?: any) => {
+      // First get store profile to get store ID, then get products
+      return apiClient.get('/api/stores/profile').then((profileRes: any) => {
+        if (profileRes.data?.success && profileRes.data?.data?._id) {
+          return apiClient.get(`/api/stores/${profileRes.data.data._id}/products`, { params });
+        }
+        throw new Error('Store profile not found');
+      });
+    },
+    
+    addProduct: (storeId: string, data: any) => 
+      apiClient.post(`/api/stores/${storeId}/products`, data),
+    
+    updateProduct: (productId: string, data: any) => 
+      apiClient.put(`/api/stores/products/${productId}`, data),
+    
+    deleteProduct: (productId: string) => 
+      apiClient.delete(`/api/stores/products/${productId}`),
+    
+    updateProfile: (data: any) => 
+      apiClient.put('/api/stores/profile', data),
+  },
+  
+  // Orders API methods
+  orders: {
+    getStoreOrders: (params?: any) => 
+      apiClient.get('/api/orders/store', { params }),
+    
+    getOrder: (id: string) => 
+      apiClient.get(`/api/orders/${id}`),
+    
+    updateOrderStatus: (id: string, data: any) => 
+      apiClient.put(`/api/orders/${id}`, data),
   },
 
   // Delivery API methods

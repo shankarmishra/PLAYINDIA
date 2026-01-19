@@ -39,10 +39,39 @@ const StoreRegistration = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
     if (e.target.files && e.target.files[0]) {
-      setFormData({
-        ...formData,
-        [field]: e.target.files[0]
-      });
+      const file = e.target.files[0];
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`File size should be less than 5MB. Selected file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+        e.target.value = ''; // Reset input
+        setError(`File size too large. Maximum size is 5MB. Selected file: ${file.name}`);
+        return;
+      }
+      
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        alert(`Invalid file type. Please upload an image (JPEG, PNG, GIF) or PDF file. Selected file: ${file.name}`);
+        e.target.value = ''; // Reset input
+        setError(`Invalid file type. Please upload an image or PDF file.`);
+        return;
+      }
+      
+      // Update form data with the file
+      setFormData(prev => ({
+        ...prev,
+        [field]: file
+      }));
+      
+      // Clear any previous errors
+      setError(null);
+    } else {
+      // If no file selected, clear the field
+      setFormData(prev => ({
+        ...prev,
+        [field]: null
+      }));
     }
   };
 
@@ -55,7 +84,98 @@ const StoreRegistration = () => {
     });
   };
 
+  const validateStep = (step: number): string | null => {
+    if (step === 1) {
+      // Validate Step 1 fields
+      if (!formData.storeName || !formData.storeName.trim()) {
+        return 'Store name is required';
+      }
+      if (!formData.ownerName || !formData.ownerName.trim()) {
+        return 'Owner name is required';
+      }
+      const trimmedOwnerName = formData.ownerName.trim();
+      if (trimmedOwnerName.length < 2 || trimmedOwnerName.length > 50) {
+        return 'Owner name must be between 2 and 50 characters';
+      }
+      if (!formData.email || !formData.email.trim()) {
+        return 'Email is required';
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        return 'Please provide a valid email address';
+      }
+      if (!formData.mobile || !formData.mobile.trim()) {
+        return 'Mobile number is required';
+      }
+      const mobileDigits = formData.mobile.replace(/\D/g, '');
+      if (mobileDigits.length !== 10) {
+        return 'Please enter a valid 10-digit mobile number';
+      }
+      if (!formData.password || !formData.password.trim()) {
+        return 'Password is required';
+      }
+      if (formData.password.length < 8) {
+        return 'Password must be at least 8 characters';
+      }
+      const hasUpperCase = /[A-Z]/.test(formData.password);
+      const hasLowerCase = /[a-z]/.test(formData.password);
+      const hasNumber = /\d/.test(formData.password);
+      const hasSpecialChar = /[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/]/.test(formData.password);
+      if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+        return 'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character';
+      }
+      if (!formData.address || !formData.address.trim()) {
+        return 'Store address is required';
+      }
+      if (!formData.city || !formData.city.trim()) {
+        return 'City is required';
+      }
+      if (!formData.state || !formData.state.trim()) {
+        return 'State is required';
+      }
+      if (!formData.pincode || !formData.pincode.trim()) {
+        return 'Pincode is required';
+      }
+    } else if (step === 2) {
+      // Validate Step 2 fields
+      if (!formData.gstNumber || !formData.gstNumber.trim()) {
+        return 'GST number is required';
+      }
+      if (!formData.businessType || !formData.businessType.trim()) {
+        return 'Business type is required';
+      }
+      if (!formData.category || formData.category.length === 0) {
+        return 'Please select at least one product category';
+      }
+    } else if (step === 3) {
+      // Validate Step 3 fields (file uploads)
+      if (!formData.gstCertificate) {
+        return 'GST Certificate file upload is required. Please upload the GST Certificate document.';
+      }
+      if (!formData.shopAct) {
+        return 'Shop & Establishment Certificate file upload is required. Please upload the Shop Act document.';
+      }
+      if (!formData.bankPassbook) {
+        return 'Bank Passbook file upload is required. Please upload the Bank Passbook document.';
+      }
+      if (!formData.ownerPhoto) {
+        return 'Owner Photo file upload is required. Please upload the owner\'s photo.';
+      }
+      if (!formData.storePhoto) {
+        return 'Store Photo file upload is required. Please upload the store photo.';
+      }
+    }
+    return null;
+  };
+
   const handleNext = () => {
+    const validationError = validateStep(currentStep);
+    if (validationError) {
+      setError(validationError);
+      alert(validationError);
+      return;
+    }
+    setError(null);
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
     }
@@ -72,14 +192,63 @@ const StoreRegistration = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate all steps before submitting
+    const step1Error = validateStep(1);
+    if (step1Error) {
+      setError(step1Error);
+      alert(step1Error);
+      setCurrentStep(1);
+      return;
+    }
+    
+    const step2Error = validateStep(2);
+    if (step2Error) {
+      setError(step2Error);
+      alert(step2Error);
+      setCurrentStep(2);
+      return;
+    }
+    
+    const step3Error = validateStep(3);
+    if (step3Error) {
+      setError(step3Error);
+      alert(step3Error);
+      return;
+    }
+    
     setIsSubmitting(true);
     setError(null);
     
     try {
       // Prepare form data for submission
+      // Use ownerName for the 'name' field (required by backend)
       const normalizedMobile = formData.mobile && !formData.mobile.startsWith('+') ? `+91${formData.mobile}` : formData.mobile;
       const normalizedEmail = formData.email ? formData.email.toLowerCase().trim() : formData.email;
-      const normalizedName = (formData.storeName || formData.ownerName || '').trim();
+      const normalizedName = formData.ownerName ? formData.ownerName.trim() : '';
+      
+      // Validate name before submission
+      if (!normalizedName || normalizedName.length < 2 || normalizedName.length > 50) {
+        throw new Error('Name must be between 2 and 50 characters and is required');
+      }
+      
+      // Validate email before submission
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!normalizedEmail || !emailRegex.test(normalizedEmail)) {
+        throw new Error('Please provide a valid email');
+      }
+      
+      // Validate password before submission
+      if (!formData.password || formData.password.length < 8) {
+        throw new Error('Password must be at least 8 characters');
+      }
+      const hasUpperCase = /[A-Z]/.test(formData.password);
+      const hasLowerCase = /[a-z]/.test(formData.password);
+      const hasNumber = /\d/.test(formData.password);
+      const hasSpecialChar = /[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/]/.test(formData.password);
+      if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+        throw new Error('Password must contain at least one uppercase letter, one lowercase letter, one number and one special character');
+      }
       
       // Create FormData object to handle both regular fields and files
       const submissionData = new FormData();
@@ -257,15 +426,17 @@ const StoreRegistration = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-gray-700 mb-2">Owner Name *</label>
+                    <label className="block text-gray-700 mb-2">Owner Name * (2-50 characters)</label>
                     <input
                       type="text"
                       name="ownerName"
                       value={formData.ownerName}
                       onChange={handleInputChange}
                       required
+                      minLength={2}
+                      maxLength={50}
                       className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
-                      placeholder="Enter owner's name"
+                      placeholder="Enter owner's name (2-50 characters)"
                     />
                   </div>
                   
@@ -303,9 +474,13 @@ const StoreRegistration = () => {
                       value={formData.password}
                       onChange={handleInputChange}
                       required
+                      minLength={8}
                       className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
-                      placeholder="Create a password"
+                      placeholder="Min 8 chars: uppercase, lowercase, number, special"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Password must be at least 8 characters and contain uppercase, lowercase, number, and special character
+                    </p>
                   </div>
                   
                   <div className="md:col-span-2">
@@ -462,20 +637,46 @@ const StoreRegistration = () => {
             {currentStep === 3 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Document Upload</h2>
-                <p className="text-gray-600 mb-6">Please upload the following documents to verify your business</p>
+                <p className="text-gray-600 mb-2">Please upload the following documents to verify your business</p>
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-yellow-700">
+                        <strong>Important:</strong> GST Number (entered in Step 2) and GST Certificate Document (file upload below) are different. 
+                        <strong className="text-red-600"> Both are required.</strong> Please upload the actual GST Certificate document file.
+                      </p>
+                    </div>
+                  </div>
+                </div>
                 
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-gray-700 mb-2">GST Certificate *</label>
+                    <label className="block text-gray-700 mb-2">
+                      GST Certificate Document * 
+                      <span className="text-xs text-gray-500 ml-2">(Upload PDF or Image file)</span>
+                    </label>
                     <div className="flex items-center">
-                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
                           <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
-                          <p className="text-sm text-gray-500">Click to upload GST Certificate</p>
+                          <p className="text-sm text-gray-500 mt-2">Click to upload GST Certificate document</p>
+                          <p className="text-xs text-gray-400 mt-1">(Max 5MB, PDF or Image)</p>
                           {formData.gstCertificate && (
-                            <p className="text-xs text-gray-500 mt-1 truncate max-w-xs">Selected: {formData.gstCertificate.name}</p>
+                            <div className="mt-2">
+                              <p className="text-xs text-green-600 font-semibold truncate max-w-xs">
+                                ✓ Selected: {formData.gstCertificate.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Size: {(formData.gstCertificate.size / 1024).toFixed(2)} KB
+                              </p>
+                            </div>
                           )}
                         </div>
                         <input 
@@ -483,9 +684,13 @@ const StoreRegistration = () => {
                           className="hidden" 
                           onChange={(e) => handleFileChange(e, 'gstCertificate')}
                           accept="image/*,.pdf"
+                          required
                         />
                       </label>
                     </div>
+                    {!formData.gstCertificate && (
+                      <p className="text-xs text-red-500 mt-1">Please upload the GST Certificate document file</p>
+                    )}
                   </div>
                   
                   <div>

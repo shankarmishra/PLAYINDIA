@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { ApiService } from '../../utils/api';
+import StoreLayout from '../../components/StoreLayout';
+import StoreErrorDisplay from '../../components/StoreErrorDisplay';
 
 interface StoreData {
   store: any;
@@ -26,62 +27,127 @@ const StoreDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
+  const hasFetchedRef = React.useRef(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Check if user is logged in
+      const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      // Get user info with timeout
+      let userData;
       try {
-        // Check if user is logged in
-        const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
-        if (!token) {
-          router.push('/login');
+        const userResponse: any = await Promise.race([
+          ApiService.auth.me(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout')), 15000)
+          )
+        ]) as any;
+
+        if (!userResponse?.data?.success) {
+          throw new Error('Failed to get user information');
+        }
+
+        userData = userResponse.data.user;
+        setUser(userData);
+
+        // Check if user is a seller/store
+        if (userData.role !== 'seller' && userData.role !== 'store') {
+          setError('You are not authorized to access store pages. Please login as a store owner.');
+          setLoading(false);
+          setTimeout(() => router.push('/login'), 3000);
           return;
         }
 
-        // Get user info
-        const userResponse: any = await ApiService.auth.me();
-        if (userResponse.data && userResponse.data.success) {
-          const userData = userResponse.data.user;
-          setUser(userData);
+        // Check if account is approved
+        if (userData.status !== 'active') {
+          setError('Your store account is pending approval. Please wait for admin approval.');
+          setLoading(false);
+          setTimeout(() => router.push('/store/register'), 3000);
+          return;
+        }
+      } catch (userErr: any) {
+        console.error('Error fetching user:', userErr);
+        if (userErr.response?.status === 401) {
+          localStorage.removeItem('userToken');
+          localStorage.removeItem('user');
+          router.push('/login');
+          return;
+        }
+        setError('Failed to load user information. Please try again.');
+        setLoading(false);
+        return;
+      }
 
-          // Check if user is a seller/store
-          if (userData.role !== 'seller') {
-            router.push('/');
-            return;
+      // Fetch store dashboard data with timeout
+      try {
+        let storeResponse: any;
+        try {
+          storeResponse = await Promise.race([
+            ApiService.stores.getDashboard(),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Dashboard request timeout')), 15000)
+            )
+          ]) as any;
+        } catch (apiErr: any) {
+          // Check if it's a 404 error (store profile not found)
+          const errorMessage = apiErr.response?.data?.message || apiErr.message || '';
+          const isNotFound = apiErr.response?.status === 404 || 
+                            errorMessage.toLowerCase().includes('not found') || 
+                            errorMessage.toLowerCase().includes('store profile not found') ||
+                            errorMessage.toLowerCase().includes('store profile not found for current user');
+          
+          if (isNotFound) {
+            setLoading(false);
+            // Redirect immediately to registration page
+            router.replace('/store/register');
+            return; // Exit early, don't try profile API
           }
+          throw apiErr; // Re-throw if not a 404
+        }
 
-          // Check if account is approved
-          if (userData.status !== 'active') {
-            router.push('/registration-status');
-            return;
-          }
-
-          // Fetch store profile and stats
-          // Note: You may need to create a store dashboard API endpoint
-          // For now, we'll use the store profile
-          try {
-            const storeResponse: any = await ApiService.coaches.getProfile(); // Adjust API endpoint
-            if (storeResponse.data && storeResponse.data.success) {
-              // Set dashboard data based on store profile
-              setDashboardData({
-                store: storeResponse.data.data,
-                stats: {
-                  totalProducts: 0,
-                  todayOrders: 0,
-                  monthlyRevenue: 0,
-                  pendingOrders: 0,
-                  totalOrders: 0,
-                  completedOrders: 0
-                },
-                sections: {
-                  recentOrders: [],
-                  topProducts: []
-                }
-              });
+        if (storeResponse?.data?.success) {
+          const data = storeResponse.data.data;
+          setDashboardData({
+            store: data.store || userData.roleData || {},
+            stats: {
+              totalProducts: data.stats?.totalProducts || 0,
+              todayOrders: data.stats?.todayOrders || 0,
+              monthlyRevenue: data.stats?.totalRevenue || data.stats?.monthlyRevenue || 0,
+              pendingOrders: data.stats?.pendingOrders || 0,
+              totalOrders: data.stats?.totalOrders || 0,
+              completedOrders: data.stats?.completedOrders || 0
+            },
+            sections: {
+              recentOrders: data.sections?.recentOrders || [],
+              topProducts: data.sections?.topSellingProducts || []
             }
-          } catch (err) {
-            // If no dashboard API, set default data
+          });
+          setLoading(false);
+          return; // Success, exit early
+        } else {
+          throw new Error(storeResponse?.data?.message || 'Dashboard API returned unsuccessful response');
+        }
+      } catch (err: any) {
+        // If dashboard API fails for other reasons, try profile API
+        try {
+          const profileResponse: any = await Promise.race([
+            ApiService.stores.getProfile(),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Profile request timeout')), 10000)
+            )
+          ]) as any;
+
+          if (profileResponse?.data?.success) {
             setDashboardData({
-              store: userData.roleData || {},
+              store: profileResponse.data.data || userData.roleData || {},
               stats: {
                 totalProducts: 0,
                 todayOrders: 0,
@@ -95,22 +161,111 @@ const StoreDashboard = () => {
                 topProducts: []
               }
             });
+            setLoading(false);
+            return; // Success, exit early
+          } else {
+            // Check if profile response indicates not found
+            const isProfileNotFound = profileResponse?.data?.message?.includes('not found') ||
+                                      profileResponse?.data?.message?.includes('Store profile not found');
+            
+            if (isProfileNotFound) {
+              setError('Store profile not found. Please complete your store registration.');
+              setLoading(false);
+              setTimeout(() => {
+                router.push('/store/register');
+              }, 3000);
+              return;
+            }
+            throw new Error('Profile API returned unsuccessful response');
+          }
+        } catch (profileErr: any) {
+          // Check if profile API also returns 404
+          const profileErrorMessage = profileErr.response?.data?.message || profileErr.message || '';
+          const isProfileNotFound = profileErr.response?.status === 404 || 
+                                    profileErrorMessage.toLowerCase().includes('not found') || 
+                                    profileErrorMessage.toLowerCase().includes('store profile not found') ||
+                                    profileErrorMessage.toLowerCase().includes('store profile not found for current user');
+          
+          if (isProfileNotFound) {
+            setLoading(false);
+            // Redirect immediately to registration page
+            router.replace('/store/register');
+            return; // Exit early
+          }
+          
+          // For other errors, use default data
+          setDashboardData({
+            store: userData.roleData || {},
+            stats: {
+              totalProducts: 0,
+              todayOrders: 0,
+              monthlyRevenue: 0,
+              pendingOrders: 0,
+              totalOrders: 0,
+              completedOrders: 0
+            },
+            sections: {
+              recentOrders: [],
+              topProducts: []
+            }
+          });
+          setLoading(false);
+        }
+      }
+      } catch (err: any) {
+        // Check if it's a 404 error (store profile not found)
+        const errorMessage = err.response?.data?.message || err.message || '';
+        const isNotFound = err.response?.status === 404 || 
+                          errorMessage.toLowerCase().includes('not found') || 
+                          errorMessage.toLowerCase().includes('store profile not found') ||
+                          errorMessage.toLowerCase().includes('store profile not found for current user');
+        
+        // Handle 404 errors (store profile not found)
+        if (isNotFound && !error) {
+          setLoading(false);
+          // Redirect immediately to registration page
+          router.replace('/store/register');
+          return;
+        }
+        
+        // Handle other errors that weren't already handled
+        if (!error) {
+          if (err.response?.status === 401 || err.message?.includes('401')) {
+            localStorage.removeItem('userToken');
+            localStorage.removeItem('user');
+            setLoading(false);
+            router.push('/login');
+            return;
+          } else if (err.message?.includes('timeout')) {
+            setError('Request timed out. Please check your connection and try again.');
+            setLoading(false);
+          } else {
+            setError(err.message || 'Failed to load dashboard data. Please try again later.');
+            setLoading(false);
           }
         }
-      } catch (err: any) {
-        console.error('Error fetching dashboard:', err);
-        if (err.response?.status === 401) {
-          router.push('/login');
-        } else {
-          setError('Failed to load dashboard data');
-        }
       } finally {
+        // Always set loading to false
         setLoading(false);
       }
-    };
-
-    fetchData();
   }, [router]);
+
+  useEffect(() => {
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchData();
+    }
+  }, [fetchData]);
+
+  // Redirect to registration if error is about missing profile
+  useEffect(() => {
+    if (error && (error.includes('not found') || error.includes('Store profile not found'))) {
+      const timer = setTimeout(() => {
+        router.replace('/store/register');
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, router]);
 
   const handleLogout = () => {
     localStorage.removeItem('userToken');
@@ -131,12 +286,17 @@ const StoreDashboard = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <Link href="/login" className="text-red-600 hover:underline">Go to Login</Link>
-        </div>
-      </div>
+      <StoreLayout title="Store Dashboard - TeamUp India" description="Manage your sports store on TeamUp India">
+        <StoreErrorDisplay 
+          error={error} 
+          onRetry={() => {
+            setError(null);
+            hasFetchedRef.current = false;
+            setLoading(true);
+            fetchData();
+          }}
+        />
+      </StoreLayout>
     );
   }
 
@@ -154,27 +314,7 @@ const StoreDashboard = () => {
   const storeInfo = dashboardData?.store || user?.roleData || {};
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Head>
-        <title>Store Dashboard - TeamUp India</title>
-        <meta name="description" content="Manage your sports store on TeamUp India" />
-      </Head>
-
-      {/* Store Navigation */}
-      <nav className="bg-gray-900 text-white py-4 px-6 flex justify-between items-center">
-        <div className="text-xl font-bold text-red-400">TeamUp India Store</div>
-        <div className="flex space-x-6">
-          <Link href="/store" className="hover:text-red-400">Dashboard</Link>
-          <Link href="/store/products" className="hover:text-red-400">Products</Link>
-          <Link href="/store/orders" className="hover:text-red-400">Orders</Link>
-          <Link href="/store/inventory" className="hover:text-red-400">Inventory</Link>
-          <Link href="/store/analytics" className="hover:text-red-400">Analytics</Link>
-          <Link href="/store/profile" className="hover:text-red-400">Profile</Link>
-          <Link href="/store/settings" className="hover:text-red-400">Settings</Link>
-          <button onClick={handleLogout} className="hover:text-red-400">Logout</button>
-        </div>
-      </nav>
-
+    <StoreLayout title="Store Dashboard - TeamUp India" description="Manage your sports store on TeamUp India">
       <div className="max-w-7xl mx-auto py-8 px-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
@@ -311,7 +451,7 @@ const StoreDashboard = () => {
           )}
         </div>
       </div>
-    </div>
+    </StoreLayout>
   );
 };
 

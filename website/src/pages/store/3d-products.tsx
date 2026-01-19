@@ -1,31 +1,86 @@
-import React from 'react';
-import Head from 'next/head';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import Layout from '../../components/Layout';
+import { useRouter } from 'next/router';
+import { ApiService } from '../../utils/api';
+import StoreLayout from '../../components/StoreLayout';
+import StoreErrorDisplay from '../../components/StoreErrorDisplay';
 
 const Store3DProductsPage = () => {
-  return (
-    <Layout title="3D Products - TeamUp India Store" description="Manage 3D sports experiences for your customers">
-      <Head>
-        <title>3D Products - TeamUp India Store</title>
-        <meta name="description" content="Manage 3D sports experiences for your customers" />
-      </Head>
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<any[]>([]);
+  const [storeId, setStoreId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const hasFetchedRef = useRef(false);
 
-      {/* Store Navigation */}
-      <nav className="bg-gray-900 text-white py-4 px-6 flex justify-between items-center">
-        <div className="text-xl font-bold text-red-400">TeamUp India Store</div>
-        <div className="flex space-x-6">
-          <Link href="/store" className="hover:text-red-400">Dashboard</Link>
-          <Link href="/store/products" className="hover:text-red-400">Products</Link>
-          <Link href="/store/orders" className="hover:text-red-400">Orders</Link>
-          <Link href="/store/inventory" className="hover:text-red-400">Inventory</Link>
-          <Link href="/store/analytics" className="hover:text-red-400">Analytics</Link>
-          <Link href="/store/3d-products" className="hover:text-red-400 font-medium underline">3D Products</Link>
-          <Link href="/profile" className="hover:text-red-400">Profile</Link>
-          <Link href="/logout" className="hover:text-red-400">Logout</Link>
+  useEffect(() => {
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      loadStoreAndProducts();
+    }
+  }, []);
+
+  const loadStoreAndProducts = async () => {
+    try {
+      setLoading(true);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      try {
+        const profileResponse: any = await ApiService.stores.getProfile();
+        if (profileResponse.data?.success && profileResponse.data?.data?._id) {
+          const id = profileResponse.data.data._id;
+          setStoreId(id);
+          
+          const productsResponse: any = await ApiService.stores.getProducts(id, {});
+          if (productsResponse.data?.success) {
+            setProducts(productsResponse.data.data || []);
+          }
+        } else {
+          throw new Error('Store profile not found');
+        }
+      } catch (profileErr: any) {
+        console.error('Error loading store profile:', profileErr);
+        if (profileErr.response?.status === 404 || profileErr.message?.includes('not found')) {
+          setError('Store profile not found. Please complete your store registration.');
+          setTimeout(() => {
+            router.push('/store/register');
+          }, 3000);
+          return;
+        }
+        throw profileErr;
+      }
+    } catch (err: any) {
+      console.error('Error loading 3D products:', err);
+      if (err.response?.status === 404 || err.message?.includes('not found')) {
+        setError('Store profile not found. Please complete your store registration.');
+        setTimeout(() => {
+          router.push('/store/register');
+        }, 3000);
+      } else {
+        setError(err.message || 'Failed to load products.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+          <p className="text-gray-600">Loading 3D products...</p>
         </div>
-      </nav>
+      </div>
+    );
+  }
 
+  return (
+    <StoreLayout title="3D Products - TeamUp India Store" description="Manage 3D sports experiences for your customers">
       <div className="max-w-7xl mx-auto py-8 px-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">3D Sports Products</h1>
@@ -142,66 +197,81 @@ const Store3DProductsPage = () => {
 
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Manage 3D Experience Inventory</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">3D Experience</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">SG Pro Cricket Bat</div>
-                    <div className="text-sm text-gray-500">Cricket VR Experience</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">3 months</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Available</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button className="text-red-600 hover:underline mr-3">Edit</button>
-                    <button className="text-blue-600 hover:underline">Deactivate</button>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">Wilson Tennis Racket</div>
-                    <div className="text-sm text-gray-500">Tennis Skill Builder</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">3 months</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Available</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button className="text-red-600 hover:underline mr-3">Edit</button>
-                    <button className="text-blue-600 hover:underline">Deactivate</button>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">Adidas Football</div>
-                    <div className="text-sm text-gray-500">Football Training Module</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2 months</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Limited</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button className="text-red-600 hover:underline mr-3">Edit</button>
-                    <button className="text-blue-600 hover:underline">Deactivate</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          {products.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">3D Experience</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {products.map((product: any) => {
+                    const experienceMap: Record<string, string> = {
+                      cricket: 'Cricket VR Experience',
+                      football: 'Football Training Module',
+                      tennis: 'Tennis Skill Builder',
+                      badminton: 'Badminton Pro',
+                      gym: 'Fitness VR Training',
+                      yoga: 'Yoga Virtual Studio',
+                    };
+                    const experience = experienceMap[product.category] || '3D Experience';
+                    
+                    return (
+                      <tr key={product._id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                          <div className="text-sm text-gray-500">{experience}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {product.category || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {experience}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            product.inventory.quantity > 0
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {product.inventory.quantity > 0 ? 'Available' : 'Out of Stock'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <Link
+                            href={`/store/products/edit/${product._id}`}
+                            className="text-blue-600 hover:underline mr-3"
+                          >
+                            Edit
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-12 text-center">
+              <div className="text-6xl mb-4">🎮</div>
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">No products with 3D experiences</h3>
+              <p className="text-gray-600 mb-6">Add products to enable 3D experiences for your customers</p>
+              <Link
+                href="/store/products/add"
+                className="inline-block bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition duration-300"
+              >
+                Add Products
+              </Link>
+            </div>
+          )}
         </div>
       </div>
-    </Layout>
+    </StoreLayout>
   );
 };
 

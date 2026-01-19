@@ -63,6 +63,17 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       // Store user type separately for navigation
       await AsyncStorage.setItem('userType', user.role || 'user');
       
+      // Check if user is seller/store and status is pending - redirect to tracking
+      if ((user.role === 'seller' || user.role === 'store') && user.status === 'pending') {
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'StoreApprovalTracking' }],
+          }),
+        );
+        return;
+      }
+      
       // Determine the correct main route based on user type
       let mainRouteName: string;
       switch(user.role) {
@@ -90,7 +101,18 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         }),
       );
     } catch (error: any) {
-      Alert.alert('Access Denied', 'Invalid credentials. Please try again.');
+      // Check if error is about pending approval
+      if (error.message && error.message.includes('pending approval')) {
+        // Redirect to tracking page
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'StoreApprovalTracking' }],
+          }),
+        );
+      } else {
+        Alert.alert('Access Denied', error.message || 'Invalid credentials. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

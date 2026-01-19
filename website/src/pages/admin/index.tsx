@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import AdminNav from '../../components/AdminNav';
+import { BACKEND_API_URL } from '../../config/constants';
 
 interface DashboardStats {
   totalUsers: number;
@@ -71,7 +72,7 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
+      const backendUrl = BACKEND_API_URL;
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {
@@ -497,6 +498,11 @@ const AdminDashboard = () => {
                   <div className="text-3xl mb-3">👥</div>
                   <h3 className="font-semibold text-gray-800">User Management</h3>
                   <p className="text-sm text-gray-600 mt-1">Manage users</p>
+                </Link>
+                <Link href="/admin/shop" className="bg-white border-2 border-gray-200 hover:border-green-500 hover:bg-green-50 p-6 rounded-xl text-center transition-all duration-300 shadow-sm hover:shadow-md">
+                  <div className="text-4xl mb-3">🛍️</div>
+                  <h3 className="font-bold text-lg mb-1">Shop Management</h3>
+                  <p className="text-sm text-gray-600">Manage products, orders & revenue</p>
                 </Link>
                 <Link href="/admin/cms" className="bg-white border-2 border-gray-200 hover:border-green-500 hover:bg-green-50 p-6 rounded-xl text-center transition-all duration-300 shadow-sm hover:shadow-md">
                   <div className="text-3xl mb-3">📝</div>

@@ -9,11 +9,6 @@ import StoreProfileScreen from '../screens/store/ProfileScreen';
 import ManageProductsScreen from '../screens/store/ManageProductsScreen';
 import OrdersScreen from '../screens/store/OrdersScreen';
 import ListProductScreen from '../screens/store/ListProductScreen';
-import WalletScreen from '../screens/user/WalletScreen';
-import SettingsScreen from '../screens/user/SettingsScreen';
-import HelpSupportScreen from '../screens/user/HelpSupportScreen';
-import NotificationsScreen from '../screens/user/NotificationsScreen';
-import ChatScreen from '../screens/user/ChatScreen';
 
 export type StoreTabParamList = {
   HomeTab: undefined;
@@ -21,12 +16,7 @@ export type StoreTabParamList = {
   ManageProducts: undefined;
   Orders: undefined;
   Profile: undefined;
-  ListProduct: undefined;
-  Wallet: undefined;
-  Settings: undefined;
-  HelpSupport: undefined;
-  Notifications: undefined;
-  Chat: { userId?: string };
+  ListProduct: { productId?: string } | undefined;
 };
 
 const Tab = createBottomTabNavigator();
@@ -94,11 +84,6 @@ const StoreNav = () => {
     >
       <Stack.Screen name="HomeTab" component={StoreTabNavigator} />
       <Stack.Screen name="ListProduct" component={ListProductScreen} />
-      <Stack.Screen name="Wallet" component={WalletScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
-      <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
-      <Stack.Screen name="Notifications" component={NotificationsScreen} />
-      <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
 };

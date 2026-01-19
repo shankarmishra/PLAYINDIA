@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { ApiService } from '../utils/api';
+import { BACKEND_API_URL } from '../config/constants';
 
 interface UserStatus {
   id: string;
@@ -167,7 +168,7 @@ const RegistrationStatusPage = () => {
     setError(null);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
+      const backendUrl = BACKEND_API_URL;
       const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
       
       // Try to fetch user by email using admin API (if admin) or check logged-in user

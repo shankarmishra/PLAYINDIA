@@ -65,6 +65,24 @@ export const API_ENDPOINTS = {
         PROFILE: `${API_BASE_URL}/api/coaches/profile`,
     },
 
+    // Stores endpoints
+    STORES: {
+        BASE: `${API_BASE_URL}/api/stores`,
+        PROFILE: `${API_BASE_URL}/api/stores/profile`,
+        DASHBOARD: `${API_BASE_URL}/api/stores/dashboard`,
+        MY_PROFILE: `${API_BASE_URL}/api/stores/profile`,
+        PRODUCTS: (storeId: string) => `${API_BASE_URL}/api/stores/${storeId}/products`,
+        PRODUCT: (productId: string) => `${API_BASE_URL}/api/stores/products/${productId}`,
+    },
+    
+    // Orders endpoints
+    ORDERS: {
+        BASE: `${API_BASE_URL}/api/orders`,
+        STORE_ORDERS: `${API_BASE_URL}/api/orders/store`,
+        DETAIL: (id: string) => `${API_BASE_URL}/api/orders/${id}`,
+        UPDATE_STATUS: (id: string) => `${API_BASE_URL}/api/orders/${id}`,
+    },
+
     // Admin endpoints
     ADMIN: {
         BASE: `${API_BASE_URL}/api/admin`,

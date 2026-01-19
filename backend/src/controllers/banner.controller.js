@@ -7,25 +7,39 @@ const logger = require('../utils/logger');
  */
 exports.getBanners = async (req, res, next) => {
   try {
-    const { status, targetAudience } = req.query;
+    const { status, targetAudience, bannerType } = req.query;
     const now = new Date();
 
-    let query = {};
+    // Default to active status if not specified
+    const bannerStatus = status || 'active';
+    
+    // Build query for status
+    let query = {
+      status: bannerStatus
+    };
 
-    // If status is specified, use it; otherwise get active banners
-    if (status) {
-      query.status = status;
-    } else {
-      query.status = 'active';
-      // Also check date range for scheduled banners
-      query.$or = [
-        { startDate: { $exists: false } },
-        { startDate: { $lte: now } }
-      ];
+    // Filter by banner type if provided
+    if (bannerType) {
+      query.bannerType = bannerType;
+    }
+
+    // For active banners, also check date ranges to ensure they're currently valid
+    // A banner is active if:
+    // 1. No startDate OR startDate is in the past
+    // 2. AND no endDate OR endDate is in the future
+    if (bannerStatus === 'active') {
       query.$and = [
         {
           $or: [
+            { startDate: { $exists: false } },
+            { startDate: null },
+            { startDate: { $lte: now } }
+          ]
+        },
+        {
+          $or: [
             { endDate: { $exists: false } },
+            { endDate: null },
             { endDate: { $gte: now } }
           ]
         }

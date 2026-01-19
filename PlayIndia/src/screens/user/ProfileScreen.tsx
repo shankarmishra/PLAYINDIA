@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList, StatusBar, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { theme } from '../../theme/colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import useAuth from '../../hooks/useAuth';
+import { UserTabParamList } from '../../navigation/UserNav';
+
+type NavigationProp = StackNavigationProp<UserTabParamList>;
 
 // Mock data for achievements and stats
 const mockAchievements = [
@@ -22,6 +27,7 @@ const mockStats = [
 ];
 
 const ProfileScreen = () => {
+  const navigation = useNavigation<NavigationProp>();
   const { user, refreshUser, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('Profile');
   const [loading, setLoading] = useState(true);
@@ -85,7 +91,7 @@ const ProfileScreen = () => {
   const profileOptions = [
     { id: '1', title: 'Edit Profile', icon: 'person-outline', screen: 'EditProfile' },
     { id: '2', title: 'My Bookings', icon: 'calendar-outline', screen: 'Bookings' },
-    { id: '3', title: 'My Orders', icon: 'cart-outline', screen: 'Orders' },
+    { id: '3', title: 'My Orders', icon: 'receipt-outline', screen: 'MyOrders' },
     { id: '4', title: 'Wallet', icon: 'wallet-outline', screen: 'Wallet' },
     { id: '5', title: 'Achievements', icon: 'trophy-outline', screen: 'Achievements' },
     { id: '6', title: 'Settings', icon: 'settings-outline', screen: 'Settings' },
@@ -181,16 +187,16 @@ const ProfileScreen = () => {
               uri: user?.roleData?.profileImage || 
                    'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=1ED760&color=fff&size=200'
             }} 
-            style={styles.profileImage}
+            style={styles.profileImage} 
             onError={(error) => {
               // If image fails, it will use the generated avatar URL from UI Avatars
               console.log('Profile image failed to load, using generated avatar');
             }}
           />
             {user?.verification?.email?.verified && (
-              <View style={styles.profileImageBadge}>
-                <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-              </View>
+            <View style={styles.profileImageBadge}>
+              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+            </View>
             )}
           </View>
           <View style={styles.profileInfo}>
@@ -230,16 +236,16 @@ const ProfileScreen = () => {
 
         {/* Sports Chips */}
         {userSports.length > 0 && (
-          <View style={styles.sportsContainer}>
+        <View style={styles.sportsContainer}>
             <Text style={styles.sportsLabel}>Favorite Sports</Text>
-            <View style={styles.sportsChips}>
+          <View style={styles.sportsChips}>
               {userSports.map((sport, index) => (
-                <View key={index} style={styles.sportChip}>
-                  <Text style={styles.sportChipText}>{sport}</Text>
-                </View>
-              ))}
-            </View>
+              <View key={index} style={styles.sportChip}>
+                <Text style={styles.sportChipText}>{sport}</Text>
+              </View>
+            ))}
           </View>
+        </View>
         )}
 
         {/* Navigation Tabs */}
@@ -318,7 +324,23 @@ const ProfileScreen = () => {
               <FlatList
                 data={profileOptions}
                 renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.optionItem}>
+                  <TouchableOpacity 
+                    style={styles.optionItem}
+                    onPress={() => {
+                      if (item.screen === 'MyOrders') {
+                        navigation.navigate('MyOrders');
+                      } else if (item.screen === 'Wallet') {
+                        navigation.navigate('Wallet');
+                      } else if (item.screen === 'Settings') {
+                        navigation.navigate('Settings');
+                      } else if (item.screen === 'Support') {
+                        navigation.navigate('HelpSupport');
+                      } else if (item.screen === 'Logout') {
+                        // Handle logout
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
                     <Ionicons name={item.icon as any} size={20} color={theme.colors.text.secondary} />
                     <Text style={styles.optionText}>{item.title}</Text>
                     <Ionicons name="chevron-forward" size={20} color={theme.colors.text.disabled} />
@@ -335,14 +357,14 @@ const ProfileScreen = () => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Achievements</Text>
             {userAchievements.length > 0 ? (
-              <FlatList
+            <FlatList
                 data={userAchievements}
-                renderItem={renderAchievement}
-                keyExtractor={(item) => item.id}
-                numColumns={2}
-                showsVerticalScrollIndicator={false}
-                scrollEnabled={false}
-              />
+              renderItem={renderAchievement}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              showsVerticalScrollIndicator={false}
+              scrollEnabled={false}
+            />
             ) : (
               <View style={styles.emptyContainer}>
                 <Ionicons name="trophy-outline" size={48} color={theme.colors.text.disabled} />
@@ -407,10 +429,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: theme.colors.background.card,
+    paddingTop: 12,
+    paddingBottom: 12,
+    height: 60,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
+    elevation: 0,
+    shadowOpacity: 0,
   },
   headerPlaceholder: {
     width: 40,

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import AdminNav from '../../components/AdminNav';
+import { BACKEND_API_URL } from '../../config/constants';
 
 interface Ticket {
   _id: string;
@@ -52,7 +53,7 @@ const AdminSupport = () => {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
+      const backendUrl = BACKEND_API_URL;
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {
@@ -90,7 +91,7 @@ const AdminSupport = () => {
 
   const updateTicketStatus = async (ticketId: string, status: string) => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
+      const backendUrl = BACKEND_API_URL;
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {
@@ -130,7 +131,7 @@ const AdminSupport = () => {
     }
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
+      const backendUrl = BACKEND_API_URL;
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {

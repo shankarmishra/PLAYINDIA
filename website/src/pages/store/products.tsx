@@ -1,156 +1,403 @@
-import Head from 'next/head';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import Layout from '@/components/Layout';
+import { useRouter } from 'next/router';
+import { ApiService } from '../../utils/api';
+import StoreLayout from '../../components/StoreLayout';
+import StoreErrorDisplay from '../../components/StoreErrorDisplay';
 
-export default function StoreProducts() {
+interface Product {
+  _id: string;
+  name: string;
+  description?: string;
+  price: {
+    original: number;
+    selling: number;
+  };
+  category: string;
+  images?: string[];
+  inventory: {
+    quantity: number;
+  };
+  availability: {
+    isActive: boolean;
+  };
+  ratings?: {
+    average: number;
+    count: number;
+  };
+}
+
+const StoreProducts = () => {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [storeId, setStoreId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [error, setError] = useState<string | null>(null);
+
+  const categories = [
+    { value: 'all', label: 'All', icon: '🏷️' },
+    { value: 'cricket', label: 'Cricket', icon: '🏏' },
+    { value: 'football', label: 'Football', icon: '⚽' },
+    { value: 'badminton', label: 'Badminton', icon: '🏸' },
+    { value: 'tennis', label: 'Tennis', icon: '🎾' },
+    { value: 'gym', label: 'Gym', icon: '💪' },
+    { value: 'yoga', label: 'Yoga', icon: '🧘' },
+    { value: 'sports-wear', label: 'Sports Wear', icon: '👕' },
+    { value: 'accessories', label: 'Accessories', icon: '🎒' },
+  ];
+
+  const hasFetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      loadStoreAndProducts();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (storeId) {
+      loadProducts(storeId);
+    }
+  }, [selectedCategory, searchQuery, storeId]);
+
+  const loadStoreAndProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Check authentication
+      const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      // First check if user is a store/seller
+      try {
+        const userResponse: any = await ApiService.auth.me();
+        if (userResponse.data?.success) {
+          const userData = userResponse.data.user;
+          
+          // Check if user is a seller/store
+          if (userData.role !== 'seller' && userData.role !== 'store') {
+            setError('You are not authorized to access store pages. Please login as a store owner.');
+            setTimeout(() => router.push('/login'), 3000);
+            return;
+          }
+
+          // Check if account is approved
+          if (userData.status !== 'active') {
+            setError('Your store account is pending approval. Please wait for admin approval.');
+            setTimeout(() => router.push('/store/register'), 3000);
+            return;
+          }
+        }
+      } catch (userErr: any) {
+        console.error('Error checking user:', userErr);
+        if (userErr.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
+      }
+
+      // Get store profile first
+      try {
+        const profileResponse: any = await ApiService.stores.getProfile();
+        if (profileResponse.data?.success && profileResponse.data?.data?._id) {
+          const id = profileResponse.data.data._id;
+          setStoreId(id);
+          
+          // Load products
+          await loadProducts(id);
+        } else {
+          throw new Error('Store profile not found');
+        }
+      } catch (profileErr: any) {
+        console.error('Error loading store profile:', profileErr);
+        // If store profile doesn't exist, show error and redirect
+        if (profileErr.response?.status === 404 || profileErr.message?.includes('not found')) {
+          setError('Store profile not found. Please complete your store registration.');
+          setTimeout(() => {
+            router.push('/store/register');
+          }, 3000);
+          return;
+        }
+        // For other errors, show error message
+        setError(profileErr.message || 'Failed to load store profile. Please try again.');
+        return;
+      }
+    } catch (err: any) {
+      console.error('Error loading products:', err);
+      setError(err.message || 'Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadProducts = async (id: string) => {
+    try {
+      const params: any = {};
+      if (selectedCategory !== 'all') {
+        params.category = selectedCategory;
+      }
+      if (searchQuery) {
+        params.search = searchQuery;
+      }
+      
+      const response: any = await ApiService.stores.getProducts(id, params);
+      if (response.data?.success) {
+        setProducts(response.data.data || []);
+      }
+    } catch (err: any) {
+      console.error('Error loading products:', err);
+    }
+  };
+
+  const handleDelete = async (productId: string) => {
+    if (!confirm('Are you sure you want to delete this product?')) {
+      return;
+    }
+    
+    try {
+      await ApiService.stores.deleteProduct(productId);
+      if (storeId) {
+        await loadProducts(storeId);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete product');
+    }
+  };
+
+  const handleToggleStatus = async (product: Product) => {
+    try {
+      await ApiService.stores.updateProduct(product._id, {
+        'availability.isActive': !product.availability.isActive,
+      });
+      if (storeId) {
+        await loadProducts(storeId);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update product status');
+    }
+  };
+
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const lowStockProducts = products.filter(
+    (p) => p.inventory.quantity <= (p.inventory.lowStockThreshold || 10)
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+          <p className="text-gray-600">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <Layout title="Store Products - TeamUp India" description="Manage your sports equipment products and inventory">
-      <Head>
-        <title>Store Products - TeamUp India</title>
-        <meta name="description" content="Manage your sports equipment products and inventory" />
-      </Head>
+    <StoreLayout title="Store Products - TeamUp India" description="Manage your sports equipment products and inventory">
 
-      {/* Store Products Hero */}
-      <section className="py-20 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white">
+      {/* Header */}
+      <section className="py-12 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-bold mb-6">Manage Products</h1>
-          <p className="text-xl text-gray-300">Add, edit, and manage your sports equipment inventory</p>
-        </div>
-      </section>
-
-      {/* Products Actions */}
-      <section className="py-16 px-6 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-800">Your Products</h2>
-            <button className="bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-lg font-semibold transition duration-300">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Manage Products</h1>
+              <p className="text-xl text-gray-300">Add, edit, and manage your sports equipment inventory</p>
+            </div>
+            <Link
+              href="/store/products/add"
+              className="bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-lg font-semibold transition duration-300"
+            >
               Add New Product
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-              <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 mb-4" />
-              <h3 className="text-xl font-semibold mb-2 text-gray-800">Cricket Bat</h3>
-              <p className="text-gray-600 mb-2">Premium willow cricket bat for professional play</p>
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-bold text-green-600">₹3,500</span>
-                <div className="flex space-x-2">
-                  <button className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">Edit</button>
-                  <button className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">Delete</button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-              <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 mb-4" />
-              <h3 className="text-xl font-semibold mb-2 text-gray-800">Tennis Racket</h3>
-              <p className="text-gray-600 mb-2">Professional tennis racket with advanced grip</p>
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-bold text-green-600">₹2,800</span>
-                <div className="flex space-x-2">
-                  <button className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">Edit</button>
-                  <button className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">Delete</button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-              <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 mb-4" />
-              <h3 className="text-xl font-semibold mb-2 text-gray-800">Yoga Mat</h3>
-              <p className="text-gray-600 mb-2">Non-slip yoga mat for comfortable practice</p>
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-bold text-green-600">₹800</span>
-                <div className="flex space-x-2">
-                  <button className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">Edit</button>
-                  <button className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">Delete</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Product Categories */}
-      <section className="py-16 px-6 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">Product Categories</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="bg-white p-6 rounded-xl shadow-sm text-center">
-              <div className="text-4xl mb-4">🏏</div>
-              <h3 className="text-xl font-semibold mb-2 text-gray-800">Cricket</h3>
-              <p className="text-gray-600 mb-4">Bats, balls, stumps, pads, etc.</p>
-              <button className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition duration-300">
-                View Products
-              </button>
-            </div>
-            <div className="bg-white p-6 rounded-xl shadow-sm text-center">
-              <div className="text-4xl mb-4">⚽</div>
-              <h3 className="text-xl font-semibold mb-2 text-gray-800">Football</h3>
-              <p className="text-gray-600 mb-4">Footballs, shin guards, etc.</p>
-              <button className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition duration-300">
-                View Products
-              </button>
-            </div>
-            <div className="bg-white p-6 rounded-xl shadow-sm text-center">
-              <div className="text-4xl mb-4">🎾</div>
-              <h3 className="text-xl font-semibold mb-2 text-gray-800">Tennis</h3>
-              <p className="text-gray-600 mb-4">Rackets, balls, nets, etc.</p>
-              <button className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition duration-300">
-                View Products
-              </button>
-            </div>
-            <div className="bg-white p-6 rounded-xl shadow-sm text-center">
-              <div className="text-4xl mb-4">🏸</div>
-              <h3 className="text-xl font-semibold mb-2 text-gray-800">Badminton</h3>
-              <p className="text-gray-600 mb-4">Rackets, shuttles, nets, etc.</p>
-              <button className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition duration-300">
-                View Products
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Inventory Management */}
-      <section className="py-16 px-6 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">Inventory Management</h2>
-          <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-            <h3 className="text-xl font-semibold mb-4 text-gray-800">Low Stock Alerts</h3>
-            <ul className="space-y-3">
-              <li className="flex justify-between items-center">
-                <span>Cricket Balls</span>
-                <span className="font-semibold text-red-500">Only 3 left</span>
-              </li>
-              <li className="flex justify-between items-center">
-                <span>Tennis Balls</span>
-                <span className="font-semibold text-red-500">Only 7 left</span>
-              </li>
-              <li className="flex justify-between items-center">
-                <span>Badminton Shuttles</span>
-                <span className="font-semibold text-red-500">Only 2 left</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-16 px-6 bg-gradient-to-r from-green-500 to-blue-500 text-white">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-6">Expand Your Product Range</h2>
-          <p className="text-xl mb-8">Add more products to attract more customers.</p>
-          <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-            <button className="bg-white text-green-600 hover:bg-gray-100 px-8 py-4 rounded-lg font-semibold transition duration-300">
-              Add Products
-            </button>
-            <Link href="/store/settings" className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-4 rounded-lg font-semibold transition duration-300">
-              Settings
             </Link>
           </div>
         </div>
       </section>
-    </Layout>
+
+      {error && (
+        <div className="max-w-7xl mx-auto px-6 pt-6">
+          <StoreErrorDisplay 
+            error={error}
+            onRetry={() => {
+              setError(null);
+              hasFetchedRef.current = false;
+              loadStoreAndProducts();
+            }}
+          />
+        </div>
+      )}
+
+      {/* Search and Filters */}
+      <section className="py-6 px-6 bg-white border-b">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              />
+            </div>
+            <div className="flex gap-2 overflow-x-auto">
+              {categories.map((cat) => (
+                <button
+                  key={cat.value}
+                  onClick={() => setSelectedCategory(cat.value)}
+                  className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition duration-300 ${
+                    selectedCategory === cat.value
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <span className="mr-2">{cat.icon}</span>
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Low Stock Alert */}
+      {lowStockProducts.length > 0 && (
+        <section className="py-4 px-6 bg-yellow-50 border-b border-yellow-200">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <span className="text-2xl mr-2">⚠️</span>
+                <span className="font-semibold text-yellow-800">
+                  {lowStockProducts.length} product{lowStockProducts.length > 1 ? 's' : ''} running low on stock
+                </span>
+              </div>
+              <Link href="/store/inventory" className="text-yellow-800 hover:underline font-medium">
+                View Inventory
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Products Grid */}
+      <section className="py-8 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">
+              Your Products ({filteredProducts.length})
+            </h2>
+          </div>
+
+          {filteredProducts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProducts.map((product) => (
+                <div key={product._id} className="bg-white p-6 rounded-xl border border-gray-200 hover:shadow-lg transition duration-300">
+                  <div className="mb-4">
+                    {product.images && product.images.length > 0 ? (
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-full h-48 object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="w-full h-48 bg-gray-200 border-2 border-dashed rounded-lg flex items-center justify-center">
+                        <span className="text-gray-400">No Image</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <h3 className="text-xl font-semibold mb-2 text-gray-800">{product.name}</h3>
+                  <p className="text-gray-600 mb-3 text-sm line-clamp-2">
+                    {product.description || 'No description'}
+                  </p>
+                  
+                  <div className="flex justify-between items-center mb-3">
+                    <div>
+                      <span className="text-lg font-bold text-green-600">
+                        ₹{product.price.selling.toLocaleString()}
+                      </span>
+                      {product.price.original > product.price.selling && (
+                        <span className="text-sm text-gray-500 line-through ml-2">
+                          ₹{product.price.original.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                      product.availability.isActive
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {product.availability.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center mb-4 text-sm text-gray-600">
+                    <span>Stock: {product.inventory.quantity}</span>
+                    {product.ratings && (
+                      <span>⭐ {product.ratings.average.toFixed(1)} ({product.ratings.count})</span>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => router.push(`/store/products/edit/${product._id}`)}
+                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm font-semibold transition duration-300"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleToggleStatus(product)}
+                      className={`flex-1 px-3 py-2 rounded text-sm font-semibold transition duration-300 ${
+                        product.availability.isActive
+                          ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                          : 'bg-green-500 hover:bg-green-600 text-white'
+                      }`}
+                    >
+                      {product.availability.isActive ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(product._id)}
+                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded text-sm font-semibold transition duration-300"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white p-12 rounded-xl border border-gray-200 text-center">
+              <div className="text-6xl mb-4">📦</div>
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">No products found</h3>
+              <p className="text-gray-600 mb-6">
+                {searchQuery || selectedCategory !== 'all'
+                  ? 'Try adjusting your search or filters'
+                  : 'Start by adding your first product to your store'}
+              </p>
+              <Link
+                href="/store/products/add"
+                className="inline-block bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition duration-300"
+              >
+                Add Your First Product
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+    </StoreLayout>
   );
-}
+};
+
+export default StoreProducts;

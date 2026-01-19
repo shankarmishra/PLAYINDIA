@@ -8,12 +8,13 @@ import TournamentScreen from '../screens/user/TournamentScreen';
 import TournamentDetailScreen from '../screens/user/TournamentDetailScreen';
 import NearbyPlayersMap from '../screens/user/NearbyPlayersMap';
 import ProfileScreen from '../screens/user/ProfileScreen';
-import FindCoachScreen from '../screens/user/FindCoachScreen';
 import CoachProfileScreen from '../screens/user/CoachProfileScreen';
 import ShopHomeScreen from '../screens/user/ShopHomeScreen';
 import ProductDetailScreen from '../screens/user/ProductDetailScreen';
 import CartScreen from '../screens/user/CartScreen';
+import CheckoutScreen from '../screens/user/CheckoutScreen';
 import OrderTrackingScreen from '../screens/user/OrderTrackingScreen';
+import MyOrdersScreen from '../screens/user/MyOrdersScreen';
 import WalletScreen from '../screens/user/WalletScreen';
 import SettingsScreen from '../screens/user/SettingsScreen';
 import HelpSupportScreen from '../screens/user/HelpSupportScreen';
@@ -28,12 +29,13 @@ export type UserTabParamList = {
   TournamentDetail: { tournamentId: string };
   FindNearbyPlayers: undefined;
   ShopHome: undefined;
-  FindCoach: undefined;
   Profile: undefined;
   CoachProfile: { coachId?: string };
   ProductDetail: { productId?: string };
   Cart: undefined;
+  Checkout: { addressId?: string; paymentMethod?: string };
   OrderTracking: { orderId?: string };
+  MyOrders: undefined;
   Wallet: undefined;
   Settings: undefined;
   HelpSupport: undefined;
@@ -63,8 +65,6 @@ const TabNavigator = () => {
             iconName = focused ? 'location' : 'location-outline';
           } else if (route.name === 'ShopHome') {
             iconName = focused ? 'bag' : 'bag-outline';
-          } else if (route.name === 'FindCoach') {
-            iconName = focused ? 'fitness' : 'fitness-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           } else {
@@ -89,7 +89,7 @@ const TabNavigator = () => {
           shadowRadius: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: '600',
         },
       })}
@@ -115,11 +115,6 @@ const TabNavigator = () => {
         options={{ tabBarLabel: 'Shop' }}
       />
       <Tab.Screen 
-        name="FindCoach" 
-        component={FindCoachScreen}
-        options={{ tabBarLabel: 'Coach' }}
-      />
-      <Tab.Screen 
         name="Profile" 
         component={ProfileScreen}
         options={{ tabBarLabel: 'Profile' }}
@@ -143,7 +138,9 @@ const UserNav = () => {
       <Stack.Screen name="PlayersRank" component={LeaderBoardScreen} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
       <Stack.Screen name="Cart" component={CartScreen} />
+      <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
+      <Stack.Screen name="MyOrders" component={MyOrdersScreen} />
       <Stack.Screen name="Wallet" component={WalletScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />

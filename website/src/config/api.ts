@@ -1,5 +1,7 @@
 // API Configuration for the website
-const BACKEND_API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
+import { BACKEND_API_URL } from './constants';
+
+const BACKEND_API_BASE_URL = BACKEND_API_URL;
 
 export const API_CONFIG = {
   BASE_URL: BACKEND_API_BASE_URL,

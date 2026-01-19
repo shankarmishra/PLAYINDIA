@@ -335,4 +335,28 @@ router.route('/admin/banners/:id')
   .put(protect, authorize('admin'), bannerController.updateBanner)
   .delete(protect, authorize('admin'), bannerController.deleteBanner);
 
+// Admin Shop Analytics routes
+const adminShopController = require('../controllers/adminShop.controller');
+router.route('/admin/shop/analytics')
+  .get(protect, authorize('admin'), adminShopController.getShopAnalytics);
+
+router.route('/admin/shop/stores/:storeId')
+  .get(protect, authorize('admin'), adminShopController.getStoreDetails);
+
+router.route('/admin/shop/products/:productId')
+  .get(protect, authorize('admin'), adminShopController.getProductDetails);
+
+// Admin Store Approval routes
+router.route('/admin/stores/pending')
+  .get(protect, authorize('admin'), storeController.getPendingStores);
+
+router.route('/admin/stores/:id/details')
+  .get(protect, authorize('admin'), storeController.getStoreDetailsForAdmin);
+
+router.route('/admin/stores/:id/approve')
+  .put(protect, authorize('admin'), storeController.approveStore);
+
+router.route('/admin/stores/:id/reject')
+  .put(protect, authorize('admin'), storeController.rejectStore);
+
 module.exports = router;

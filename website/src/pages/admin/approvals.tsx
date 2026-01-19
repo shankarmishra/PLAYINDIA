@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import AdminNav from '../../components/AdminNav';
+import { BACKEND_API_URL } from '../../config/constants';
 
 interface User {
   _id: string;
@@ -62,7 +63,7 @@ const AdminApprovals = () => {
     try {
       setLoading(true);
       setError(null);
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
+      const backendUrl = BACKEND_API_URL;
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {
@@ -115,25 +116,46 @@ const AdminApprovals = () => {
         return await response.json();
       };
 
-      // Helper to fetch with delay to avoid rate limiting
-      const fetchWithDelay = async (url: string, delay: number) => {
+      // Helper to fetch with delay and retry logic to avoid rate limiting
+      const fetchWithDelay = async (url: string, delay: number, retries = 2): Promise<Response> => {
         await new Promise(resolve => setTimeout(resolve, delay));
-        return fetch(url, {
-          headers: { 'Authorization': `Bearer ${adminToken}` }
-        }).catch(err => {
-          console.error(`Error fetching ${url}:`, err);
-          return { ok: false, json: async () => ({ data: { users: [] }, success: false }) };
-        });
+        
+        for (let i = 0; i <= retries; i++) {
+          try {
+            const response = await fetch(url, {
+              headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+            
+            // If rate limited, wait longer and retry
+            if (response.status === 429 && i < retries) {
+              const retryAfter = parseInt(response.headers.get('Retry-After') || '5', 10);
+              console.warn(`Rate limited, waiting ${retryAfter * (i + 1)}s before retry ${i + 1}/${retries}`);
+              await new Promise(resolve => setTimeout(resolve, retryAfter * 1000 * (i + 1)));
+              continue;
+            }
+            
+            return response;
+          } catch (err) {
+            if (i === retries) {
+              console.error(`Error fetching ${url} after ${retries} retries:`, err);
+              return { ok: false, status: 500, json: async () => ({ data: { users: [] }, success: false }), headers: new Headers() } as Response;
+            }
+            // Wait before retry
+            await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+          }
+        }
+        
+        return { ok: false, status: 500, json: async () => ({ data: { users: [] }, success: false }), headers: new Headers() } as Response;
       };
 
-      // Fetch all pending users - use sequential requests with delays to avoid rate limiting
-      // First fetch all pending users, then filter by role
+      // Fetch all pending users - use a single request with proper filtering to avoid rate limiting
+      // Only fetch once and filter by role on the client side
       const allPendingRes = await fetchWithDelay(`${backendUrl}/api/users?status=pending&limit=1000`, 0);
       
-      // Also try role-specific queries as backup
-      const coachesRes = await fetchWithDelay(`${backendUrl}/api/users?role=coach&status=pending`, 500);
-      const storesRes1 = await fetchWithDelay(`${backendUrl}/api/users?role=seller&status=pending`, 1000);
-      const deliveryRes = await fetchWithDelay(`${backendUrl}/api/users?role=delivery&status=pending`, 1500);
+      // Use empty responses for role-specific queries (we'll filter from allPendingRes instead)
+      const coachesRes = { ok: false, json: async () => ({ data: { users: [] }, success: false }) } as Response;
+      const storesRes1 = { ok: false, json: async () => ({ data: { users: [] }, success: false }) } as Response;
+      const deliveryRes = { ok: false, json: async () => ({ data: { users: [] }, success: false }) } as Response;
 
       // Helper function to safely extract users array from response
       const extractUsers = (data: any): any[] => {
@@ -243,7 +265,7 @@ const AdminApprovals = () => {
 
       // Fetch role-specific data for each user to get documents
       const fetchUserDetails = async (users: any[], role: string) => {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
+        const backendUrl = BACKEND_API_URL;
         const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
         
         return Promise.all(users.map(async (user: any) => {
@@ -278,25 +300,85 @@ const AdminApprovals = () => {
                   if (coachesData.success && coachesData.data && Array.isArray(coachesData.data)) {
                     roleData = coachesData.data.find((c: any) => {
                       const userId = c.userId?._id || c.userId || c.userId?.toString();
-                      const userMatchId = user._id || user.id || user._id?.toString();
+                      const userMatchId = user._id || user._id?.toString();
                       return userId && userMatchId && (userId.toString() === userMatchId.toString());
                     });
                   }
                 }
               } else if (role === 'seller' || role === 'store') {
-                // Get all stores and find one with matching userId
-                const storesRes = await fetch(`${backendUrl}/api/stores`, {
-                  headers: { 'Authorization': `Bearer ${adminToken}` }
-                });
-                if (storesRes.ok) {
-                  const storesData = await storesRes.json();
-                  if (storesData.success && storesData.data && Array.isArray(storesData.data)) {
-                    roleData = storesData.data.find((s: any) => {
-                      const userId = s.userId?._id || s.userId || s.userId?.toString();
-                      const userMatchId = user._id || user.id || user._id?.toString();
-                      return userId && userMatchId && (userId.toString() === userMatchId.toString());
-                    });
+                // For admin, try to get store details directly using admin endpoint
+                // First, try to find store by userId from pending stores or all stores
+                let roleData = null;
+                
+                // Try admin endpoint for store details
+                try {
+                  // Get all stores (including pending) - try admin endpoint first
+                  const adminStoresRes = await fetch(`${backendUrl}/api/admin/stores/pending`, {
+                    headers: { 'Authorization': `Bearer ${adminToken}` }
+                  });
+                  
+                  if (adminStoresRes.ok) {
+                    const adminStoresData = await adminStoresRes.json();
+                    if (adminStoresData.success && adminStoresData.data && Array.isArray(adminStoresData.data)) {
+                      roleData = adminStoresData.data.find((s: any) => {
+                        const userId = s.userId?._id || s.userId || s.userId?.toString();
+                        const userMatchId = user._id || user._id?.toString();
+                        return userId && userMatchId && (userId.toString() === userMatchId.toString());
+                      });
+                    }
                   }
+                } catch (err) {
+                  console.error('Error fetching from admin stores endpoint:', err);
+                }
+                
+                // If not found in pending stores, try regular stores endpoint
+                if (!roleData) {
+                  const storesRes = await fetch(`${backendUrl}/api/stores`, {
+                    headers: { 'Authorization': `Bearer ${adminToken}` }
+                  });
+                  if (storesRes.ok) {
+                    const storesData = await storesRes.json();
+                    if (storesData.success && storesData.data && Array.isArray(storesData.data)) {
+                      roleData = storesData.data.find((s: any) => {
+                        const userId = s.userId?._id || s.userId || s.userId?.toString();
+                        const userMatchId = user._id || user._id?.toString();
+                        return userId && userMatchId && (userId.toString() === userMatchId.toString());
+                      });
+                    }
+                  }
+                }
+                
+                // If we have a store ID, try to get full details with admin endpoint
+                if (roleData && roleData._id) {
+                  try {
+                    const storeDetailsRes = await fetch(`${backendUrl}/api/admin/stores/${roleData._id}/details`, {
+                      headers: { 'Authorization': `Bearer ${adminToken}` }
+                    });
+                    if (storeDetailsRes.ok) {
+                      const storeDetailsData = await storeDetailsRes.json();
+                      if (storeDetailsData.success && storeDetailsData.data && storeDetailsData.data.store) {
+                        // Use the detailed store data which should include documents
+                        roleData = storeDetailsData.data.store;
+                      }
+                    }
+                  } catch (err) {
+                    console.error('Error fetching store details:', err);
+                  }
+                }
+                
+                // Log store data for debugging
+                if (roleData) {
+                  console.log('Store roleData found:', {
+                    storeId: roleData._id,
+                    hasDocuments: !!roleData.documents,
+                    documentsKeys: roleData.documents ? Object.keys(roleData.documents) : [],
+                    documentsStructure: roleData.documents,
+                    gstCertificate: roleData.documents?.gstCertificate,
+                    shopLicense: roleData.documents?.shopLicense,
+                    ownerID: roleData.documents?.ownerID,
+                    additionalDocs: roleData.documents?.additionalDocs,
+                    fullStoreData: roleData
+                  });
                 }
               } else if (role === 'delivery') {
                 // For delivery, try to get from delivery profile endpoint
@@ -309,7 +391,7 @@ const AdminApprovals = () => {
                   if (deliveryData.success && deliveryData.data && Array.isArray(deliveryData.data)) {
                     roleData = deliveryData.data.find((d: any) => {
                       const userId = d.userId?._id || d.userId || d.userId?.toString();
-                      const userMatchId = user._id || user.id || user._id?.toString();
+                      const userMatchId = user._id || user._id?.toString();
                       return userId && userMatchId && (userId.toString() === userMatchId.toString());
                     });
                   }
@@ -318,11 +400,29 @@ const AdminApprovals = () => {
               
               if (roleData) {
                 user.roleData = roleData;
-                // Extract documents from roleData
-                user.documents = roleData.documents || roleData.document || {};
+                // Extract documents from roleData - check multiple possible locations
+                user.documents = roleData.documents || roleData.document || roleData.data?.documents || {};
+                
+                // For stores, ensure documents structure is properly extracted
+                if ((role === 'seller' || role === 'store') && roleData.documents) {
+                  user.documents = {
+                    ...user.documents,
+                    gstCertificate: roleData.documents.gstCertificate || user.documents.gstCertificate,
+                    shopLicense: roleData.documents.shopLicense || user.documents.shopLicense,
+                    ownerID: roleData.documents.ownerID || user.documents.ownerID,
+                    additionalDocs: roleData.documents.additionalDocs || user.documents.additionalDocs || []
+                  };
+                }
+                
                 console.log(`Found roleData for user ${user._id}:`, {
+                  role: role,
                   hasDocuments: !!user.documents,
-                  documentKeys: Object.keys(user.documents || {})
+                  documentKeys: Object.keys(user.documents || {}),
+                  documentsStructure: user.documents,
+                  gstCertificateFile: user.documents?.gstCertificate?.file,
+                  shopLicenseFile: user.documents?.shopLicense?.file,
+                  ownerIDFront: user.documents?.ownerID?.front,
+                  additionalDocsCount: Array.isArray(user.documents?.additionalDocs) ? user.documents.additionalDocs.length : 0
                 });
               } else {
                 console.log(`No roleData found for user ${user._id} with role ${role}`);
@@ -365,7 +465,7 @@ const AdminApprovals = () => {
   const updateUserStatus = async (userId: string, status: 'active' | 'rejected') => {
     try {
       setProcessing(userId);
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
+      const backendUrl = BACKEND_API_URL;
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {
@@ -387,7 +487,21 @@ const AdminApprovals = () => {
         throw new Error(data.message || 'Failed to update user status');
       }
 
-      // Refresh the list
+      // Optimistically update UI - remove user from appropriate list
+      const allUsers = [...coaches, ...stores, ...deliveries];
+      const userToUpdate = allUsers.find((u: any) => u._id === userId);
+      
+      if (userToUpdate) {
+        if (userToUpdate.role === 'coach') {
+          setCoaches(prevCoaches => prevCoaches.filter((u: any) => u._id !== userId));
+        } else if (userToUpdate.role === 'seller' || userToUpdate.role === 'store') {
+          setStores(prevStores => prevStores.filter((u: any) => u._id !== userId));
+        } else if (userToUpdate.role === 'delivery') {
+          setDeliveries(prevDeliveries => prevDeliveries.filter((u: any) => u._id !== userId));
+        }
+      }
+
+      // Refresh the list to ensure consistency
       await fetchPendingUsers();
       
       // Show success message
@@ -406,22 +520,196 @@ const AdminApprovals = () => {
     }
   };
 
-  const handleApprove = (userId: string) => {
-    if (confirm('Are you sure you want to approve this user?')) {
-      updateUserStatus(userId, 'active');
+  const handleApprove = async (userId: string) => {
+    if (!confirm('Are you sure you want to approve this user?')) {
+      return;
+    }
+
+    try {
+      setProcessing(userId);
+      const backendUrl = BACKEND_API_URL;
+      const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+
+      if (!adminToken) {
+        throw new Error('Admin not authenticated');
+      }
+
+      // Find the user to check their role
+      const user = [...coaches, ...stores, ...deliveries].find((u: any) => u._id === userId);
+      
+      // For stores, use store-specific approval endpoint
+      if (user && (user.role === 'seller' || user.role === 'store')) {
+        // First, find the store ID
+        let storeId = null;
+        if (user.roleData && user.roleData._id) {
+          storeId = user.roleData._id;
+        } else {
+          // Try to find store by userId
+          const storesRes = await fetch(`${backendUrl}/api/stores`, {
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+          });
+          if (storesRes.ok) {
+            const storesData = await storesRes.json();
+            if (storesData.success && storesData.data && Array.isArray(storesData.data)) {
+              const store = storesData.data.find((s: any) => {
+                const sUserId = s.userId?._id || s.userId || s.userId?.toString();
+                return sUserId && sUserId.toString() === userId;
+              });
+              if (store) {
+                storeId = store._id;
+              }
+            }
+          }
+        }
+
+        if (storeId) {
+          // Use store approval endpoint
+          const response = await fetch(`${backendUrl}/api/admin/stores/${storeId}/approve`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${adminToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ notes: 'Approved by admin' })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to approve store');
+          }
+
+          // Optimistically update UI - remove user from pending list immediately
+          setStores(prevStores => prevStores.filter((u: any) => u._id !== userId));
+          
+          // Refresh the full list to ensure consistency
+          await fetchPendingUsers();
+          
+          alert('Store approved successfully!');
+          setProcessing(null);
+          return;
+        }
+      }
+
+      // For other roles or if store not found, use generic user status update
+      await updateUserStatus(userId, 'active');
+      
+      // Optimistically update UI based on role
+      if (user) {
+        if (user.role === 'coach') {
+          setCoaches(prevCoaches => prevCoaches.filter((u: any) => u._id !== userId));
+        } else if (user.role === 'delivery') {
+          setDeliveries(prevDeliveries => prevDeliveries.filter((u: any) => u._id !== userId));
+        }
+      }
+      
+      setProcessing(null);
+    } catch (err: any) {
+      console.error('Error approving user:', err);
+      alert(err.message || 'Failed to approve user');
+      setProcessing(null);
     }
   };
 
-  const handleReject = (userId: string) => {
-    if (confirm('Are you sure you want to reject this user?')) {
-      updateUserStatus(userId, 'rejected');
+  const handleReject = async (userId: string) => {
+    const reason = prompt('Please provide a reason for rejection:');
+    if (!reason || reason.trim() === '') {
+      alert('Rejection reason is required');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to reject this user?')) {
+      return;
+    }
+
+    try {
+      setProcessing(userId);
+      const backendUrl = BACKEND_API_URL;
+      const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+
+      if (!adminToken) {
+        throw new Error('Admin not authenticated');
+      }
+
+      // Find the user to check their role
+      const user = [...coaches, ...stores, ...deliveries].find((u: any) => u._id === userId);
+      
+      // For stores, use store-specific rejection endpoint
+      if (user && (user.role === 'seller' || user.role === 'store')) {
+        // First, find the store ID
+        let storeId = null;
+        if (user.roleData && user.roleData._id) {
+          storeId = user.roleData._id;
+        } else {
+          // Try to find store by userId
+          const storesRes = await fetch(`${backendUrl}/api/stores`, {
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+          });
+          if (storesRes.ok) {
+            const storesData = await storesRes.json();
+            if (storesData.success && storesData.data && Array.isArray(storesData.data)) {
+              const store = storesData.data.find((s: any) => {
+                const sUserId = s.userId?._id || s.userId || s.userId?.toString();
+                return sUserId && sUserId.toString() === userId;
+              });
+              if (store) {
+                storeId = store._id;
+              }
+            }
+          }
+        }
+
+        if (storeId) {
+          // Use store rejection endpoint
+          const response = await fetch(`${backendUrl}/api/admin/stores/${storeId}/reject`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${adminToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ reason: reason.trim(), notes: 'Rejected by admin' })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to reject store');
+          }
+
+          // Optimistically update UI - remove user from pending list immediately
+          setStores(prevStores => prevStores.filter((u: any) => u._id !== userId));
+          
+          // Refresh the full list to ensure consistency
+          await fetchPendingUsers();
+          
+          alert('Store rejected successfully!');
+          setProcessing(null);
+          return;
+        }
+      }
+
+      // For other roles or if store not found, use generic user status update
+      await updateUserStatus(userId, 'rejected');
+      
+      // Optimistically update UI based on role
+      if (user) {
+        if (user.role === 'coach') {
+          setCoaches(prevCoaches => prevCoaches.filter((u: any) => u._id !== userId));
+        } else if (user.role === 'delivery') {
+          setDeliveries(prevDeliveries => prevDeliveries.filter((u: any) => u._id !== userId));
+        }
+      }
+      
+      setProcessing(null);
+    } catch (err: any) {
+      console.error('Error rejecting user:', err);
+      alert(err.message || 'Failed to reject user');
+      setProcessing(null);
     }
   };
 
   const fetchUserFullDetails = async (user: User) => {
     try {
       setLoadingDetails(true);
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'https://playindia-3.onrender.com';
+      const backendUrl = BACKEND_API_URL;
       const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
 
       if (!adminToken) {
@@ -477,31 +765,64 @@ const AdminApprovals = () => {
             if (coachesData.success && coachesData.data && Array.isArray(coachesData.data)) {
               roleData = coachesData.data.find((c: any) => {
                 const userId = c.userId?._id || c.userId || c.userId?.toString();
-                const userMatchId = user._id || user.id || user._id?.toString();
+                const userMatchId = user._id || user._id?.toString();
                 return userId && userMatchId && (userId.toString() === userMatchId.toString());
               });
             }
           }
         } else if (user.role === 'seller' || user.role === 'store') {
-          // For stores, try multiple approaches
-          // First try getting all stores
-          const storesRes = await fetch(`${backendUrl}/api/stores`, {
-            headers: { 'Authorization': `Bearer ${adminToken}` }
-          });
-          if (storesRes.ok) {
-            const storesData = await storesRes.json();
-            if (storesData.success && storesData.data && Array.isArray(storesData.data)) {
-              roleData = storesData.data.find((s: any) => {
-                const userId = s.userId?._id || s.userId || s.userId?.toString();
-                const userMatchId = user._id || user.id || user._id?.toString();
-                return userId && userMatchId && (userId.toString() === userMatchId.toString());
-              });
+          // For stores, first try admin pending stores endpoint (includes all stores with status)
+          try {
+            const pendingStoresRes = await fetch(`${backendUrl}/api/admin/stores/pending`, {
+              headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+            if (pendingStoresRes.ok) {
+              const pendingStoresData = await pendingStoresRes.json();
+              if (pendingStoresData.success && pendingStoresData.data && Array.isArray(pendingStoresData.data)) {
+                roleData = pendingStoresData.data.find((s: any) => {
+                  const userId = s.userId?._id || s.userId || s.userId?.toString();
+                  const userMatchId = user._id || user._id?.toString();
+                  return userId && userMatchId && (userId.toString() === userMatchId.toString());
+                });
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching pending stores:', err);
+          }
+          
+          // If not found in pending stores, try getting all stores
+          if (!roleData) {
+            const storesRes = await fetch(`${backendUrl}/api/stores`, {
+              headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+            if (storesRes.ok) {
+              const storesData = await storesRes.json();
+              if (storesData.success && storesData.data && Array.isArray(storesData.data)) {
+                roleData = storesData.data.find((s: any) => {
+                  const userId = s.userId?._id || s.userId || s.userId?.toString();
+                  const userMatchId = user._id || user._id?.toString();
+                  return userId && userMatchId && (userId.toString() === userMatchId.toString());
+                });
+              }
             }
           }
           
           // If not found, try to get from user's roleData if already loaded
           if (!roleData && user.roleData) {
             roleData = user.roleData;
+          }
+          
+          // Log store data for debugging
+          if (roleData) {
+            console.log('Store roleData found in fetchUserFullDetails:', {
+              storeId: roleData._id,
+              hasDocuments: !!roleData.documents,
+              documentsKeys: roleData.documents ? Object.keys(roleData.documents) : [],
+              documentsStructure: roleData.documents,
+              gstCertificate: roleData.documents?.gstCertificate,
+              shopLicense: roleData.documents?.shopLicense,
+              ownerID: roleData.documents?.ownerID
+            });
           }
         } else if (user.role === 'delivery') {
           // Try available delivery endpoint
@@ -513,7 +834,7 @@ const AdminApprovals = () => {
             if (deliveryData.success && deliveryData.data && Array.isArray(deliveryData.data)) {
               roleData = deliveryData.data.find((d: any) => {
                 const userId = d.userId?._id || d.userId || d.userId?.toString();
-                const userMatchId = user._id || user.id || user._id?.toString();
+                const userMatchId = user._id || user._id?.toString();
                 return userId && userMatchId && (userId.toString() === userMatchId.toString());
               });
             }
@@ -532,8 +853,105 @@ const AdminApprovals = () => {
         
         if (roleData) {
           userDetails.roleData = roleData;
+          
+          // For stores, ALWAYS try to get full details with documents from admin endpoint
+          if ((user.role === 'seller' || user.role === 'store')) {
+            // First, ensure we have a store ID
+            let storeId = roleData?._id;
+            
+            // If no store ID, try to find it from pending stores
+            if (!storeId) {
+              try {
+                const pendingStoresRes = await fetch(`${backendUrl}/api/admin/stores/pending`, {
+                  headers: { 'Authorization': `Bearer ${adminToken}` }
+                });
+                if (pendingStoresRes.ok) {
+                  const pendingStoresData = await pendingStoresRes.json();
+                  if (pendingStoresData.success && pendingStoresData.data && Array.isArray(pendingStoresData.data)) {
+                    const foundStore = pendingStoresData.data.find((s: any) => {
+                      const userId = s.userId?._id || s.userId || s.userId?.toString();
+                      const userMatchId = user._id || user._id?.toString();
+                      return userId && userMatchId && (userId.toString() === userMatchId.toString());
+                    });
+                    if (foundStore) {
+                      storeId = foundStore._id;
+                      roleData = foundStore;
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error('Error fetching pending stores for store ID:', err);
+              }
+            }
+            
+            // Now fetch full store details with documents
+            if (storeId) {
+              try {
+                const storeDetailsRes = await fetch(`${backendUrl}/api/admin/stores/${storeId}/details`, {
+                  headers: { 'Authorization': `Bearer ${adminToken}` }
+                });
+                if (storeDetailsRes.ok) {
+                  const storeDetailsData = await storeDetailsRes.json();
+                  console.log('Store details response from admin endpoint:', {
+                    success: storeDetailsData.success,
+                    hasData: !!storeDetailsData.data,
+                    hasStore: !!storeDetailsData.data?.store,
+                    hasDocuments: !!storeDetailsData.data?.documents,
+                    storeDocuments: storeDetailsData.data?.store?.documents,
+                    dataDocuments: storeDetailsData.data?.documents,
+                    fullResponse: storeDetailsData
+                  });
+                  
+                  if (storeDetailsData.success && storeDetailsData.data) {
+                    // Update roleData with full store data
+                    const fullStoreData = storeDetailsData.data.store || roleData;
+                    roleData = fullStoreData;
+                    userDetails.roleData = {
+                      ...roleData,
+                      data: storeDetailsData.data // Keep the full response structure
+                    };
+                    
+                    // Extract documents from admin response - check multiple locations
+                    // Priority: data.documents > store.documents > roleData.documents
+                    if (storeDetailsData.data.documents && Object.keys(storeDetailsData.data.documents).length > 0) {
+                      // Documents are in data.documents (explicitly returned by admin endpoint)
+                      userDetails.documents = storeDetailsData.data.documents;
+                      console.log('✓ Documents extracted from data.documents:', userDetails.documents);
+                    } else if (fullStoreData.documents && Object.keys(fullStoreData.documents).length > 0) {
+                      // Documents are in store.documents
+                      userDetails.documents = fullStoreData.documents;
+                      console.log('✓ Documents extracted from store.documents:', userDetails.documents);
+                    } else if (roleData.documents && Object.keys(roleData.documents).length > 0) {
+                      // Fallback to roleData.documents
+                      userDetails.documents = roleData.documents;
+                      console.log('✓ Documents extracted from roleData.documents:', userDetails.documents);
+                    } else {
+                      console.warn('⚠ No documents found in any location for store:', storeId);
+                    }
+                    
+                    console.log('Final documents after admin fetch:', {
+                      hasDocuments: !!userDetails.documents,
+                      documentKeys: Object.keys(userDetails.documents || {}),
+                      documents: userDetails.documents,
+                      gstCertificate: userDetails.documents?.gstCertificate,
+                      shopLicense: userDetails.documents?.shopLicense,
+                      ownerID: userDetails.documents?.ownerID
+                    });
+                  }
+                } else {
+                  const errorText = await storeDetailsRes.text();
+                  console.error('Store details fetch failed:', storeDetailsRes.status, errorText);
+                }
+              } catch (err) {
+                console.error('Error fetching store details from admin endpoint:', err);
+              }
+            } else {
+              console.warn('⚠ No store ID found for user:', user._id, 'role:', user.role);
+            }
+          }
+          
           // Extract documents - merge from multiple possible locations
-          const roleDocuments = roleData.documents || roleData.document || {};
+          const roleDocuments = roleData.documents || roleData.data?.documents || roleData.document || {};
           const userDocuments = userDetails.documents || user.documents || {};
           
           // Merge documents, prioritizing roleData documents
@@ -569,7 +987,9 @@ const AdminApprovals = () => {
             documentsStructure: userDetails.documents,
             gstCertificate: userDetails.documents?.gstCertificate,
             shopLicense: userDetails.documents?.shopLicense,
-            ownerID: userDetails.documents?.ownerID
+            ownerID: userDetails.documents?.ownerID,
+            roleDataDocuments: roleData.documents,
+            roleDataDataDocuments: roleData.data?.documents
           });
           
           // Also check if documents exist in nested structure
@@ -653,7 +1073,7 @@ const AdminApprovals = () => {
         {error && (
           <div className="bg-red-100 border-2 border-red-400 text-red-800 px-6 py-4 rounded-lg relative mb-4 shadow-md" role="alert">
             <div className="flex items-start">
-              <svg className="w-6 h-6 text-red-600 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-red-600 mr-3 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="flex-1">
@@ -758,18 +1178,19 @@ const AdminApprovals = () => {
                     <tr key={user._id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="flex-shrink-0 h-12 w-12 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center shadow-sm">
+                          {/* @ts-ignore - bg-gradient-to-br is correct Tailwind class, linter suggestion is incorrect */}
+                          <div className="shrink-0 h-12 w-12 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center shadow-sm">
                             <span className="text-gray-800 font-bold text-lg">{user.name.charAt(0).toUpperCase()}</span>
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-semibold text-gray-900">{user.name}</div>
-                            <div className="text-sm text-gray-600">{user.email}</div>
+                            <div className="text-sm text-gray-600">{user.email || 'N/A'}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{user.mobile}</div>
-                        <div className="text-sm text-gray-600">{user.email}</div>
+                        <div className="text-sm font-medium text-gray-900">{user.mobile || 'N/A'}</div>
+                        <div className="text-sm text-gray-600">{user.email || 'N/A'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
                         {user.location?.city ? `${user.location.city}${user.location.state ? ', ' + user.location.state : ''}` : 
@@ -779,7 +1200,7 @@ const AdminApprovals = () => {
                          'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
-                        {getTimeAgo(new Date(user.createdAt))}
+                        {user.createdAt ? getTimeAgo(new Date(user.createdAt)) : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-yellow-100 text-yellow-900 border border-yellow-300">
@@ -875,7 +1296,7 @@ const AdminApprovals = () => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 font-semibold">Email</p>
-                    <p className="text-gray-900 font-medium">{selectedUser.email}</p>
+                    <p className="text-gray-900 font-medium">{selectedUser.email || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 font-semibold">Mobile</p>
@@ -894,13 +1315,13 @@ const AdminApprovals = () => {
                   <div>
                     <p className="text-sm text-gray-600 font-semibold">Registered On</p>
                     <p className="text-gray-900 font-medium">
-                      {new Date(selectedUser.createdAt).toLocaleDateString('en-US', {
+                      {selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleDateString('en-IN', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
-                      })}
+                      }) : 'N/A'}
                     </p>
                   </div>
                   {(selectedUser.location || selectedUser.roleData?.address) && (
@@ -1046,17 +1467,39 @@ const AdminApprovals = () => {
                   const docs = selectedUser.documents || selectedUser.roleData?.documents || {};
                   
                   // Debug logging
+                  const isStore = selectedUser.role === 'seller' || selectedUser.role === 'store';
+                  
                   console.log('Checking documents for display:', {
                     hasSelectedUserDocuments: !!selectedUser.documents,
                     hasRoleDataDocuments: !!selectedUser.roleData?.documents,
+                    hasRoleDataDataDocuments: !!selectedUser.roleData?.data?.documents,
+                    isStore: isStore,
                     documentKeys: Object.keys(docs || {}),
-                    fullDocs: docs
+                    documentsStructure: docs,
+                    gstCertificate: docs.gstCertificate,
+                    shopLicense: docs.shopLicense,
+                    ownerID: docs.ownerID,
+                    additionalDocs: docs.additionalDocs,
+                    gstCertificateFile: docs.gstCertificate?.file || (typeof docs.gstCertificate === 'string' ? docs.gstCertificate : null),
+                    shopLicenseFile: docs.shopLicense?.file || (typeof docs.shopLicense === 'string' ? docs.shopLicense : null),
+                    ownerIDFront: docs.ownerID?.front || (typeof docs.ownerID === 'string' ? docs.ownerID : null)
                   });
                   
-                  const hasDocuments = docs && Object.keys(docs).length > 0 && 
-                    (docs.aadhaar || docs.pan || docs.gstCertificate || docs.shopLicense || 
-                     docs.ownerID || docs.drivingLicense || docs.vehicleRC || docs.insurance ||
-                     (docs.additionalDocs && Array.isArray(docs.additionalDocs) && docs.additionalDocs.length > 0));
+                  // Check for store documents specifically
+                  const hasStoreDocuments = isStore && (
+                    (docs.gstCertificate && (docs.gstCertificate.file || typeof docs.gstCertificate === 'string')) ||
+                    (docs.shopLicense && (docs.shopLicense.file || typeof docs.shopLicense === 'string')) ||
+                    (docs.ownerID && (docs.ownerID.front || docs.ownerID.back || typeof docs.ownerID === 'string')) ||
+                    (Array.isArray(docs.additionalDocs) && docs.additionalDocs.length > 0)
+                  );
+                  
+                  // Check for other role documents
+                  const hasOtherDocuments = !isStore && (
+                    docs.aadhaar || docs.pan || docs.drivingLicense || docs.vehicleRC || docs.insurance ||
+                    (Array.isArray(docs.additionalDocs) && docs.additionalDocs.length > 0)
+                  );
+                  
+                  const hasDocuments = hasStoreDocuments || hasOtherDocuments;
                   
                   return hasDocuments ? (
                     <div className="space-y-4">
@@ -1121,43 +1564,103 @@ const AdminApprovals = () => {
 
                     {/* Store Documents */}
                     {(() => {
-                      const docs = selectedUser.documents || selectedUser.roleData?.documents || {};
                       const isStore = selectedUser.role === 'seller' || selectedUser.role === 'store';
+                      
+                      // Try multiple locations for documents in priority order
+                      let docs: any = {};
+                      
+                      // Priority 1: selectedUser.documents (from admin endpoint fetch)
+                      if (selectedUser.documents && Object.keys(selectedUser.documents).length > 0) {
+                        docs = selectedUser.documents;
+                      }
+                      // Priority 2: roleData.data.documents (from admin endpoint response structure)
+                      else if (selectedUser.roleData?.data?.documents && Object.keys(selectedUser.roleData.data.documents).length > 0) {
+                        docs = selectedUser.roleData.data.documents;
+                      }
+                      // Priority 3: roleData.documents (from store endpoint)
+                      else if (selectedUser.roleData?.documents && Object.keys(selectedUser.roleData.documents).length > 0) {
+                        docs = selectedUser.roleData.documents;
+                      }
+                      // Priority 4: roleData.data.store.documents
+                      else if (selectedUser.roleData?.data?.store?.documents && Object.keys(selectedUser.roleData.data.store.documents).length > 0) {
+                        docs = selectedUser.roleData.data.store.documents;
+                      }
+                      
+                      console.log('Rendering store documents:', {
+                        isStore: isStore,
+                        userId: selectedUser._id,
+                        hasSelectedUserDocuments: !!selectedUser.documents,
+                        selectedUserDocuments: selectedUser.documents,
+                        selectedUserDocumentsKeys: selectedUser.documents ? Object.keys(selectedUser.documents) : [],
+                        hasRoleData: !!selectedUser.roleData,
+                        hasRoleDataDocuments: !!selectedUser.roleData?.documents,
+                        roleDataDocuments: selectedUser.roleData?.documents,
+                        roleDataDocumentsKeys: selectedUser.roleData?.documents ? Object.keys(selectedUser.roleData.documents) : [],
+                        hasRoleDataData: !!selectedUser.roleData?.data,
+                        hasRoleDataDataDocuments: !!selectedUser.roleData?.data?.documents,
+                        roleDataDataDocuments: selectedUser.roleData?.data?.documents,
+                        roleDataDataDocumentsKeys: selectedUser.roleData?.data?.documents ? Object.keys(selectedUser.roleData.data.documents) : [],
+                        hasRoleDataDataStore: !!selectedUser.roleData?.data?.store,
+                        hasRoleDataDataStoreDocuments: !!selectedUser.roleData?.data?.store?.documents,
+                        finalDocs: docs,
+                        finalDocsKeys: Object.keys(docs),
+                        gstCertificate: docs.gstCertificate,
+                        shopLicense: docs.shopLicense,
+                        ownerID: docs.ownerID,
+                        additionalDocs: docs.additionalDocs,
+                        fullSelectedUser: JSON.stringify(selectedUser, null, 2),
+                        fullRoleData: JSON.stringify(selectedUser.roleData, null, 2)
+                      });
+                      
+                      // Helper function to get file URL from document (handles both object and string formats)
+                      const getFileUrl = (doc: any): string | null => {
+                        if (!doc) return null;
+                        if (typeof doc === 'string') return doc;
+                        if (doc.file) return doc.file;
+                        if (doc.url) return doc.url;
+                        return null;
+                      };
+                      
+                      const gstCertUrl = getFileUrl(docs.gstCertificate);
+                      const shopLicenseUrl = getFileUrl(docs.shopLicense);
+                      const ownerIDFront = docs.ownerID?.front || (typeof docs.ownerID === 'string' ? docs.ownerID : null);
+                      const ownerIDBack = docs.ownerID?.back || null;
+                      
                       return isStore && (
                         <>
-                          {docs.gstCertificate && docs.gstCertificate.file && (
+                          {gstCertUrl && (
                             <div className="bg-gray-50 p-4 rounded-lg">
                               <h4 className="font-semibold text-gray-900 mb-3">GST Certificate</h4>
-                              <a href={docs.gstCertificate.file} target="_blank" rel="noopener noreferrer" className="block">
-                                <img src={docs.gstCertificate.file} alt="GST Certificate" className="w-full max-w-md h-64 object-contain rounded-lg border-2 border-gray-300 hover:border-blue-500 transition-colors cursor-pointer bg-white" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.png'; }} />
+                              <a href={gstCertUrl} target="_blank" rel="noopener noreferrer" className="block">
+                                <img src={gstCertUrl} alt="GST Certificate" className="w-full max-w-md h-64 object-contain rounded-lg border-2 border-gray-300 hover:border-blue-500 transition-colors cursor-pointer bg-white" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.png'; }} />
                               </a>
                             </div>
                           )}
-                          {docs.shopLicense && docs.shopLicense.file && (
+                          {shopLicenseUrl && (
                             <div className="bg-gray-50 p-4 rounded-lg">
                               <h4 className="font-semibold text-gray-900 mb-3">Shop License</h4>
-                              <a href={docs.shopLicense.file} target="_blank" rel="noopener noreferrer" className="block">
-                                <img src={docs.shopLicense.file} alt="Shop License" className="w-full max-w-md h-64 object-contain rounded-lg border-2 border-gray-300 hover:border-blue-500 transition-colors cursor-pointer bg-white" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.png'; }} />
+                              <a href={shopLicenseUrl} target="_blank" rel="noopener noreferrer" className="block">
+                                <img src={shopLicenseUrl} alt="Shop License" className="w-full max-w-md h-64 object-contain rounded-lg border-2 border-gray-300 hover:border-blue-500 transition-colors cursor-pointer bg-white" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.png'; }} />
                               </a>
                             </div>
                           )}
-                          {docs.ownerID && (docs.ownerID.front || docs.ownerID.back) && (
+                          {(ownerIDFront || ownerIDBack) && (
                             <div className="bg-gray-50 p-4 rounded-lg">
                               <h4 className="font-semibold text-gray-900 mb-3">Owner ID</h4>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {docs.ownerID.front && (
+                                {ownerIDFront && (
                                   <div>
                                     <p className="text-sm text-gray-600 font-semibold mb-2">Front</p>
-                                    <a href={docs.ownerID.front} target="_blank" rel="noopener noreferrer" className="block">
-                                      <img src={docs.ownerID.front} alt="Owner ID Front" className="w-full h-48 object-cover rounded-lg border-2 border-gray-300 hover:border-blue-500 transition-colors cursor-pointer" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.png'; }} />
+                                    <a href={ownerIDFront} target="_blank" rel="noopener noreferrer" className="block">
+                                      <img src={ownerIDFront} alt="Owner ID Front" className="w-full h-48 object-cover rounded-lg border-2 border-gray-300 hover:border-blue-500 transition-colors cursor-pointer" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.png'; }} />
                                     </a>
                                   </div>
                                 )}
-                                {docs.ownerID.back && (
+                                {ownerIDBack && (
                                   <div>
                                     <p className="text-sm text-gray-600 font-semibold mb-2">Back</p>
-                                    <a href={docs.ownerID.back} target="_blank" rel="noopener noreferrer" className="block">
-                                      <img src={docs.ownerID.back} alt="Owner ID Back" className="w-full h-48 object-cover rounded-lg border-2 border-gray-300 hover:border-blue-500 transition-colors cursor-pointer" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.png'; }} />
+                                    <a href={ownerIDBack} target="_blank" rel="noopener noreferrer" className="block">
+                                      <img src={ownerIDBack} alt="Owner ID Back" className="w-full h-48 object-cover rounded-lg border-2 border-gray-300 hover:border-blue-500 transition-colors cursor-pointer" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.png'; }} />
                                     </a>
                                   </div>
                                 )}

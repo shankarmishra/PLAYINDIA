@@ -1,57 +1,156 @@
-import React, { useState } from 'react';
-import Head from 'next/head';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import Layout from '../../components/Layout';
+import { useRouter } from 'next/router';
+import { ApiService } from '../../utils/api';
+import StoreLayout from '../../components/StoreLayout';
+import StoreErrorDisplay from '../../components/StoreErrorDisplay';
+
+interface AnalyticsData {
+  totalSales: number;
+  monthlyRevenue: number;
+  totalOrders: number;
+  averageOrderValue: number;
+  topProducts: any[];
+  monthlyBreakdown: any[];
+  topCategories: any[];
+}
 
 const StoreAnalyticsPage = () => {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [dateRange, setDateRange] = useState('this-month');
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const hasFetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+    }
+    loadAnalytics();
+  }, [dateRange]);
+
+  const loadAnalytics = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      // Get dashboard data which includes analytics
+      const dashboardResponse: any = await Promise.race([
+        ApiService.stores.getDashboard(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 15000)
+        )
+      ]) as any;
+
+      if (dashboardResponse.data?.success) {
+        const data = dashboardResponse.data.data;
+        const stats = data.stats || {};
+        const sections = data.sections || {};
+        
+        // Calculate monthly revenue from order analytics
+        const orderAnalytics = data.analytics?.orderAnalytics || [];
+        const monthlyRevenue = orderAnalytics.reduce((sum: number, day: any) => 
+          sum + (day.totalRevenue || 0), 0
+        );
+
+        setAnalytics({
+          totalSales: stats.totalRevenue || 0,
+          monthlyRevenue: monthlyRevenue || stats.totalRevenue || 0,
+          totalOrders: stats.totalOrders || 0,
+          averageOrderValue: stats.totalOrders > 0 
+            ? (stats.totalRevenue || 0) / stats.totalOrders 
+            : 0,
+          topProducts: sections.topSellingProducts || [],
+          monthlyBreakdown: orderAnalytics || [],
+          topCategories: [], // Can be calculated from products
+        });
+      }
+    } catch (err: any) {
+      console.error('Error loading analytics:', err);
+      setError(err.message || 'Failed to load analytics');
+      // Set default data on error
+      setAnalytics({
+        totalSales: 0,
+        monthlyRevenue: 0,
+        totalOrders: 0,
+        averageOrderValue: 0,
+        topProducts: [],
+        monthlyBreakdown: [],
+        topCategories: [],
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+          <p className="text-gray-600">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <Layout title="Store Analytics Dashboard - TeamUp India" description="Track your store sales and performance metrics">
-      <Head>
-        <title>Store Analytics Dashboard - TeamUp India</title>
-        <meta name="description" content="Track your store sales and performance metrics" />
-      </Head>
-
-      {/* Store Navigation */}
-      <nav className="bg-gray-900 text-white py-4 px-6 flex justify-between items-center">
-        <div className="text-xl font-bold text-red-400">TeamUp India Store Portal</div>
-        <div className="flex space-x-6">
-          <Link href="/store" className="hover:text-red-400">Dashboard</Link>
-          <Link href="/store/products" className="hover:text-red-400">Products</Link>
-          <Link href="/store/analytics" className="hover:text-red-400 font-medium underline">Analytics</Link>
-          <Link href="/profile" className="hover:text-red-400">Profile</Link>
-          <Link href="/logout" className="hover:text-red-400">Logout</Link>
-        </div>
-      </nav>
-
+    <StoreLayout title="Store Analytics Dashboard - TeamUp India" description="Track your store sales and performance metrics">
       <div className="max-w-7xl mx-auto py-8 px-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Sales Analytics Dashboard</h1>
           <p className="text-gray-600">Track your store performance, sales, and customer insights</p>
         </div>
 
+        {error && (
+          <div className="mb-6">
+            <StoreErrorDisplay 
+              error={error}
+              onRetry={() => {
+                setError(null);
+                hasFetchedRef.current = false;
+                loadAnalytics();
+              }}
+            />
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h3 className="text-lg font-semibold text-gray-700">Total Sales</h3>
-            <p className="text-3xl font-bold text-green-600">₹4,25,000</p>
-            <p className="text-sm text-gray-500 mt-1">This year</p>
+            <p className="text-3xl font-bold text-green-600">
+              ₹{analytics?.totalSales.toLocaleString() || '0'}
+            </p>
+            <p className="text-sm text-gray-500 mt-1">All time</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h3 className="text-lg font-semibold text-gray-700">This Month</h3>
-            <p className="text-3xl font-bold text-blue-600">₹52,300</p>
-            <p className="text-sm text-green-500 mt-1">↑ 8% from last month</p>
+            <p className="text-3xl font-bold text-blue-600">
+              ₹{analytics?.monthlyRevenue.toLocaleString() || '0'}
+            </p>
+            <p className="text-sm text-gray-500 mt-1">Current month</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-700">Orders</h3>
-            <p className="text-3xl font-bold text-purple-600">248</p>
-            <p className="text-sm text-gray-500 mt-1">This month</p>
+            <h3 className="text-lg font-semibold text-gray-700">Total Orders</h3>
+            <p className="text-3xl font-bold text-purple-600">
+              {analytics?.totalOrders || 0}
+            </p>
+            <p className="text-sm text-gray-500 mt-1">All orders</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h3 className="text-lg font-semibold text-gray-700">Avg. Order Value</h3>
-            <p className="text-3xl font-bold text-yellow-600">₹2,100</p>
+            <p className="text-3xl font-bold text-yellow-600">
+              ₹{analytics?.averageOrderValue.toFixed(0) || '0'}
+            </p>
             <p className="text-sm text-gray-500 mt-1">Per order</p>
           </div>
         </div>
@@ -80,16 +179,6 @@ const StoreAnalyticsPage = () => {
               >
                 Top Products
               </button>
-              <button
-                onClick={() => setActiveTab('customers')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'customers'
-                    ? 'border-red-500 text-red-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Customers
-              </button>
             </nav>
           </div>
           
@@ -113,86 +202,33 @@ const StoreAnalyticsPage = () => {
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-lg shadow-md">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Sales Overview</h2>
-              <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 mx-auto mb-4" />
-                  <p className="text-gray-500">Sales chart visualization</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Top Performing Categories</h2>
+              {analytics?.monthlyBreakdown && analytics.monthlyBreakdown.length > 0 ? (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">Cricket Equipment</p>
+                  {analytics.monthlyBreakdown.slice(-7).map((day: any, index: number) => (
+                    <div key={index}>
+                      <div className="flex justify-between mb-1">
+                        <span>{day._id || 'Date'}</span>
+                        <span>₹{day.totalRevenue?.toLocaleString() || '0'}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-green-600 h-2 rounded-full" 
+                          style={{ 
+                            width: `${Math.min((day.totalRevenue / (analytics.monthlyRevenue || 1)) * 100, 100)}%` 
+                          }}
+                        ></div>
+                      </div>
                     </div>
-                    <p className="font-bold text-green-600">₹18,500</p>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">Football Gear</p>
-                    </div>
-                    <p className="font-bold text-green-600">₹15,200</p>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">Tennis Accessories</p>
-                    </div>
-                    <p className="font-bold text-green-600">₹12,800</p>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">Athletic Wear</p>
-                    </div>
-                    <p className="font-bold text-green-600">₹9,400</p>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    <p className="text-gray-500">No sales data available</p>
+                    <p className="text-sm text-gray-400 mt-2">Start selling to see your analytics</p>
                   </div>
                 </div>
-              </div>
-
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Monthly Breakdown</h2>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span>April 2024</span>
-                      <span>₹52,300</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-green-600 h-2 rounded-full" style={{ width: '95%' }}></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span>March 2024</span>
-                      <span>₹48,500</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: '88%' }}></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span>February 2024</span>
-                      <span>₹45,200</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-purple-600 h-2 rounded-full" style={{ width: '82%' }}></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span>January 2024</span>
-                      <span>₹42,800</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-yellow-600 h-2 rounded-full" style={{ width: '78%' }}></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -201,222 +237,71 @@ const StoreAnalyticsPage = () => {
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-gray-900">Top Selling Products</h2>
 
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Units Sold</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    <tr>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10" />
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Pro Cricket Bat</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">Cricket</td>
-                      <td className="px-6 py-4 whitespace-nowrap">124</td>
-                      <td className="px-6 py-4 whitespace-nowrap font-bold">₹31,000</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-gray-300">★</span>
-                          <span className="ml-1 text-gray-500">(4.2)</span>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10" />
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Football Size 5</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">Football</td>
-                      <td className="px-6 py-4 whitespace-nowrap">98</td>
-                      <td className="px-6 py-4 whitespace-nowrap font-bold">₹24,500</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-yellow-400">★</span>
-                          <span className="ml-1 text-gray-500">(4.8)</span>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10" />
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Tennis Racket Pro</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">Tennis</td>
-                      <td className="px-6 py-4 whitespace-nowrap">76</td>
-                      <td className="px-6 py-4 whitespace-nowrap font-bold">₹22,800</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-gray-300">★</span>
-                          <span className="ml-1 text-gray-500">(4.0)</span>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10" />
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Basketball Official</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">Basketball</td>
-                      <td className="px-6 py-4 whitespace-nowrap">65</td>
-                      <td className="px-6 py-4 whitespace-nowrap font-bold">₹19,500</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-gray-300">★</span>
-                          <span className="ml-1 text-gray-500">(4.1)</span>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'customers' && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-gray-900">Customer Insights</h2>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {analytics?.topProducts && analytics.topProducts.length > 0 ? (
               <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="font-bold text-gray-900 mb-4">Customer Demographics</h3>
-                <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 mx-auto mb-4" />
-                    <p className="text-gray-500">Demographics chart</p>
-                  </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Units Sold</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {analytics.topProducts.map((product: any, index: number) => (
+                        <tr key={product._id || index}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10" />
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">{product.name || 'Product'}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {product.category || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {product['analytics.purchases'] || product.analytics?.purchases || 0}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap font-bold text-sm">
+                            ₹{((product['analytics.purchases'] || 0) * (product.price?.selling || 0)).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              {product.ratings?.average ? (
+                                <>
+                                  <span className="text-yellow-400">★</span>
+                                  <span className="ml-1 text-gray-500">
+                                    {product.ratings.average.toFixed(1)} ({product.ratings.count || 0})
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-gray-400">No ratings</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="font-bold text-gray-900 mb-4">Customer Retention</h3>
-                <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48 mx-auto mb-4" />
-                    <p className="text-gray-500">Retention chart</p>
-                  </div>
-                </div>
+            ) : (
+              <div className="bg-white p-8 rounded-lg shadow-md text-center">
+                <p className="text-gray-500">No product data available</p>
+                <Link href="/store/products" className="text-red-600 hover:underline mt-2 inline-block">
+                  Add Products
+                </Link>
               </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="font-bold text-gray-900 mb-4">Top Customers</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orders</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Spent</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Order</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    <tr>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10" />
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Rahul Sharma</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">rahul@example.com</td>
-                      <td className="px-6 py-4 whitespace-nowrap">24</td>
-                      <td className="px-6 py-4 whitespace-nowrap font-bold">₹28,500</td>
-                      <td className="px-6 py-4 whitespace-nowrap">Apr 15, 2024</td>
-                    </tr>
-                    <tr>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10" />
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Priya Patel</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">priya@example.com</td>
-                      <td className="px-6 py-4 whitespace-nowrap">18</td>
-                      <td className="px-6 py-4 whitespace-nowrap font-bold">₹22,400</td>
-                      <td className="px-6 py-4 whitespace-nowrap">Apr 12, 2024</td>
-                    </tr>
-                    <tr>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10" />
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Amit Kumar</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">amit@example.com</td>
-                      <td className="px-6 py-4 whitespace-nowrap">15</td>
-                      <td className="px-6 py-4 whitespace-nowrap font-bold">₹19,800</td>
-                      <td className="px-6 py-4 whitespace-nowrap">Apr 10, 2024</td>
-                    </tr>
-                    <tr>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="bg-gray-200 border-2 border-dashed rounded-xl w-10 h-10" />
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Sneha Gupta</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">sneha@example.com</td>
-                      <td className="px-6 py-4 whitespace-nowrap">12</td>
-                      <td className="px-6 py-4 whitespace-nowrap font-bold">₹16,500</td>
-                      <td className="px-6 py-4 whitespace-nowrap">Apr 8, 2024</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            )}
           </div>
         )}
       </div>
-    </Layout>
+    </StoreLayout>
   );
 };
 

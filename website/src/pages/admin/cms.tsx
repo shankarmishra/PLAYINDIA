@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import AdminNav from '../../components/AdminNav';
+import { BACKEND_API_URL } from '../../config/constants';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://playindia-3.onrender.com';
+const API_BASE_URL = BACKEND_API_URL;
 
 const AdminCMSPage = () => {
   const router = useRouter();
@@ -27,6 +28,7 @@ const AdminCMSPage = () => {
     startDate: '',
     endDate: '',
     targetAudience: ['all'],
+    bannerType: 'general', // 'home', 'shop', 'tournament', 'general'
   });
 
   useEffect(() => {
@@ -86,6 +88,7 @@ const AdminCMSPage = () => {
       startDate: '',
       endDate: '',
       targetAudience: ['all'],
+      bannerType: 'general',
     });
     setShowBannerModal(true);
   };
@@ -104,6 +107,7 @@ const AdminCMSPage = () => {
       startDate: banner.startDate ? new Date(banner.startDate).toISOString().split('T')[0] : '',
       endDate: banner.endDate ? new Date(banner.endDate).toISOString().split('T')[0] : '',
       targetAudience: banner.targetAudience || ['all'],
+      bannerType: banner.bannerType || 'general',
     });
     setShowBannerModal(true);
   };
@@ -498,6 +502,20 @@ const AdminCMSPage = () => {
                   />
                 </div>
               )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Banner Type</label>
+                <select
+                  value={bannerForm.bannerType}
+                  onChange={(e) => setBannerForm({ ...bannerForm, bannerType: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="general">General</option>
+                  <option value="home">Home Page</option>
+                  <option value="shop">Shop Page</option>
+                  <option value="tournament">Tournament</option>
+                </select>
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>

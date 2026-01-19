@@ -10,6 +10,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import UserTabNavigator from './UserNav'; // User dashboard
 import CoachNav from './CoachNav'; // Coach dashboard
 import StoreNav from './StoreNav'; // Store dashboard
+import StoreApprovalTrackingScreen from '../screens/store/StoreApprovalTrackingScreen';
 import DeliveryNav from './DeliveryNav'; // Delivery dashboard
 import AdminNav from './AdminNav'; // Admin dashboard
 
@@ -31,6 +32,7 @@ export type RootStackParamList = {
   UserMain: undefined;
   CoachMain: undefined;
   StoreMain: undefined;
+  StoreApprovalTracking: undefined;
   DeliveryMain: undefined;
   AdminMain: undefined;
 };
@@ -100,6 +102,7 @@ const AppNavigator = () => {
         <Stack.Screen name="UserMain" component={UserTabNavigator} />
         <Stack.Screen name="CoachMain" component={CoachNav} />
         <Stack.Screen name="StoreMain" component={StoreNav} />
+        <Stack.Screen name="StoreApprovalTracking" component={StoreApprovalTrackingScreen} />
         <Stack.Screen name="DeliveryMain" component={DeliveryNav} />
         <Stack.Screen name="AdminMain" component={AdminNav} />
       </Stack.Navigator>

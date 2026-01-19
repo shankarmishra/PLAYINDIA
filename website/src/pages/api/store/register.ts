@@ -46,84 +46,194 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const password = Array.isArray(fields.password) ? fields.password[0] : fields.password;
     const mobile = Array.isArray(fields.mobile) ? fields.mobile[0] : fields.mobile;
     
-    // Normalize email
-    if (email && typeof email === 'string') {
-      email = email.toLowerCase().trim();
-    }
+    // Convert to strings and trim
+    const nameStr = name ? String(name).trim() : '';
+    const emailStr = email ? String(email).trim() : '';
+    const passwordStr = password ? String(password) : '';
+    const mobileStr = mobile ? String(mobile).trim() : '';
     
-    // Validate required fields
-    if (!name || !email || !password || !mobile) {
+    // Normalize email
+    const normalizedEmail = emailStr ? emailStr.toLowerCase() : '';
+    
+    // Validate required fields - check each one individually with specific error messages
+    if (!nameStr || nameStr.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: name, email, password, mobile'
+        message: 'Name is required'
+      });
+    }
+    
+    if (!emailStr || emailStr.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+    
+    if (!passwordStr || passwordStr.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required'
+      });
+    }
+    
+    if (!mobileStr || mobileStr.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mobile number is required'
+      });
+    }
+    
+    // Validate name length
+    if (nameStr.length < 2 || nameStr.length > 50) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name must be between 2 and 50 characters'
+      });
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email'
+      });
+    }
+    
+    // Validate password length
+    if (passwordStr.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters'
+      });
+    }
+    
+    // Validate password complexity
+    const hasUpperCase = /[A-Z]/.test(passwordStr);
+    const hasLowerCase = /[a-z]/.test(passwordStr);
+    const hasNumber = /\d/.test(passwordStr);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(passwordStr);
+    if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
       });
     }
     
     // Normalize mobile number
-    let formattedMobile = mobile as string;
-    if (typeof formattedMobile === 'string') {
-      formattedMobile = formattedMobile.replace(/\D/g, '');
-      if (formattedMobile.length === 12 && formattedMobile.startsWith('91')) {
-        formattedMobile = formattedMobile.substring(2);
-      }
-      if (formattedMobile.length === 11 && formattedMobile.startsWith('0')) {
-        formattedMobile = formattedMobile.substring(1);
-      }
-      if (formattedMobile.length !== 10) {
-        return res.status(400).json({
-          success: false,
-          message: 'Please provide a valid 10-digit mobile number'
-        });
-      }
+    let formattedMobile = mobileStr.replace(/\D/g, '');
+    if (formattedMobile.length === 12 && formattedMobile.startsWith('91')) {
+      formattedMobile = formattedMobile.substring(2);
+    }
+    if (formattedMobile.length === 11 && formattedMobile.startsWith('0')) {
+      formattedMobile = formattedMobile.substring(1);
+    }
+    if (formattedMobile.length !== 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid 10-digit mobile number'
+      });
     }
     
-    // Create form data for user registration
-    const userRegistrationFormData = new FormData();
-    userRegistrationFormData.append('name', name as string);
-    userRegistrationFormData.append('email', email as string);
-    userRegistrationFormData.append('password', password as string);
-    userRegistrationFormData.append('mobile', formattedMobile);
-    userRegistrationFormData.append('role', 'seller');
+    // Create JSON payload for user registration (backend expects JSON, not FormData)
+    const userRegistrationData: any = {
+      name: nameStr,
+      email: normalizedEmail,
+      password: passwordStr,
+      mobile: formattedMobile,
+      role: 'seller'
+    };
     
-    // Add other store fields
+    // Add other store fields to registration data
     if (fields.storeName) {
-      userRegistrationFormData.append('storeName', Array.isArray(fields.storeName) ? fields.storeName[0] : fields.storeName);
+      userRegistrationData.storeName = Array.isArray(fields.storeName) ? fields.storeName[0] : fields.storeName;
     }
     if (fields.ownerName) {
-      userRegistrationFormData.append('ownerName', Array.isArray(fields.ownerName) ? fields.ownerName[0] : fields.ownerName);
+      userRegistrationData.ownerName = Array.isArray(fields.ownerName) ? fields.ownerName[0] : fields.ownerName;
     }
     if (fields.address) {
-      userRegistrationFormData.append('address', Array.isArray(fields.address) ? fields.address[0] : fields.address);
+      userRegistrationData.address = Array.isArray(fields.address) ? fields.address[0] : fields.address;
     }
     if (fields.city) {
-      userRegistrationFormData.append('city', Array.isArray(fields.city) ? fields.city[0] : fields.city);
+      userRegistrationData.city = Array.isArray(fields.city) ? fields.city[0] : fields.city;
     }
     if (fields.state) {
-      userRegistrationFormData.append('state', Array.isArray(fields.state) ? fields.state[0] : fields.state);
+      userRegistrationData.state = Array.isArray(fields.state) ? fields.state[0] : fields.state;
     }
     if (fields.pincode) {
-      userRegistrationFormData.append('pincode', Array.isArray(fields.pincode) ? fields.pincode[0] : fields.pincode);
+      userRegistrationData.pincode = Array.isArray(fields.pincode) ? fields.pincode[0] : fields.pincode;
     }
     if (fields.gstNumber) {
-      userRegistrationFormData.append('gstNumber', Array.isArray(fields.gstNumber) ? fields.gstNumber[0] : fields.gstNumber);
+      userRegistrationData.gstNumber = Array.isArray(fields.gstNumber) ? fields.gstNumber[0] : fields.gstNumber;
     }
     if (fields.businessType) {
-      userRegistrationFormData.append('businessType', Array.isArray(fields.businessType) ? fields.businessType[0] : fields.businessType);
+      userRegistrationData.businessType = Array.isArray(fields.businessType) ? fields.businessType[0] : fields.businessType;
     }
+    // Handle category - backend expects a single enum value, not an array
+    // Map frontend categories to backend enum values
     if (fields.category) {
-      const category = Array.isArray(fields.category) ? fields.category : [fields.category];
-      userRegistrationFormData.append('category', JSON.stringify(category));
+      let categoryArray: string[] = [];
+      try {
+        // Try to parse if it's a JSON string
+        const categoryValue = Array.isArray(fields.category) ? fields.category[0] : fields.category;
+        if (typeof categoryValue === 'string') {
+          try {
+            categoryArray = JSON.parse(categoryValue);
+          } catch {
+            // If not JSON, treat as single value
+            categoryArray = [categoryValue];
+          }
+        } else if (Array.isArray(categoryValue)) {
+          categoryArray = categoryValue;
+        }
+      } catch (e) {
+        console.error('Error parsing category:', e);
+      }
+      
+      // Map frontend category names to backend enum values
+      const categoryMap: { [key: string]: string } = {
+        'Tennis': 'tennis',
+        'Football': 'football',
+        'Cricket': 'cricket',
+        'Badminton': 'badminton',
+        'Basketball': 'multi-sports',
+        'Cycling': 'multi-sports',
+        'Running': 'multi-sports',
+        'Gym Equipment': 'gym',
+        'Sports Accessories': 'accessories',
+        'Sports Wear': 'sports-wear',
+        'Multi-Sports': 'multi-sports'
+      };
+      
+      // Convert frontend categories to backend enum values
+      const mappedCategories = categoryArray
+        .map((cat: string) => categoryMap[cat] || cat.toLowerCase())
+        .filter((cat: string) => ['cricket', 'football', 'badminton', 'tennis', 'gym', 'multi-sports', 'sports-wear', 'accessories'].includes(cat));
+      
+      // If multiple categories, use 'multi-sports', otherwise use the first valid one
+      if (mappedCategories.length > 1) {
+        userRegistrationData.category = 'multi-sports';
+      } else if (mappedCategories.length === 1) {
+        userRegistrationData.category = mappedCategories[0];
+      } else {
+        // Default to 'multi-sports' if no valid category found
+        userRegistrationData.category = 'multi-sports';
+      }
+    } else {
+      // Default category if none provided
+      userRegistrationData.category = 'multi-sports';
     }
         
-    // Register user first
+    // Register user first (backend expects JSON)
     let userResponse;
     try {
       userResponse = await fetch(API_CONFIG.ENDPOINTS.AUTH.REGISTER, {
         method: 'POST',
-        body: userRegistrationFormData as any,
         headers: {
-          ...userRegistrationFormData.getHeaders()
-        }
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userRegistrationData)
       });
     } catch (error: any) {
       console.error('Network error when contacting backend:', error);
@@ -189,15 +299,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // If user registration was successful, update store profile with documents
     const storeProfileFormData = new FormData();
         
-    // Add store-specific fields
+    // Add store-specific fields (excluding registration fields)
     Object.keys(fields).forEach(key => {
       if (key !== 'name' && key !== 'email' && key !== 'password' && key !== 'mobile' && key !== 'role') {
-        const value = Array.isArray(fields[key]) ? fields[key][0] : fields[key];
+        let value = Array.isArray(fields[key]) ? fields[key][0] : fields[key];
+        
+        // Special handling for category - ensure it's a single enum value
+        if (key === 'category') {
+          // Use the already processed category from userRegistrationData
+          value = userRegistrationData.category || 'multi-sports';
+        }
+        
         if (value !== undefined && value !== null && value !== '') {
-          storeProfileFormData.append(key, value as string);
+          storeProfileFormData.append(key, String(value));
         }
       }
     });
+    
+    // Ensure category is set in store profile (always append, FormData allows duplicates)
+    storeProfileFormData.append('category', userRegistrationData.category || 'multi-sports');
         
     // Add files to the store profile form data
     console.log('Files to upload:', Object.keys(files));
@@ -221,7 +341,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
     // Update store profile with documents
     try {
-      const storeProfileUrl = API_CONFIG.ENDPOINTS.STORES?.PROFILE || `${API_CONFIG.ENDPOINTS.STORES?.BASE || 'https://playindia-3.onrender.com/api/stores'}/profile`;
+      const storeProfileUrl = API_CONFIG.ENDPOINTS.STORES?.PROFILE || `${API_CONFIG.ENDPOINTS.STORES?.BASE || `${API_CONFIG.BASE_URL}/api/stores`}/profile`;
       const storeResponse = await fetch(storeProfileUrl, {
         method: 'PUT',
         body: storeProfileFormData as any,
@@ -233,9 +353,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       if (storeResponse.ok) {
         const storeData = await storeResponse.json().catch(() => ({}));
-        console.log('Store profile updated successfully:', storeData);
+        console.log('Store profile updated successfully:', {
+          success: storeData.success,
+          hasData: !!storeData.data,
+          storeDocuments: storeData.data?.documents,
+          fullResponse: storeData
+        });
       } else {
-        console.warn('Store profile update failed, but user was registered');
+        const errorText = await storeResponse.text().catch(() => 'Unknown error');
+        console.error('Store profile update failed:', {
+          status: storeResponse.status,
+          statusText: storeResponse.statusText,
+          error: errorText
+        });
+        console.warn('Store profile update failed, but user was registered. Error:', errorText);
       }
     } catch (err) {
       console.error('Error updating store profile:', err);

@@ -197,32 +197,101 @@ exports.getStoreDashboard = async (req, res, next) => {
     // Get store wallet
     const wallet = await Wallet.findOne({ userId: req.user.id });
 
-    // Get recent orders
-    const recentOrders = await Order.find({ storeId: store._id })
-      .sort({ createdAt: -1 })
-      .limit(10);
+    // Get recent orders with error handling
+    let recentOrders = [];
+    try {
+      recentOrders = await Order.find({ storeId: store._id })
+        .populate('userId', 'name email')
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean() || [];
+    } catch (err) {
+      console.error('Error fetching recent orders:', err);
+    }
 
-    // Get order analytics
-    const orderAnalytics = await Order.aggregate([
-      { $match: { 
-          storeId: store._id,
-          createdAt: { $gte: new Date(new Date().setDate(new Date().getDate() - 30)) } // Last 30 days
-        }
-      },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          totalOrders: { $sum: 1 },
-          totalRevenue: { $sum: "$totalAmount" }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ]);
+    // Get order analytics with error handling
+    let orderAnalytics = [];
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      orderAnalytics = await Order.aggregate([
+        { $match: { 
+            storeId: store._id,
+            createdAt: { $gte: thirtyDaysAgo }
+          }
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            totalOrders: { $sum: 1 },
+            totalRevenue: { $sum: "$totalAmount" }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]) || [];
+    } catch (err) {
+      console.error('Error fetching order analytics:', err);
+    }
 
-    // Get top selling products
-    const topSellingProducts = await Product.find({ storeId: store._id })
-      .sort({ 'analytics.purchases': -1 })
-      .limit(5);
+    // Get top selling products with error handling
+    let topSellingProducts = [];
+    try {
+      topSellingProducts = await Product.find({ storeId: store._id })
+        .sort({ 'analytics.purchases': -1 })
+        .limit(5)
+        .lean() || [];
+    } catch (err) {
+      console.error('Error fetching top selling products:', err);
+      // Try without analytics field
+      try {
+        topSellingProducts = await Product.find({ storeId: store._id })
+          .sort({ createdAt: -1 })
+          .limit(5)
+          .lean() || [];
+      } catch (err2) {
+        console.error('Error fetching products:', err2);
+      }
+    }
+
+    // Calculate stats from actual data with error handling
+    let totalOrdersCount = 0;
+    let completedOrdersCount = 0;
+    let totalRevenue = 0;
+    let todayOrders = 0;
+    let pendingOrders = 0;
+    let totalProducts = 0;
+
+    try {
+      totalOrdersCount = await Order.countDocuments({ storeId: store._id }) || 0;
+      completedOrdersCount = await Order.countDocuments({ storeId: store._id, status: 'delivered' }) || 0;
+      
+      // Calculate revenue from completed orders
+      const revenueData = await Order.aggregate([
+        { $match: { storeId: store._id, status: 'delivered' } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+      ]);
+      totalRevenue = revenueData[0]?.total || 0;
+
+      // Get today's orders count
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      todayOrders = await Order.countDocuments({ 
+        storeId: store._id, 
+        createdAt: { $gte: today } 
+      }) || 0;
+
+      // Get pending orders count
+      pendingOrders = await Order.countDocuments({ 
+        storeId: store._id, 
+        status: { $in: ['pending', 'confirmed', 'processing'] } 
+      }) || 0;
+
+      // Get total products count
+      totalProducts = await Product.countDocuments({ storeId: store._id }) || 0;
+    } catch (statsError) {
+      console.error('Error calculating dashboard stats:', statsError);
+      // Use defaults if calculation fails
+    }
 
     const dashboardData = {
       store: {
@@ -230,23 +299,22 @@ exports.getStoreDashboard = async (req, res, next) => {
         walletBalance: wallet ? wallet.balance : 0
       },
       stats: {
-        totalOrders: store.orders.total,
-        completedOrders: store.orders.completed,
-        totalRevenue: store.earnings.total,
-        availableEarnings: store.earnings.available,
-        pendingEarnings: store.earnings.pending,
-        rating: store.ratings.average,
-        totalRatings: store.ratings.count
+        totalProducts: totalProducts,
+        todayOrders: todayOrders,
+        monthlyRevenue: totalRevenue,
+        pendingOrders: pendingOrders,
+        totalOrders: totalOrdersCount,
+        completedOrders: completedOrdersCount
       },
       sections: {
         recentOrders,
-        topSellingProducts,
+        topSellingProducts: topSellingProducts || [],
         orderAnalytics
       },
       analytics: {
         orderAnalytics,
         revenueTrend: orderAnalytics,
-        topSellingProducts
+        topSellingProducts: topSellingProducts || []
       }
     };
 
@@ -614,6 +682,174 @@ exports.deleteProduct = async (req, res, next) => {
     });
   } catch (error) {
     res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Admin: Approve store
+ */
+exports.approveStore = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    const store = await Store.findById(id).populate('userId', 'name email mobile');
+    if (!store) {
+      return res.status(404).json({
+        success: false,
+        message: 'Store not found'
+      });
+    }
+
+    // Update store status
+    store.status = 'active';
+    store.verified = true;
+    if (notes) {
+      store.adminNotes = notes;
+    }
+
+    // Update user status
+    const user = await User.findById(store.userId);
+    if (user) {
+      user.status = 'active';
+      await user.save({ validateBeforeSave: false });
+    }
+
+    await store.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Store approved successfully',
+      data: store
+    });
+  } catch (error) {
+    console.error('Approve store error:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Admin: Reject store
+ */
+exports.rejectStore = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { reason, notes } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rejection reason is required'
+      });
+    }
+
+    const store = await Store.findById(id).populate('userId', 'name email mobile');
+    if (!store) {
+      return res.status(404).json({
+        success: false,
+        message: 'Store not found'
+      });
+    }
+
+    // Update store status
+    store.status = 'rejected';
+    store.rejectionReason = reason;
+    if (notes) {
+      store.adminNotes = notes;
+    }
+
+    // Update user status
+    const user = await User.findById(store.userId);
+    if (user) {
+      user.status = 'rejected';
+      await user.save({ validateBeforeSave: false });
+    }
+
+    await store.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Store rejected successfully',
+      data: store
+    });
+  } catch (error) {
+    console.error('Reject store error:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Admin: Get pending stores
+ */
+exports.getPendingStores = async (req, res, next) => {
+  try {
+    const stores = await Store.find({ status: 'pending' })
+      .populate('userId', 'name email mobile createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      count: stores.length,
+      data: stores
+    });
+  } catch (error) {
+    console.error('Get pending stores error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Admin: Get store details with documents
+ */
+exports.getStoreDetailsForAdmin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const store = await Store.findById(id)
+      .populate('userId', 'name email mobile createdAt')
+      .lean();
+
+    if (!store) {
+      return res.status(404).json({
+        success: false,
+        message: 'Store not found'
+      });
+    }
+
+    // Get user verification data
+    const user = await User.findById(store.userId)
+      .select('verification roleData')
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        store,
+        user: user || null,
+        documents: {
+          gstCertificate: store.documents?.gstCertificate,
+          shopLicense: store.documents?.shopLicense,
+          ownerID: store.documents?.ownerID,
+          additionalDocs: store.documents?.additionalDocs || []
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get store details error:', error);
+    res.status(500).json({
       success: false,
       message: error.message
     });

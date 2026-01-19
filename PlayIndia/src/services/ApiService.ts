@@ -203,6 +203,45 @@ const ApiService = {
       apiClient.post(API_ENDPOINTS.BANNERS.CLICK(id)),
   },
 
+  // Stores API methods
+  stores: {
+    getDashboard: () => 
+      apiClient.get(API_ENDPOINTS.STORES.DASHBOARD),
+    
+    getMyProfile: () => 
+      apiClient.get(API_ENDPOINTS.STORES.MY_PROFILE),
+    
+    getProfile: (id: string) => 
+      apiClient.get(`${API_ENDPOINTS.STORES.BASE}/${id}`),
+    
+    updateProfile: (data: any) => 
+      apiClient.put(API_ENDPOINTS.STORES.PROFILE, data),
+    
+    getProducts: (storeId: string, params?: any) => 
+      apiClient.get(API_ENDPOINTS.STORES.PRODUCTS(storeId), { params }),
+    
+    addProduct: (storeId: string, data: any) => 
+      apiClient.post(API_ENDPOINTS.STORES.PRODUCTS(storeId), data),
+    
+    updateProduct: (productId: string, data: any) => 
+      apiClient.put(API_ENDPOINTS.STORES.PRODUCT(productId), data),
+    
+    deleteProduct: (productId: string) => 
+      apiClient.delete(API_ENDPOINTS.STORES.PRODUCT(productId)),
+  },
+  
+  // Orders API methods
+  orders: {
+    getStoreOrders: (params?: any) => 
+      apiClient.get(API_ENDPOINTS.ORDERS.STORE_ORDERS, { params }),
+    
+    getOrder: (id: string) => 
+      apiClient.get(API_ENDPOINTS.ORDERS.DETAIL(id)),
+    
+    updateOrderStatus: (id: string, data: any) => 
+      apiClient.put(API_ENDPOINTS.ORDERS.UPDATE_STATUS(id), data),
+  },
+
   // Generic methods
   get: (url: string, params?: any) => 
     apiClient.get(url, { params }),

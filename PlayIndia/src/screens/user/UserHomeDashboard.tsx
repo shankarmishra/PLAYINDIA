@@ -15,7 +15,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
@@ -122,27 +122,40 @@ const UserHomeDashboard = () => {
     loadBanners();
   }, []);
 
+  // Reload banners when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadBanners();
+    }, [])
+  );
+
   const loadBanners = async () => {
     try {
       const response = await ApiService.banners.getAll({ status: 'active' });
-      if (response.data.success && response.data.data && response.data.data.length > 0) {
-        const formattedBanners = response.data.data.map((banner: any) => ({
-          id: banner._id || banner.id,
-          title: banner.title || '',
-          subtitle: banner.subtitle || '',
-          image: banner.image || '',
-          link: banner.link || undefined,
-        }));
-        setBanners(formattedBanners);
+      console.log('Banners API response:', response.data);
+      
+      if (response.data && response.data.success && response.data.data && Array.isArray(response.data.data)) {
+        if (response.data.data.length > 0) {
+          const formattedBanners = response.data.data.map((banner: any) => ({
+            id: banner._id || banner.id,
+            title: banner.title || '',
+            subtitle: banner.subtitle || '',
+            image: banner.image || '',
+            link: banner.link || undefined,
+          }));
+          console.log('Setting banners:', formattedBanners);
+          setBanners(formattedBanners);
+        } else {
+          console.log('No banners returned from API, using dummy banners');
+          setBanners(dummyBanners);
+        }
       } else {
-        // Use dummy banners if API returns empty
+        console.log('Invalid API response format, using dummy banners');
         setBanners(dummyBanners);
       }
     } catch (error: any) {
-      // Silently use dummy banners on network error
-      if (error.message && !error.message.includes('Network')) {
-        console.log('Banners API error:', error.message);
-      }
+      console.error('Banners API error:', error);
+      // Use dummy banners on error
       setBanners(dummyBanners);
     }
   };
@@ -445,7 +458,18 @@ const UserHomeDashboard = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadDashboardData();
+    try {
+      await Promise.all([
+        loadDashboardData(),
+        loadUserLocation(),
+        loadBanners(),
+        refreshUser(),
+      ]);
+    } catch (error) {
+      console.error('Error refreshing:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // Featured coaches data
@@ -690,12 +714,12 @@ const UserHomeDashboard = () => {
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 getItemLayout={(data, index) => ({
-                  length: SCREEN_WIDTH,
-                  offset: SCREEN_WIDTH * index,
+                  length: SCREEN_WIDTH - 32,
+                  offset: (SCREEN_WIDTH - 32) * index,
                   index,
                 })}
                 onMomentumScrollEnd={(event) => {
-                  const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                  const index = Math.round(event.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 32));
                   setCurrentBannerIndex(index);
                 }}
                 scrollEnabled={banners.length > 1}
@@ -937,10 +961,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    height: 60,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
+    elevation: 0,
+    shadowOpacity: 0,
   },
   headerLeft: {
     flex: 1,
@@ -983,13 +1011,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
   },
   bannerContainer: {
-    height: 200,
+    height: 150,
     marginBottom: 16,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
     backgroundColor: '#E2E8F0',
   },
   bannerItem: {
-    width: SCREEN_WIDTH,
-    height: 200,
+    width: SCREEN_WIDTH - 32,
+    height: 150,
     position: 'relative',
     backgroundColor: '#E2E8F0',
   },
@@ -997,6 +1028,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
+    borderRadius: 16,
   },
   bannerOverlay: {
     ...StyleSheet.absoluteFillObject,

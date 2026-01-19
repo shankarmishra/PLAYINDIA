@@ -1,12 +1,677 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
+  TextInput,
+  Modal,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { StoreTabParamList } from '../../navigation/StoreNav';
+import ApiService from '../../services/ApiService';
+import useAuth from '../../hooks/useAuth';
+
+type NavigationProp = StackNavigationProp<StoreTabParamList>;
+
+interface StoreProfile {
+  _id: string;
+  storeName: string;
+  ownerName: string;
+  gst?: {
+    number?: string;
+  };
+  category: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+  };
+  contact?: {
+    email?: string;
+    phone?: string;
+  };
+  status: string;
+  verified: boolean;
+  userId?: {
+    name: string;
+    email: string;
+    mobile: string;
+  };
+  stats?: {
+    totalOrders: number;
+    totalRevenue: number;
+    averageRating: number;
+  };
+}
 
 const ProfileScreen = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [storeProfile, setStoreProfile] = useState<StoreProfile | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    storeName: '',
+    ownerName: '',
+    gstNumber: '',
+    category: '',
+    street: '',
+    city: '',
+    state: '',
+    pincode: '',
+    phone: '',
+  });
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await ApiService.stores.getMyProfile();
+      
+      if (response.data && response.data.success) {
+        const data = response.data.data;
+        setStoreProfile(data);
+        setFormData({
+          storeName: data.storeName || '',
+          ownerName: data.ownerName || '',
+          gstNumber: data.gst?.number || '',
+          category: data.category || '',
+          street: data.address?.street || '',
+          city: data.address?.city || '',
+          state: data.address?.state || '',
+          pincode: data.address?.pincode || '',
+          phone: data.contact?.phone || data.userId?.mobile || '',
+        });
+      }
+    } catch (error: any) {
+      console.error('Error loading profile:', error);
+      Alert.alert('Error', 'Failed to load store profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadProfile();
+    setRefreshing(false);
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const updateData = {
+        storeName: formData.storeName,
+        ownerName: formData.ownerName,
+        gstNumber: formData.gstNumber,
+        category: formData.category,
+        address: {
+          street: formData.street,
+          city: formData.city,
+          state: formData.state,
+          pincode: formData.pincode,
+        },
+        contact: {
+          phone: formData.phone,
+        },
+      };
+
+      const response = await ApiService.stores.updateProfile(updateData);
+      
+      if (response.data && response.data.success) {
+        Alert.alert('Success', 'Profile updated successfully');
+        setEditMode(false);
+        await loadProfile();
+      } else {
+        throw new Error('Update failed');
+      }
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', error.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `₹${amount.toLocaleString('en-IN')}`;
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1ED760" />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <View>
-      <Text>Store Profile Screen</Text>
-    </View>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Store Profile</Text>
+        <TouchableOpacity
+          onPress={() => {
+            if (editMode) {
+              setEditMode(false);
+              loadProfile();
+            } else {
+              setEditMode(true);
+            }
+          }}
+          style={styles.editButton}
+        >
+          <Ionicons
+            name={editMode ? 'close-outline' : 'create-outline'}
+            size={24}
+            color="#1ED760"
+          />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Status Badge */}
+        <View style={styles.statusCard}>
+          <View style={styles.statusRow}>
+            <View
+              style={[
+                styles.statusBadge,
+                {
+                  backgroundColor:
+                    storeProfile?.status === 'active'
+                      ? '#D1FAE5'
+                      : storeProfile?.status === 'pending'
+                      ? '#FEF3C7'
+                      : '#FEE2E2',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.statusText,
+                  {
+                    color:
+                      storeProfile?.status === 'active'
+                        ? '#10B981'
+                        : storeProfile?.status === 'pending'
+                        ? '#F59E0B'
+                        : '#EF4444',
+                  },
+                ]}
+              >
+                {storeProfile?.status?.toUpperCase() || 'PENDING'}
+              </Text>
+            </View>
+            {storeProfile?.verified && (
+              <View style={styles.verifiedBadge}>
+                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                <Text style={styles.verifiedText}>Verified</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Store Information */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Store Information</Text>
+          
+          {editMode ? (
+            <>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Store Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.storeName}
+                  onChangeText={(text) => setFormData({ ...formData, storeName: text })}
+                  placeholder="Enter store name"
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Owner Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.ownerName}
+                  onChangeText={(text) => setFormData({ ...formData, ownerName: text })}
+                  placeholder="Enter owner name"
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>GST Number</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.gstNumber}
+                  onChangeText={(text) => setFormData({ ...formData, gstNumber: text })}
+                  placeholder="Enter GST number"
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Category</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.category}
+                  onChangeText={(text) => setFormData({ ...formData, category: text })}
+                  placeholder="Enter category"
+                />
+              </View>
+              
+              <TouchableOpacity
+                style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={styles.infoRow}>
+                <Ionicons name="storefront-outline" size={20} color="#6B7280" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Store Name</Text>
+                  <Text style={styles.infoValue}>
+                    {storeProfile?.storeName || 'N/A'}
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.infoRow}>
+                <Ionicons name="person-outline" size={20} color="#6B7280" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Owner Name</Text>
+                  <Text style={styles.infoValue}>
+                    {storeProfile?.ownerName || 'N/A'}
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.infoRow}>
+                <Ionicons name="document-text-outline" size={20} color="#6B7280" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>GST Number</Text>
+                  <Text style={styles.infoValue}>
+                    {storeProfile?.gst?.number || 'Not provided'}
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.infoRow}>
+                <Ionicons name="grid-outline" size={20} color="#6B7280" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Category</Text>
+                  <Text style={styles.infoValue}>
+                    {storeProfile?.category || 'N/A'}
+                  </Text>
+                </View>
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* Contact Information */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Contact Information</Text>
+          
+          {editMode ? (
+            <>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Phone</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.phone}
+                  onChangeText={(text) => setFormData({ ...formData, phone: text })}
+                  placeholder="Enter phone number"
+                  keyboardType="phone-pad"
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={[styles.input, styles.inputDisabled]}
+                  value={storeProfile?.userId?.email || ''}
+                  editable={false}
+                  placeholder="Email (cannot be changed)"
+                />
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.infoRow}>
+                <Ionicons name="mail-outline" size={20} color="#6B7280" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Email</Text>
+                  <Text style={styles.infoValue}>
+                    {storeProfile?.userId?.email || 'N/A'}
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.infoRow}>
+                <Ionicons name="call-outline" size={20} color="#6B7280" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Phone</Text>
+                  <Text style={styles.infoValue}>
+                    {storeProfile?.contact?.phone || storeProfile?.userId?.mobile || 'N/A'}
+                  </Text>
+                </View>
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* Address Information */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Address</Text>
+          
+          {editMode ? (
+            <>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Street</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.street}
+                  onChangeText={(text) => setFormData({ ...formData, street: text })}
+                  placeholder="Enter street address"
+                  multiline
+                />
+              </View>
+              
+              <View style={styles.inputRow}>
+                <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                  <Text style={styles.label}>City</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.city}
+                    onChangeText={(text) => setFormData({ ...formData, city: text })}
+                    placeholder="City"
+                  />
+                </View>
+                
+                <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                  <Text style={styles.label}>State</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.state}
+                    onChangeText={(text) => setFormData({ ...formData, state: text })}
+                    placeholder="State"
+                  />
+                </View>
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Pincode</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.pincode}
+                  onChangeText={(text) => setFormData({ ...formData, pincode: text })}
+                  placeholder="Enter pincode"
+                  keyboardType="number-pad"
+                />
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.infoRow}>
+                <Ionicons name="location-outline" size={20} color="#6B7280" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Address</Text>
+                  <Text style={styles.infoValue}>
+                    {storeProfile?.address?.street
+                      ? `${storeProfile.address.street}, ${storeProfile.address.city || ''}, ${storeProfile.address.state || ''} - ${storeProfile.address.pincode || ''}`
+                      : 'Not provided'}
+                  </Text>
+                </View>
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* Statistics */}
+        {storeProfile?.stats && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Statistics</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statCard}>
+                <Ionicons name="cart-outline" size={24} color="#3B82F6" />
+                <Text style={styles.statValue}>
+                  {storeProfile.stats.totalOrders || 0}
+                </Text>
+                <Text style={styles.statLabel}>Total Orders</Text>
+              </View>
+              
+              <View style={styles.statCard}>
+                <Ionicons name="cash-outline" size={24} color="#10B981" />
+                <Text style={styles.statValue}>
+                  {formatCurrency(storeProfile.stats.totalRevenue || 0)}
+                </Text>
+                <Text style={styles.statLabel}>Total Revenue</Text>
+              </View>
+              
+              <View style={styles.statCard}>
+                <Ionicons name="star-outline" size={24} color="#F59E0B" />
+                <Text style={styles.statValue}>
+                  {storeProfile.stats.averageRating
+                    ? storeProfile.stats.averageRating.toFixed(1)
+                    : '0.0'}
+                </Text>
+                <Text style={styles.statLabel}>Rating</Text>
+              </View>
+            </View>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  editButton: {
+    padding: 4,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  statusCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  verifiedText: {
+    fontSize: 12,
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  infoContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  infoValue: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontWeight: '600',
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 6,
+    fontWeight: '600',
+  },
+  input: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#1F2937',
+  },
+  inputDisabled: {
+    backgroundColor: '#F3F4F6',
+    color: '#9CA3AF',
+  },
+  saveButton: {
+    backgroundColor: '#1ED760',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+  },
+  statCard: {
+    width: '30%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    margin: 6,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+});
 
 export default ProfileScreen;

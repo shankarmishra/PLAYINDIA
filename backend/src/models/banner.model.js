@@ -51,6 +51,11 @@ const bannerSchema = new mongoose.Schema({
     enum: ['all', 'user', 'coach', 'store', 'delivery'],
     default: ['all']
   },
+  bannerType: {
+    type: String,
+    enum: ['home', 'shop', 'tournament', 'general'],
+    default: 'general'
+  },
   clicks: {
     type: Number,
     default: 0
