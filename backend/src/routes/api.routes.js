@@ -55,17 +55,22 @@ router.route('/coaches/:id/availability/:date')
   .get(protect, coachController.getCoachAvailability);
 
 // Store routes
-router.route('/stores')
-  .get(protect, storeController.getStores);
+// IMPORTANT: Define specific routes BEFORE parameterized routes
+// Express matches routes in order, so /stores/dashboard must come before /stores/:id
 
+// Dashboard route - MUST be before /stores/:id to prevent route conflict
+router.get('/stores/dashboard', protect, authorize('seller', 'store'), storeController.getStoreDashboard);
+
+// Profile route - specific route before parameterized
 router.route('/stores/profile')
   .get(protect, storeController.getMyStoreProfile)
   .put(protect, authorize('seller', 'store'), storeController.updateStoreProfile);
 
-// IMPORTANT: Specific routes must come before parameterized routes
-router.route('/stores/dashboard')
-  .get(protect, authorize('seller', 'store'), storeController.getStoreDashboard);
+// List all stores
+router.route('/stores')
+  .get(protect, storeController.getStores);
 
+// Parameterized routes - MUST come after specific routes
 router.route('/stores/:id')
   .get(protect, storeController.getStoreProfile);
 

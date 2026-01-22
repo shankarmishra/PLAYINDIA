@@ -182,9 +182,11 @@ exports.getStoreProfile = async (req, res, next) => {
 
 /**
  * Get store dashboard
+ * Route: GET /api/stores/dashboard
  */
 exports.getStoreDashboard = async (req, res, next) => {
   try {
+    console.log('Store dashboard endpoint called for user:', req.user.id);
     const store = await Store.findOne({ userId: req.user.id })
       .populate('userId', 'name mobile email');
 
@@ -311,10 +313,14 @@ exports.getStoreDashboard = async (req, res, next) => {
       totalOrdersCount = await Order.countDocuments({ storeId: storeObjectId }).catch(() => 0) || 0;
       completedOrdersCount = await Order.countDocuments({ storeId: storeObjectId, status: 'delivered' }).catch(() => 0) || 0;
       
-      // Calculate revenue from completed orders
+      // Calculate revenue from completed orders (orders with completed payment)
       try {
         const revenueData = await Order.aggregate([
-          { $match: { storeId: storeObjectId, status: 'delivered' } },
+          { $match: { 
+              storeId: storeObjectId, 
+              'payment.status': 'completed' 
+            } 
+          },
           { $group: { _id: null, total: { $sum: { $ifNull: ["$totalAmount", 0] } } } }
         ]).catch(() => []);
         totalRevenue = Array.isArray(revenueData) && revenueData.length > 0 && revenueData[0].total 
