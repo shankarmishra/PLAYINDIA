@@ -60,8 +60,26 @@ const StoreSettingsPage = () => {
         });
       }
     } catch (err: any) {
-      console.error('Error loading profile:', err);
-      setError(err.message || 'Failed to load profile');
+      // Check if error should be suppressed
+      if (!err.suppressLog && !err.isNotFound) {
+        console.error('Error loading profile:', err);
+      }
+      
+      // Check for "not found" errors
+      const errorMessage = err.response?.data?.message || err.message || '';
+      const isNotFound = err.isNotFound || 
+                        err.response?.status === 404 || 
+                        errorMessage.toLowerCase().includes('not found') ||
+                        errorMessage.toLowerCase().includes('store profile not found');
+      
+      if (isNotFound) {
+        err.isHandled = true;
+        setLoading(false);
+        router.replace('/store/register');
+        return;
+      }
+      
+      setError(err.response?.data?.message || err.message || 'Failed to load profile');
     } finally {
       setLoading(false);
     }
@@ -102,12 +120,14 @@ const StoreSettingsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
-          <p className="text-gray-600">Loading settings...</p>
+      <StoreLayout title="Store Settings - TeamUp India" description="Manage your store settings">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+            <p className="text-gray-600">Loading settings...</p>
+          </div>
         </div>
-      </div>
+      </StoreLayout>
     );
   }
 

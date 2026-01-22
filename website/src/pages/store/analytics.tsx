@@ -42,6 +42,39 @@ const StoreAnalyticsPage = () => {
         return;
       }
 
+      // Check store profile first
+      let profileResponse: any;
+      try {
+        profileResponse = await ApiService.stores.getProfile();
+      } catch (profileErr: any) {
+        // Check if error should be suppressed
+        if (!profileErr.suppressLog && !profileErr.isNotFound) {
+          console.error('Error loading store profile:', profileErr);
+        }
+        
+        const errorMessage = profileErr.response?.data?.message || profileErr.message || '';
+        const isNotFound = profileErr.isNotFound || 
+                          profileErr.response?.status === 404 || 
+                          errorMessage.toLowerCase().includes('not found') ||
+                          errorMessage.toLowerCase().includes('store profile not found') ||
+                          errorMessage.toLowerCase().includes('store profile not found for current user');
+        
+        if (isNotFound) {
+          profileErr.isHandled = true;
+          setLoading(false);
+          router.replace('/store/register');
+          return;
+        }
+        
+        throw profileErr;
+      }
+
+      if (!profileResponse?.data?.success) {
+        setLoading(false);
+        router.replace('/store/register');
+        return;
+      }
+
       // Get dashboard data which includes analytics
       const dashboardResponse: any = await Promise.race([
         ApiService.stores.getDashboard(),
@@ -93,12 +126,14 @@ const StoreAnalyticsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
-          <p className="text-gray-600">Loading analytics...</p>
+      <StoreLayout title="Store Analytics - TeamUp India" description="Track your store performance">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+            <p className="text-gray-600">Loading analytics...</p>
+          </div>
         </div>
-      </div>
+      </StoreLayout>
     );
   }
 

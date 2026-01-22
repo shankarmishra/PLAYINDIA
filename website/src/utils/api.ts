@@ -67,6 +67,8 @@ apiClient.interceptors.response.use(
       if (!error.message || error.message === 'Request failed with status code 404') {
         error.message = error.response?.data?.message || 'Resource not found';
       }
+      // Mark 404 errors for silent handling
+      error.isNotFound = true;
     }
     
     return Promise.reject(error);
@@ -148,11 +150,50 @@ export const ApiService = {
 
   // Stores API methods
   stores: {
-    getProfile: () => 
-      apiClient.get('/api/stores/profile'),
+    getProfile: async () => {
+      try {
+        return await apiClient.get('/api/stores/profile');
+      } catch (error: any) {
+        // Check if it's a "not found" error
+        const errorMessage = error.response?.data?.message || error.message || '';
+        const isNotFound = error.response?.status === 404 || 
+                          errorMessage.toLowerCase().includes('not found') ||
+                          errorMessage.toLowerCase().includes('store profile not found') ||
+                          errorMessage.toLowerCase().includes('store profile not found for current user');
+        
+        if (isNotFound) {
+          // Mark error as handled to prevent console logging
+          error.isNotFound = true;
+          error.isHandled = true;
+          // Suppress console error for not found cases
+          error.suppressLog = true;
+        }
+        throw error;
+      }
+    },
     
-    getDashboard: () => 
-      apiClient.get('/api/stores/dashboard'),
+    getDashboard: async () => {
+      try {
+        return await apiClient.get('/api/stores/dashboard');
+      } catch (error: any) {
+        // Check if it's a 500 error (server error)
+        if (error.response?.status === 500) {
+          // Log but don't suppress - this is a real error
+          console.error('Dashboard API returned 500 error:', error.response?.data);
+        }
+        // Check if it's a "not found" error
+        const errorMessage = error.response?.data?.message || error.message || '';
+        const isNotFound = error.response?.status === 404 || 
+                          errorMessage.toLowerCase().includes('not found') ||
+                          errorMessage.toLowerCase().includes('store profile not found');
+        
+        if (isNotFound) {
+          error.isNotFound = true;
+          error.isHandled = true;
+        }
+        throw error;
+      }
+    },
     
     getProducts: (storeId: string, params?: any) => 
       apiClient.get(`/api/stores/${storeId}/products`, { params }),

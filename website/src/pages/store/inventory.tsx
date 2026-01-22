@@ -54,10 +54,31 @@ const StoreInventoryPage = () => {
         const id = profileResponse.data.data._id;
         setStoreId(id);
         await loadProducts(id);
+      } else {
+        throw new Error('Store profile not found');
       }
     } catch (err: any) {
-      console.error('Error loading inventory:', err);
-      setError(err.message || 'Failed to load inventory');
+      // Check if error should be suppressed
+      if (!err.suppressLog && !err.isNotFound) {
+        console.error('Error loading inventory:', err);
+      }
+      
+      // Check for "not found" errors
+      const errorMessage = err.response?.data?.message || err.message || '';
+      const isNotFound = err.isNotFound || 
+                        err.response?.status === 404 || 
+                        errorMessage.toLowerCase().includes('not found') ||
+                        errorMessage.toLowerCase().includes('store profile not found') ||
+                        errorMessage.toLowerCase().includes('store profile not found for current user');
+      
+      if (isNotFound) {
+        err.isHandled = true;
+        setLoading(false);
+        router.replace('/store/register');
+        return;
+      }
+      
+      setError(err.response?.data?.message || err.message || 'Failed to load inventory');
     } finally {
       setLoading(false);
     }
@@ -65,7 +86,7 @@ const StoreInventoryPage = () => {
 
   const loadProducts = async (id: string) => {
     try {
-      const response: any = await ApiService.stores.getProducts(id, {});
+      const response: any = await ApiService.stores.getProducts(id, { includeInactive: 'true' });
       if (response.data?.success) {
         setProducts(response.data.data || []);
       }

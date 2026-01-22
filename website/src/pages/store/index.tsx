@@ -97,6 +97,30 @@ const StoreDashboard = () => {
             )
           ]) as any;
         } catch (apiErr: any) {
+          // Check if it's a 500 error (server error)
+          if (apiErr.response?.status === 500) {
+            console.error('Dashboard API returned 500 error:', apiErr.response?.data);
+            // Don't throw, let it fall through to try profile API
+            // Or use default data
+            setDashboardData({
+              store: userData.roleData || {},
+              stats: {
+                totalProducts: 0,
+                todayOrders: 0,
+                monthlyRevenue: 0,
+                pendingOrders: 0,
+                totalOrders: 0,
+                completedOrders: 0
+              },
+              sections: {
+                recentOrders: [],
+                topProducts: []
+              }
+            });
+            setLoading(false);
+            return; // Exit early with default data
+          }
+          
           // Check if it's a 404 error (store profile not found)
           const errorMessage = apiErr.response?.data?.message || apiErr.message || '';
           const isNotFound = apiErr.response?.status === 404 || 
@@ -110,7 +134,7 @@ const StoreDashboard = () => {
             router.replace('/store/register');
             return; // Exit early, don't try profile API
           }
-          throw apiErr; // Re-throw if not a 404
+          throw apiErr; // Re-throw if not a 404 or 500
         }
 
         if (storeResponse?.data?.success) {
@@ -136,6 +160,13 @@ const StoreDashboard = () => {
           throw new Error(storeResponse?.data?.message || 'Dashboard API returned unsuccessful response');
         }
       } catch (err: any) {
+        // Log the error for debugging
+        console.error('Dashboard API failed:', {
+          status: err.response?.status,
+          message: err.message,
+          data: err.response?.data
+        });
+        
         // If dashboard API fails for other reasons, try profile API
         try {
           const profileResponse: any = await Promise.race([
@@ -169,24 +200,28 @@ const StoreDashboard = () => {
                                       profileResponse?.data?.message?.includes('Store profile not found');
             
             if (isProfileNotFound) {
-              setError('Store profile not found. Please complete your store registration.');
               setLoading(false);
-              setTimeout(() => {
-                router.push('/store/register');
-              }, 3000);
+              router.replace('/store/register');
               return;
             }
             throw new Error('Profile API returned unsuccessful response');
           }
         } catch (profileErr: any) {
+          // Check if error should be suppressed
+          if (!profileErr.suppressLog && !profileErr.isNotFound && profileErr.message !== 'Profile request timeout') {
+            console.error('Error loading profile:', profileErr);
+          }
+          
           // Check if profile API also returns 404
           const profileErrorMessage = profileErr.response?.data?.message || profileErr.message || '';
-          const isProfileNotFound = profileErr.response?.status === 404 || 
-                                    profileErrorMessage.toLowerCase().includes('not found') || 
+          const isProfileNotFound = profileErr.isNotFound || 
+                                    profileErr.response?.status === 404 || 
+                                    profileErrorMessage.toLowerCase().includes('not found') ||
                                     profileErrorMessage.toLowerCase().includes('store profile not found') ||
                                     profileErrorMessage.toLowerCase().includes('store profile not found for current user');
           
           if (isProfileNotFound) {
+            profileErr.isHandled = true;
             setLoading(false);
             // Redirect immediately to registration page
             router.replace('/store/register');

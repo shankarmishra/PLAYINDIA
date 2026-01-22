@@ -35,7 +35,7 @@ const Store3DProductsPage = () => {
           const id = profileResponse.data.data._id;
           setStoreId(id);
           
-          const productsResponse: any = await ApiService.stores.getProducts(id, {});
+          const productsResponse: any = await ApiService.stores.getProducts(id, { includeInactive: 'true' });
           if (productsResponse.data?.success) {
             setProducts(productsResponse.data.data || []);
           }
@@ -43,28 +43,49 @@ const Store3DProductsPage = () => {
           throw new Error('Store profile not found');
         }
       } catch (profileErr: any) {
-        console.error('Error loading store profile:', profileErr);
-        if (profileErr.response?.status === 404 || profileErr.message?.includes('not found')) {
-          setError('Store profile not found. Please complete your store registration.');
-          setTimeout(() => {
-            router.push('/store/register');
-          }, 3000);
+        // Check if error should be suppressed
+        if (!profileErr.suppressLog && !profileErr.isNotFound) {
+          console.error('Error loading store profile:', profileErr);
+        }
+        
+        // Check for "not found" errors in various formats
+        const errorMessage = profileErr.response?.data?.message || profileErr.message || '';
+        const isNotFound = profileErr.isNotFound || 
+                          profileErr.response?.status === 404 || 
+                          errorMessage.toLowerCase().includes('not found') ||
+                          errorMessage.toLowerCase().includes('store profile not found') ||
+                          errorMessage.toLowerCase().includes('store profile not found for current user');
+        
+        if (isNotFound) {
+          profileErr.isHandled = true;
+          setLoading(false);
+          router.replace('/store/register');
           return;
         }
         throw profileErr;
       }
     } catch (err: any) {
-      console.error('Error loading 3D products:', err);
-      if (err.response?.status === 404 || err.message?.includes('not found')) {
-        setError('Store profile not found. Please complete your store registration.');
-        setTimeout(() => {
-          router.push('/store/register');
-        }, 3000);
-      } else {
-        setError(err.message || 'Failed to load products.');
+      // Check if error should be suppressed
+      if (!err.suppressLog && !err.isNotFound && !err.isHandled) {
+        console.error('Error loading 3D products:', err);
       }
-    } finally {
-      setLoading(false);
+      
+      // Check for "not found" errors
+      const errorMessage = err.response?.data?.message || err.message || '';
+      const isNotFound = err.isNotFound || 
+                        err.response?.status === 404 || 
+                        errorMessage.toLowerCase().includes('not found') ||
+                        errorMessage.toLowerCase().includes('store profile not found') ||
+                        errorMessage.toLowerCase().includes('store profile not found for current user');
+      
+      if (isNotFound) {
+        err.isHandled = true;
+        setLoading(false);
+        router.replace('/store/register');
+      } else {
+        setError(err.response?.data?.message || err.message || 'Failed to load products.');
+        setLoading(false);
+      }
     }
   };
 

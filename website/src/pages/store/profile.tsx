@@ -41,8 +41,26 @@ const StoreProfilePage = () => {
         setStoreProfile(response.data.data);
       }
     } catch (err: any) {
-      console.error('Error loading profile:', err);
-      setError(err.message || 'Failed to load profile');
+      // Check if error should be suppressed
+      if (!err.suppressLog && !err.isNotFound && err.message !== 'Request timeout') {
+        console.error('Error loading profile:', err);
+      }
+      
+      // Check for "not found" errors
+      const errorMessage = err.response?.data?.message || err.message || '';
+      const isNotFound = err.isNotFound || 
+                        err.response?.status === 404 || 
+                        errorMessage.toLowerCase().includes('not found') ||
+                        errorMessage.toLowerCase().includes('store profile not found');
+      
+      if (isNotFound) {
+        err.isHandled = true;
+        setLoading(false);
+        router.replace('/store/register');
+        return;
+      }
+      
+      setError(err.response?.data?.message || err.message || 'Failed to load profile');
     } finally {
       setLoading(false);
     }
@@ -50,12 +68,14 @@ const StoreProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
-          <p className="text-gray-600">Loading profile...</p>
+      <StoreLayout title="Store Profile - TeamUp India" description="View your store profile">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+            <p className="text-gray-600">Loading profile...</p>
+          </div>
         </div>
-      </div>
+      </StoreLayout>
     );
   }
 

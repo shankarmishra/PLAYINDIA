@@ -6,6 +6,7 @@ const Wallet = require('../models/Wallet.model');
 const Review = require('../models/Review.model');
 const multer = require('multer');
 const { uploadToCloudinary } = require('../utils/cloudinary');
+const mongoose = require('mongoose');
 
 /**
  * Get stores based on filters
@@ -196,20 +197,49 @@ exports.getStoreDashboard = async (req, res, next) => {
 
     // Use store._id directly (MongoDB ObjectId)
     const storeId = store._id;
+    
+    // Ensure storeId is valid
+    if (!storeId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Store ID not found'
+      });
+    }
+
+    // Ensure storeId is properly formatted for queries
+    // store._id is already a MongoDB ObjectId, but ensure it's used correctly
+    let storeObjectId = storeId;
+    
+    // Convert to ObjectId if it's a string (shouldn't happen, but safety check)
+    if (typeof storeId === 'string' && mongoose.Types.ObjectId.isValid(storeId)) {
+      try {
+        storeObjectId = new mongoose.Types.ObjectId(storeId);
+      } catch (err) {
+        console.error('Error converting storeId to ObjectId:', err);
+        // Keep original value
+      }
+    }
 
     // Get store wallet
-    const wallet = await Wallet.findOne({ userId: req.user.id });
+    let wallet = null;
+    try {
+      wallet = await Wallet.findOne({ userId: req.user.id });
+    } catch (err) {
+      console.error('Error fetching wallet:', err);
+    }
 
     // Get recent orders with error handling
     let recentOrders = [];
     try {
-      recentOrders = await Order.find({ storeId: storeId })
+      const ordersResult = await Order.find({ storeId: storeObjectId })
         .populate('userId', 'name email')
         .sort({ createdAt: -1 })
         .limit(10)
-        .lean() || [];
+        .lean();
+      recentOrders = Array.isArray(ordersResult) ? ordersResult : [];
     } catch (err) {
       console.error('Error fetching recent orders:', err);
+      recentOrders = [];
     }
 
     // Get order analytics with error handling
@@ -217,42 +247,55 @@ exports.getStoreDashboard = async (req, res, next) => {
     try {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      orderAnalytics = await Order.aggregate([
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
+      
+      const analyticsResult = await Order.aggregate([
         { $match: { 
-            storeId: storeId,
+            storeId: storeObjectId,
             createdAt: { $gte: thirtyDaysAgo }
           }
         },
         {
           $group: {
-            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            _id: { 
+              $dateToString: { 
+                format: "%Y-%m-%d", 
+                date: "$createdAt"
+              } 
+            },
             totalOrders: { $sum: 1 },
-            totalRevenue: { $sum: "$totalAmount" }
+            totalRevenue: { $sum: { $ifNull: ["$totalAmount", 0] } }
           }
         },
         { $sort: { _id: 1 } }
-      ]) || [];
+      ]);
+      orderAnalytics = Array.isArray(analyticsResult) ? analyticsResult : [];
     } catch (err) {
       console.error('Error fetching order analytics:', err);
+      console.error('Error details:', err.message, err.stack);
+      orderAnalytics = [];
     }
 
     // Get top selling products with error handling
     let topSellingProducts = [];
     try {
-      topSellingProducts = await Product.find({ storeId: storeId })
+      const productsResult = await Product.find({ storeId: storeObjectId })
         .sort({ 'analytics.purchases': -1 })
         .limit(5)
-        .lean() || [];
+        .lean();
+      topSellingProducts = Array.isArray(productsResult) ? productsResult : [];
     } catch (err) {
       console.error('Error fetching top selling products:', err);
       // Try without analytics field
       try {
-        topSellingProducts = await Product.find({ storeId: storeId })
+        const productsResult2 = await Product.find({ storeId: storeObjectId })
           .sort({ createdAt: -1 })
           .limit(5)
-          .lean() || [];
+          .lean();
+        topSellingProducts = Array.isArray(productsResult2) ? productsResult2 : [];
       } catch (err2) {
         console.error('Error fetching products:', err2);
+        topSellingProducts = [];
       }
     }
 
@@ -265,61 +308,102 @@ exports.getStoreDashboard = async (req, res, next) => {
     let totalProducts = 0;
 
     try {
-      totalOrdersCount = await Order.countDocuments({ storeId: storeId }) || 0;
-      completedOrdersCount = await Order.countDocuments({ storeId: storeId, status: 'delivered' }) || 0;
+      totalOrdersCount = await Order.countDocuments({ storeId: storeObjectId }).catch(() => 0) || 0;
+      completedOrdersCount = await Order.countDocuments({ storeId: storeObjectId, status: 'delivered' }).catch(() => 0) || 0;
       
       // Calculate revenue from completed orders
-      const revenueData = await Order.aggregate([
-        { $match: { storeId: storeId, status: 'delivered' } },
-        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
-      ]);
-      totalRevenue = revenueData[0]?.total || 0;
+      try {
+        const revenueData = await Order.aggregate([
+          { $match: { storeId: storeObjectId, status: 'delivered' } },
+          { $group: { _id: null, total: { $sum: { $ifNull: ["$totalAmount", 0] } } } }
+        ]).catch(() => []);
+        totalRevenue = Array.isArray(revenueData) && revenueData.length > 0 && revenueData[0].total 
+          ? Number(revenueData[0].total) 
+          : 0;
+      } catch (revenueErr) {
+        console.error('Error calculating revenue:', revenueErr);
+        totalRevenue = 0;
+      }
 
       // Get today's orders count
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       todayOrders = await Order.countDocuments({ 
-        storeId: storeId, 
+        storeId: storeObjectId, 
         createdAt: { $gte: today } 
-      }) || 0;
+      }).catch(() => 0) || 0;
 
       // Get pending orders count
       pendingOrders = await Order.countDocuments({ 
-        storeId: storeId, 
+        storeId: storeObjectId, 
         status: { $in: ['pending', 'confirmed', 'processing'] } 
-      }) || 0;
+      }).catch(() => 0) || 0;
 
       // Get total products count
-      totalProducts = await Product.countDocuments({ storeId: storeId }) || 0;
+      totalProducts = await Product.countDocuments({ storeId: storeObjectId }).catch(() => 0) || 0;
     } catch (statsError) {
       console.error('Error calculating dashboard stats:', statsError);
+      console.error('Stats error details:', statsError.message, statsError.stack);
       // Use defaults if calculation fails
     }
 
+    // Safely convert store to object
+    let storeObject = {};
+    try {
+      if (store && typeof store.toObject === 'function') {
+        storeObject = store.toObject();
+      } else if (store) {
+        storeObject = JSON.parse(JSON.stringify(store));
+      } else {
+        storeObject = { _id: storeId, storeName: 'Store' };
+      }
+    } catch (err) {
+      console.error('Error converting store to object:', err.message);
+      storeObject = { 
+        _id: storeId, 
+        storeName: (store && store.storeName) ? store.storeName : 'Store',
+        ownerName: (store && store.ownerName) ? store.ownerName : ''
+      };
+    }
+
+    // Ensure all arrays are valid
+    const safeRecentOrders = Array.isArray(recentOrders) ? recentOrders : [];
+    const safeTopProducts = Array.isArray(topSellingProducts) ? topSellingProducts : [];
+    const safeAnalytics = Array.isArray(orderAnalytics) ? orderAnalytics : [];
+
     const dashboardData = {
       store: {
-        ...store.toObject(),
-        walletBalance: wallet ? wallet.balance : 0
+        ...storeObject,
+        walletBalance: wallet && typeof wallet.balance === 'number' ? wallet.balance : 0
       },
       stats: {
-        totalProducts: totalProducts,
-        todayOrders: todayOrders,
-        monthlyRevenue: totalRevenue,
-        pendingOrders: pendingOrders,
-        totalOrders: totalOrdersCount,
-        completedOrders: completedOrdersCount
+        totalProducts: Number(totalProducts) || 0,
+        todayOrders: Number(todayOrders) || 0,
+        monthlyRevenue: Number(totalRevenue) || 0,
+        pendingOrders: Number(pendingOrders) || 0,
+        totalOrders: Number(totalOrdersCount) || 0,
+        completedOrders: Number(completedOrdersCount) || 0
       },
       sections: {
-        recentOrders,
-        topSellingProducts: topSellingProducts || [],
-        orderAnalytics
+        recentOrders: safeRecentOrders,
+        topSellingProducts: safeTopProducts,
+        orderAnalytics: safeAnalytics
       },
       analytics: {
-        orderAnalytics,
-        revenueTrend: orderAnalytics,
-        topSellingProducts: topSellingProducts || []
+        orderAnalytics: safeAnalytics,
+        revenueTrend: safeAnalytics,
+        topSellingProducts: safeTopProducts
       }
     };
+
+    // Validate dashboardData before sending
+    if (!dashboardData || !dashboardData.store || !dashboardData.stats) {
+      console.error('Invalid dashboard data structure');
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to generate dashboard data'
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -551,9 +635,13 @@ exports.updateStoreProfile = [
 exports.getStoreProducts = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { category, search, minPrice, maxPrice, sort } = req.query;
+    const { category, search, minPrice, maxPrice, sort, includeInactive } = req.query;
     
-    let query = { storeId: id, 'availability.isActive': true };
+    // Build query - for store owners, show all products; for customers, only active
+    let query = { storeId: id };
+    if (includeInactive !== 'true' && (!req.user || (req.user.role !== 'seller' && req.user.role !== 'store'))) {
+      query['availability.isActive'] = true;
+    }
     
     if (category) {
       query.category = category;
@@ -607,7 +695,17 @@ exports.getStoreProducts = async (req, res, next) => {
  */
 exports.addProduct = async (req, res, next) => {
   try {
+    const { id } = req.params; // Store ID from route
     const productData = req.body;
+    
+    // Verify the store belongs to the current user
+    const store = await Store.findOne({ _id: id, userId: req.user.id });
+    if (!store) {
+      return res.status(404).json({
+        success: false,
+        message: 'Store not found or you do not have permission to add products to this store'
+      });
+    }
     
     // Generate SKU if not provided
     if (!productData.sku) {
@@ -618,7 +716,7 @@ exports.addProduct = async (req, res, next) => {
     
     const product = await Product.create({
       ...productData,
-      storeId: req.user.id
+      storeId: id // Use store document ID, not user ID
     });
 
     res.status(201).json({

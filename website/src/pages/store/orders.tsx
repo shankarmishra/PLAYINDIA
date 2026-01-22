@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { ApiService } from '../../utils/api';
 import StoreLayout from '../../components/StoreLayout';
 import StoreErrorDisplay from '../../components/StoreErrorDisplay';
+import Head from 'next/head';
 
 interface Order {
   _id: string;
@@ -59,6 +60,41 @@ const StoreOrdersPage = () => {
         return;
       }
 
+      // Check store profile first
+      let profileResponse: any;
+      try {
+        profileResponse = await ApiService.stores.getProfile();
+      } catch (profileErr: any) {
+        // Check if error should be suppressed
+        if (!profileErr.suppressLog && !profileErr.isNotFound) {
+          console.error('Error loading store profile:', profileErr);
+        }
+        
+        const errorMessage = profileErr.response?.data?.message || profileErr.message || '';
+        const isNotFound = profileErr.isNotFound || 
+                          profileErr.response?.status === 404 || 
+                          errorMessage.toLowerCase().includes('not found') ||
+                          errorMessage.toLowerCase().includes('store profile not found') ||
+                          errorMessage.toLowerCase().includes('store profile not found for current user');
+        
+        if (isNotFound) {
+          profileErr.isHandled = true;
+          setLoading(false);
+          router.replace('/store/register');
+          return;
+        }
+        
+        setError(profileErr.response?.data?.message || profileErr.message || 'Failed to load store profile');
+        setLoading(false);
+        return;
+      }
+
+      if (!profileResponse?.data?.success) {
+        setLoading(false);
+        router.replace('/store/register');
+        return;
+      }
+
       const params: any = {};
       if (selectedStatus !== 'all') {
         params.status = selectedStatus;
@@ -75,6 +111,11 @@ const StoreOrdersPage = () => {
         setOrders(response.data.data || []);
       }
     } catch (err: any) {
+      // Check if error was already handled
+      if (err.isHandled) {
+        return;
+      }
+      
       console.error('Error loading orders:', err);
       setError(err.message || 'Failed to load orders');
     } finally {
@@ -126,35 +167,19 @@ const StoreOrdersPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
-          <p className="text-gray-600">Loading orders...</p>
+      <StoreLayout title="Store Orders - TeamUp India" description="Manage your store orders">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+            <p className="text-gray-600">Loading orders...</p>
+          </div>
         </div>
-      </div>
+      </StoreLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Head>
-        <title>Store Orders - TeamUp India</title>
-        <meta name="description" content="Manage your store orders" />
-      </Head>
-
-      {/* Navigation */}
-      <nav className="bg-gray-900 text-white py-4 px-6 flex justify-between items-center">
-        <div className="text-xl font-bold text-red-400">TeamUp India Store Portal</div>
-        <div className="flex space-x-6">
-          <Link href="/store" className="hover:text-red-400">Dashboard</Link>
-          <Link href="/store/products" className="hover:text-red-400">Products</Link>
-          <Link href="/store/orders" className="hover:text-red-400 font-medium underline">Orders</Link>
-          <Link href="/store/inventory" className="hover:text-red-400">Inventory</Link>
-          <Link href="/store/analytics" className="hover:text-red-400">Analytics</Link>
-          <Link href="/store/profile" className="hover:text-red-400">Profile</Link>
-        </div>
-      </nav>
-
+    <StoreLayout title="Store Orders - TeamUp India" description="Manage your store orders">
       <div className="max-w-7xl mx-auto py-8 px-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Orders Management</h1>
@@ -167,8 +192,7 @@ const StoreOrdersPage = () => {
               error={error}
               onRetry={() => {
                 setError(null);
-                hasFetchedRef.current = false;
-                fetchOrders();
+                loadOrders();
               }}
             />
           </div>

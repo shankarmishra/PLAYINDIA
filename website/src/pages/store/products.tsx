@@ -17,6 +17,7 @@ interface Product {
   images?: string[];
   inventory: {
     quantity: number;
+    lowStockThreshold?: number;
   };
   availability: {
     isActive: boolean;
@@ -103,43 +104,115 @@ const StoreProducts = () => {
         }
       }
 
-      // Get store profile first
+      // Get store profile first - handle "not found" silently
+      let profileResponse: any;
       try {
-        const profileResponse: any = await ApiService.stores.getProfile();
-        if (profileResponse.data?.success && profileResponse.data?.data?._id) {
-          const id = profileResponse.data.data._id;
-          setStoreId(id);
-          
-          // Load products
-          await loadProducts(id);
-        } else {
-          throw new Error('Store profile not found');
-        }
+        profileResponse = await ApiService.stores.getProfile();
       } catch (profileErr: any) {
-        console.error('Error loading store profile:', profileErr);
-        // If store profile doesn't exist, show error and redirect
-        if (profileErr.response?.status === 404 || profileErr.message?.includes('not found')) {
-          setError('Store profile not found. Please complete your store registration.');
-          setTimeout(() => {
-            router.push('/store/register');
-          }, 3000);
+        // Check if error should be suppressed
+        if (profileErr.suppressLog) {
+          // Don't log suppressed errors
+        } else {
+          // Only log non-suppressed errors
+          const errorMessage = profileErr.response?.data?.message || profileErr.message || '';
+          const isNotFound = profileErr.isNotFound || 
+                            profileErr.response?.status === 404 || 
+                            errorMessage.toLowerCase().includes('not found') ||
+                            errorMessage.toLowerCase().includes('store profile not found') ||
+                            errorMessage.toLowerCase().includes('store profile not found for current user');
+          
+          if (!isNotFound) {
+            // Only log if it's not a "not found" error
+            console.error('Error loading store profile:', profileErr);
+          }
+        }
+        
+        // Check for "not found" errors
+        const errorMessage = profileErr.response?.data?.message || profileErr.message || '';
+        const isNotFound = profileErr.isNotFound || 
+                          profileErr.response?.status === 404 || 
+                          errorMessage.toLowerCase().includes('not found') ||
+                          errorMessage.toLowerCase().includes('store profile not found') ||
+                          errorMessage.toLowerCase().includes('store profile not found for current user');
+        
+        // Only redirect if it's definitely a "not found" error
+        if (isNotFound) {
+          profileErr.isHandled = true;
+          setLoading(false);
+          // Immediate redirect without delay
+          router.replace('/store/register');
           return;
         }
-        // For other errors, show error message
-        setError(profileErr.message || 'Failed to load store profile. Please try again.');
+        
+        // For other errors, show error message but don't redirect
+        setError(profileErr.response?.data?.message || profileErr.message || 'Failed to load store profile. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      // Check if profile response is successful
+      if (profileResponse?.data?.success) {
+        const profileData = profileResponse.data.data;
+        
+        // Check if we have a store ID (could be in different places)
+        const storeIdFromResponse = profileData?._id || profileData?.storeId || profileData?.id;
+        
+        if (storeIdFromResponse) {
+          setStoreId(storeIdFromResponse);
+          
+          // Load products
+          await loadProducts(storeIdFromResponse);
+          setLoading(false);
+          return; // Success, exit early
+        } else {
+          // Profile exists but no store ID - this shouldn't happen, but don't redirect
+          console.warn('Store profile found but no store ID');
+          setError('Store profile found but missing store ID. Please contact support.');
+          setLoading(false);
+          return;
+        }
+      } else {
+        // Response was not successful, but not a 404 - don't redirect
+        const errorMessage = profileResponse?.data?.message || 'Failed to load store profile';
+        setError(errorMessage);
+        setLoading(false);
         return;
       }
     } catch (err: any) {
-      console.error('Error loading products:', err);
-      setError(err.message || 'Failed to load products');
-    } finally {
+      // Check if error was already handled
+      if (err.isHandled) {
+        return;
+      }
+      
+      // Check if it's a "not found" error that wasn't caught earlier
+      const errorMessage = err.response?.data?.message || err.message || '';
+      const isNotFound = err.response?.status === 404 || 
+                        err.isNotFound ||
+                        errorMessage.toLowerCase().includes('not found') ||
+                        errorMessage.toLowerCase().includes('store profile not found') ||
+                        errorMessage.toLowerCase().includes('store profile not found for current user');
+      
+      if (isNotFound) {
+        err.isHandled = true;
+        setLoading(false);
+        setTimeout(() => {
+          router.replace('/store/register');
+        }, 0);
+        return;
+      }
+      
+      // Only log non-not-found errors
+      console.error('Unexpected error loading products:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to load products');
       setLoading(false);
     }
   };
 
   const loadProducts = async (id: string) => {
     try {
-      const params: any = {};
+      const params: any = {
+        includeInactive: 'true' // Store owners should see all products including inactive ones
+      };
       if (selectedCategory !== 'all') {
         params.category = selectedCategory;
       }

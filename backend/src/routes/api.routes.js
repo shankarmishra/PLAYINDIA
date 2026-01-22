@@ -62,11 +62,12 @@ router.route('/stores/profile')
   .get(protect, storeController.getMyStoreProfile)
   .put(protect, authorize('seller', 'store'), storeController.updateStoreProfile);
 
-router.route('/stores/:id')
-  .get(protect, storeController.getStoreProfile);
-
+// IMPORTANT: Specific routes must come before parameterized routes
 router.route('/stores/dashboard')
   .get(protect, authorize('seller', 'store'), storeController.getStoreDashboard);
+
+router.route('/stores/:id')
+  .get(protect, storeController.getStoreProfile);
 
 router.route('/stores/:id/products')
   .get(protect, storeController.getStoreProducts)
