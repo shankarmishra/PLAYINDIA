@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'react-native';
@@ -89,7 +90,7 @@ const DashboardScreen = () => {
       }
     } catch (error: any) {
       console.error('Error loading dashboard:', error);
-      // Use dummy data on error
+      // Set default empty stats on error - all data is dynamic from API
       setStats({
         totalOrders: 0,
         completedOrders: 0,
@@ -99,6 +100,13 @@ const DashboardScreen = () => {
         rating: 0,
         totalRatings: 0,
       });
+      setRecentOrders([]);
+      setTopProducts([]);
+      setWalletBalance(0);
+      // Show error message to user
+      if (error.response?.status !== 404) {
+        Alert.alert('Error', 'Failed to load dashboard data. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -293,6 +301,44 @@ const DashboardScreen = () => {
               <Text style={styles.emptyText}>No orders yet</Text>
             </View>
           )}
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.quickActionsGrid}>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => navigation.navigate('Analytics')}
+            >
+              <Ionicons name="analytics-outline" size={24} color="#3B82F6" />
+              <Text style={styles.quickActionText}>Analytics</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => navigation.navigate('Inventory')}
+            >
+              <Ionicons name="cube-outline" size={24} color="#10B981" />
+              <Text style={styles.quickActionText}>Inventory</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => navigation.navigate('Reports')}
+            >
+              <Ionicons name="document-text-outline" size={24} color="#F59E0B" />
+              <Text style={styles.quickActionText}>Reports</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => navigation.navigate('Reviews')}
+            >
+              <Ionicons name="star-outline" size={24} color="#EF4444" />
+              <Text style={styles.quickActionText}>Reviews</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Top Selling Products */}
@@ -605,6 +651,28 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+  },
+  quickActionCard: {
+    width: (width - 64) / 2,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    margin: 6,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  quickActionText: {
+    fontSize: 12,
+    color: '#1F2937',
+    fontWeight: '600',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
 

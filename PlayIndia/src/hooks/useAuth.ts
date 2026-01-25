@@ -230,9 +230,10 @@ const useAuth = () => {
     try {
       setLoading(true);
       
-      // Clear token from AsyncStorage
+      // Clear all auth data from AsyncStorage
       await AsyncStorage.removeItem('userToken');
       await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('userType');
       
       // AuthService handles token removal via interceptors
       

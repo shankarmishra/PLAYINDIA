@@ -23,7 +23,7 @@ const Login = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: email.trim(),
+          email: email.trim().toLowerCase(),
           password,
         }),
       });
@@ -43,7 +43,20 @@ const Login = () => {
       }
       
       if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
+        // Provide more helpful error messages
+        let errorMessage = data.message || 'Login failed';
+        
+        // If it's an invalid credentials error, provide helpful hints
+        if (errorMessage.toLowerCase().includes('invalid credentials') || response.status === 401) {
+          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+        }
+        
+        // If it's a network/server error
+        if (response.status === 503 || response.status === 500) {
+          errorMessage = 'Unable to connect to server. Please check your internet connection and try again.';
+        }
+        
+        throw new Error(errorMessage);
       }
       
       // Store the token and user info in localStorage

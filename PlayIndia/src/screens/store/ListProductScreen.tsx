@@ -59,10 +59,13 @@ const ListProductScreen = () => {
 
   useEffect(() => {
     loadStoreProfile();
-    if (isEditMode && productId) {
+  }, []);
+
+  useEffect(() => {
+    if (isEditMode && productId && storeId) {
       loadProduct();
     }
-  }, []);
+  }, [storeId, productId, isEditMode]);
 
   const loadStoreProfile = async () => {
     try {
@@ -76,14 +79,38 @@ const ListProductScreen = () => {
   };
 
   const loadProduct = async () => {
+    if (!productId || !storeId) return;
+    
     try {
       setLoading(true);
-      // For now, we'll need to get product from store products list
-      // In a real app, you'd have a getProductById endpoint
-      Alert.alert('Info', 'Edit mode - loading product data...');
+      // Load product from store products list dynamically
+      const response = await ApiService.stores.getProducts(storeId);
+      
+      if (response.data && response.data.success) {
+        const products = response.data.data || [];
+        const product = products.find((p: any) => p._id === productId);
+        
+        if (product) {
+          setFormData({
+            name: product.name || '',
+            description: product.description || '',
+            category: product.category || '',
+            brand: product.brand || '',
+            sku: product.sku || '',
+            originalPrice: product.price?.original?.toString() || '',
+            sellingPrice: product.price?.selling?.toString() || '',
+            quantity: product.inventory?.quantity?.toString() || '',
+            isActive: product.availability?.isActive ?? true,
+            imageUrl: product.images && product.images.length > 0 ? product.images[0] : '',
+          });
+        } else {
+          Alert.alert('Error', 'Product not found');
+          navigation.goBack();
+        }
+      }
     } catch (error: any) {
       console.error('Error loading product:', error);
-      Alert.alert('Error', 'Failed to load product');
+      Alert.alert('Error', 'Failed to load product data');
     } finally {
       setLoading(false);
     }

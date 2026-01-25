@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { theme } from '../../theme/colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import useAuth from '../../hooks/useAuth';
 
 const SettingsScreen = () => {
+  const navigation = useNavigation();
+  const { logout } = useAuth();
   const [notifications, setNotifications] = useState({
     matchInvites: true,
     bookingUpdates: true,
@@ -218,7 +222,39 @@ const SettingsScreen = () => {
         ))}
 
         {/* Log Out Button */}
-        <TouchableOpacity style={styles.logoutButton}>
+        <TouchableOpacity 
+          style={styles.logoutButton}
+          onPress={() => {
+            Alert.alert(
+              'Logout',
+              'Are you sure you want to logout?',
+              [
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                },
+                {
+                  text: 'Logout',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await logout();
+                      // Navigate to login screen
+                      navigation.dispatch(
+                        CommonActions.reset({
+                          index: 0,
+                          routes: [{ name: 'LoginWelcome' }],
+                        }),
+                      );
+                    } catch (error) {
+                      Alert.alert('Error', 'Failed to logout. Please try again.');
+                    }
+                  },
+                },
+              ],
+            );
+          }}
+        >
           <Ionicons name="log-out-outline" size={20} color={theme.colors.status.error} />
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>

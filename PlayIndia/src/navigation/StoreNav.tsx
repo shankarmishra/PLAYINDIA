@@ -9,6 +9,11 @@ import StoreProfileScreen from '../screens/store/ProfileScreen';
 import ManageProductsScreen from '../screens/store/ManageProductsScreen';
 import OrdersScreen from '../screens/store/OrdersScreen';
 import ListProductScreen from '../screens/store/ListProductScreen';
+import AnalyticsScreen from '../screens/store/AnalyticsScreen';
+import InventoryScreen from '../screens/store/InventoryScreen';
+import ReportsScreen from '../screens/store/ReportsScreen';
+import ReviewsScreen from '../screens/store/ReviewsScreen';
+import SettingsScreen from '../screens/store/SettingsScreen';
 
 export type StoreTabParamList = {
   HomeTab: undefined;
@@ -17,6 +22,11 @@ export type StoreTabParamList = {
   Orders: undefined;
   Profile: undefined;
   ListProduct: { productId?: string } | undefined;
+  Analytics: undefined;
+  Inventory: undefined;
+  Reports: undefined;
+  Reviews: undefined;
+  Settings: undefined;
 };
 
 const Tab = createBottomTabNavigator();
@@ -84,6 +94,11 @@ const StoreNav = () => {
     >
       <Stack.Screen name="HomeTab" component={StoreTabNavigator} />
       <Stack.Screen name="ListProduct" component={ListProductScreen} />
+      <Stack.Screen name="Analytics" component={AnalyticsScreen} />
+      <Stack.Screen name="Inventory" component={InventoryScreen} />
+      <Stack.Screen name="Reports" component={ReportsScreen} />
+      <Stack.Screen name="Reviews" component={ReviewsScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
   );
 };

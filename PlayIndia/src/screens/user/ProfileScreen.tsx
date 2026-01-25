@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList, StatusBar, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList, StatusBar, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { theme } from '../../theme/colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -28,7 +28,7 @@ const mockStats = [
 
 const ProfileScreen = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { user, refreshUser, loading: authLoading } = useAuth();
+  const { user, refreshUser, logout, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('Profile');
   const [loading, setLoading] = useState(true);
 
@@ -337,6 +337,34 @@ const ProfileScreen = () => {
                         navigation.navigate('HelpSupport');
                       } else if (item.screen === 'Logout') {
                         // Handle logout
+                        Alert.alert(
+                          'Logout',
+                          'Are you sure you want to logout?',
+                          [
+                            {
+                              text: 'Cancel',
+                              style: 'cancel',
+                            },
+                            {
+                              text: 'Logout',
+                              style: 'destructive',
+                              onPress: async () => {
+                                try {
+                                  await logout();
+                                  // Navigate to login screen
+                                  navigation.dispatch(
+                                    CommonActions.reset({
+                                      index: 0,
+                                      routes: [{ name: 'LoginWelcome' }],
+                                    }),
+                                  );
+                                } catch (error) {
+                                  Alert.alert('Error', 'Failed to logout. Please try again.');
+                                }
+                              },
+                            },
+                          ],
+                        );
                       }
                     }}
                     activeOpacity={0.7}

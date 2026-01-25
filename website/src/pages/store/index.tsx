@@ -30,6 +30,7 @@ const StoreDashboard = () => {
   const hasFetchedRef = React.useRef(false);
 
   const fetchData = React.useCallback(async () => {
+    let userData: any = null; // Declare outside try block for use in catch
     try {
       setLoading(true);
       setError(null);
@@ -42,7 +43,6 @@ const StoreDashboard = () => {
       }
 
       // Get user info with timeout
-      let userData;
       try {
         const userResponse: any = await Promise.race([
           ApiService.auth.me(),
@@ -70,7 +70,22 @@ const StoreDashboard = () => {
         if (userData.status !== 'active') {
           setError('Your store account is pending approval. Please wait for admin approval.');
           setLoading(false);
-          setTimeout(() => router.push('/store/register'), 3000);
+          // Don't redirect - show dashboard with message instead
+          setDashboardData({
+            store: userData.roleData || {},
+            stats: {
+              totalProducts: 0,
+              todayOrders: 0,
+              monthlyRevenue: 0,
+              pendingOrders: 0,
+              totalOrders: 0,
+              completedOrders: 0
+            },
+            sections: {
+              recentOrders: [],
+              topProducts: []
+            }
+          });
           return;
         }
       } catch (userErr: any) {
@@ -121,22 +136,23 @@ const StoreDashboard = () => {
             return; // Exit early with default data
           }
           
-          // Check if it's a 404 error (store profile not found)
+          // Check if it's a 404 error
           const errorMessage = apiErr.response?.data?.message || apiErr.message || '';
-          const isNotFound = apiErr.response?.status === 404 || 
-                            errorMessage.toLowerCase().includes('not found') || 
-                            errorMessage.toLowerCase().includes('store profile not found') ||
-                            errorMessage.toLowerCase().includes('store profile not found for current user');
+          const isNotFound = apiErr.response?.status === 404;
           
+          // If dashboard endpoint returns 404, it might be because:
+          // 1. Route not deployed yet (endpoint doesn't exist)
+          // 2. Store profile doesn't exist
+          // So we'll try profile API as fallback instead of redirecting immediately
           if (isNotFound) {
-            setLoading(false);
-            // Redirect immediately to registration page
-            router.replace('/store/register');
-            return; // Exit early, don't try profile API
+            // Silently handle 404 - don't log, just fall through to profile API
+            // This handles the case where dashboard route isn't deployed yet
+          } else {
+            throw apiErr; // Re-throw if not a 404 or 500
           }
-          throw apiErr; // Re-throw if not a 404 or 500
         }
 
+        // Check if response is successful
         if (storeResponse?.data?.success) {
           const data = storeResponse.data.data;
           setDashboardData({
@@ -157,17 +173,44 @@ const StoreDashboard = () => {
           setLoading(false);
           return; // Success, exit early
         } else {
-          throw new Error(storeResponse?.data?.message || 'Dashboard API returned unsuccessful response');
+          // If response exists but success is false, check status
+          // For 404, silently handle - don't throw, let it fall through to profile API
+          if (storeResponse?.status === 404 || storeResponse?.response?.status === 404) {
+            // Silently handle 404 - don't throw, let it fall through to profile API
+            // This prevents error logging
+          } else {
+            // Only throw for non-404 errors
+            throw new Error(storeResponse?.data?.message || 'Dashboard API returned unsuccessful response');
+          }
         }
       } catch (err: any) {
-        // Log the error for debugging
-        console.error('Dashboard API failed:', {
-          status: err.response?.status,
-          message: err.message,
-          data: err.response?.data
-        });
+        // Completely suppress error logging for 404s and suppressed errors
+        // Check multiple ways the 404 might be represented
+        const is404 = err.response?.status === 404 || 
+                      err.status === 404 ||
+                      err.suppressLog || 
+                      err.isNotFound;
         
-        // If dashboard API fails for other reasons, try profile API
+        // Also suppress logging for "unsuccessful response" errors without status (likely 404)
+        const isUnsuccessfulResponse = err.message?.includes('unsuccessful response') && 
+                                       !err.response?.status &&
+                                       !err.response;
+        
+        // Only log unexpected errors (not 404s, not suppressed, not "unsuccessful response" without status)
+        if (!is404 && !isUnsuccessfulResponse && err.response?.status !== 404 && !err.suppressLog && !err.isNotFound) {
+          // Only log if it's a real error with a status code
+          if (err.response?.status) {
+            console.error('Dashboard API failed:', {
+              status: err.response?.status,
+              message: err.message,
+              data: err.response?.data
+            });
+          }
+        }
+        // For 404s and "unsuccessful response" errors, silently continue to profile API fallback
+        
+        // If dashboard API fails or returns 404, try profile API as fallback
+        // This handles the case where dashboard route isn't deployed yet
         try {
           const profileResponse: any = await Promise.race([
             ApiService.stores.getProfile(),
@@ -177,6 +220,7 @@ const StoreDashboard = () => {
           ]) as any;
 
           if (profileResponse?.data?.success) {
+            // Profile exists, show dashboard with basic data
             setDashboardData({
               store: profileResponse.data.data || userData.roleData || {},
               stats: {
@@ -200,8 +244,24 @@ const StoreDashboard = () => {
                                       profileResponse?.data?.message?.includes('Store profile not found');
             
             if (isProfileNotFound) {
+              // Profile not found - show dashboard with empty data instead of redirecting
+              setDashboardData({
+                store: userData.roleData || {},
+                stats: {
+                  totalProducts: 0,
+                  todayOrders: 0,
+                  monthlyRevenue: 0,
+                  pendingOrders: 0,
+                  totalOrders: 0,
+                  completedOrders: 0
+                },
+                sections: {
+                  recentOrders: [],
+                  topProducts: []
+                }
+              });
               setLoading(false);
-              router.replace('/store/register');
+              setError('Store profile not found. Please complete your store registration.');
               return;
             }
             throw new Error('Profile API returned unsuccessful response');
@@ -212,7 +272,7 @@ const StoreDashboard = () => {
             console.error('Error loading profile:', profileErr);
           }
           
-          // Check if profile API also returns 404
+          // Check if profile API also returns 404 (store doesn't exist)
           const profileErrorMessage = profileErr.response?.data?.message || profileErr.message || '';
           const isProfileNotFound = profileErr.isNotFound || 
                                     profileErr.response?.status === 404 || 
@@ -221,14 +281,33 @@ const StoreDashboard = () => {
                                     profileErrorMessage.toLowerCase().includes('store profile not found for current user');
           
           if (isProfileNotFound) {
+            // Both dashboard and profile returned 404 - store doesn't exist
+            // Instead of redirecting immediately, show dashboard with empty data
+            // User can still navigate and see the interface
             profileErr.isHandled = true;
+            setDashboardData({
+              store: userData.roleData || {},
+              stats: {
+                totalProducts: 0,
+                todayOrders: 0,
+                monthlyRevenue: 0,
+                pendingOrders: 0,
+                totalOrders: 0,
+                completedOrders: 0
+              },
+              sections: {
+                recentOrders: [],
+                topProducts: []
+              }
+            });
             setLoading(false);
-            // Redirect immediately to registration page
-            router.replace('/store/register');
+            // Show a message that store profile needs to be created
+            setError('Store profile not found. Please complete your store registration to access full features.');
             return; // Exit early
           }
           
-          // For other errors, use default data
+          // For other errors (network, timeout, etc.), show dashboard with default data
+          // This allows user to see the page even if some APIs fail
           setDashboardData({
             store: userData.roleData || {},
             stats: {
@@ -246,39 +325,45 @@ const StoreDashboard = () => {
           });
           setLoading(false);
         }
-      }
-      } catch (err: any) {
-        // Check if it's a 404 error (store profile not found)
-        const errorMessage = err.response?.data?.message || err.message || '';
-        const isNotFound = err.response?.status === 404 || 
-                          errorMessage.toLowerCase().includes('not found') || 
-                          errorMessage.toLowerCase().includes('store profile not found') ||
-                          errorMessage.toLowerCase().includes('store profile not found for current user');
+      } // Close catch at line 186
+      } catch (outerErr: any) {
+        // Handle any unexpected errors that weren't caught by inner try-catch blocks
+        console.error('Unexpected error in fetchData:', outerErr);
         
-        // Handle 404 errors (store profile not found)
-        if (isNotFound && !error) {
+        // Check if it's a 401 error (unauthorized)
+        if (outerErr.response?.status === 401 || outerErr.message?.includes('401')) {
+          localStorage.removeItem('userToken');
+          localStorage.removeItem('user');
           setLoading(false);
-          // Redirect immediately to registration page
-          router.replace('/store/register');
+          router.push('/login');
           return;
         }
         
-        // Handle other errors that weren't already handled
-        if (!error) {
-          if (err.response?.status === 401 || err.message?.includes('401')) {
-            localStorage.removeItem('userToken');
-            localStorage.removeItem('user');
-            setLoading(false);
-            router.push('/login');
-            return;
-          } else if (err.message?.includes('timeout')) {
-            setError('Request timed out. Please check your connection and try again.');
-            setLoading(false);
-          } else {
-            setError(err.message || 'Failed to load dashboard data. Please try again later.');
-            setLoading(false);
-          }
+        // Check if it's a timeout error
+        if (outerErr.message?.includes('timeout')) {
+          setError('Request timed out. Please check your connection and try again.');
+          setLoading(false);
+          return;
         }
+        
+        // For other errors, show dashboard with default data
+        setDashboardData({
+          store: userData?.roleData || {},
+          stats: {
+            totalProducts: 0,
+            todayOrders: 0,
+            monthlyRevenue: 0,
+            pendingOrders: 0,
+            totalOrders: 0,
+            completedOrders: 0
+          },
+          sections: {
+            recentOrders: [],
+            topProducts: []
+          }
+        });
+        setError(outerErr.message || 'Failed to load dashboard data. Please try again later.');
+        setLoading(false);
       } finally {
         // Always set loading to false
         setLoading(false);
@@ -292,15 +377,8 @@ const StoreDashboard = () => {
     }
   }, [fetchData]);
 
-  // Redirect to registration if error is about missing profile
-  useEffect(() => {
-    if (error && (error.includes('not found') || error.includes('Store profile not found'))) {
-      const timer = setTimeout(() => {
-        router.replace('/store/register');
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [error, router]);
+  // Don't auto-redirect - let user see the dashboard and decide when to register
+  // User can manually navigate to register if needed via the UI
 
   const handleLogout = () => {
     localStorage.removeItem('userToken');

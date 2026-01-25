@@ -460,6 +460,56 @@ const ProfileScreen = () => {
           )}
         </View>
 
+        {/* Quick Actions */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => navigation.navigate('Analytics')}
+          >
+            <Ionicons name="analytics-outline" size={20} color="#3B82F6" />
+            <Text style={styles.actionText}>View Analytics</Text>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => navigation.navigate('Inventory')}
+          >
+            <Ionicons name="cube-outline" size={20} color="#10B981" />
+            <Text style={styles.actionText}>Manage Inventory</Text>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => navigation.navigate('Reports')}
+          >
+            <Ionicons name="document-text-outline" size={20} color="#F59E0B" />
+            <Text style={styles.actionText}>View Reports</Text>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => navigation.navigate('Reviews')}
+          >
+            <Ionicons name="star-outline" size={20} color="#EF4444" />
+            <Text style={styles.actionText}>View Reviews</Text>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => navigation.navigate('Settings')}
+          >
+            <Ionicons name="settings-outline" size={20} color="#6B7280" />
+            <Text style={styles.actionText}>Settings</Text>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
+
         {/* Statistics */}
         {storeProfile?.stats && (
           <View style={styles.sectionCard}>
@@ -671,6 +721,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6B7280',
     textAlign: 'center',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  actionText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1F2937',
+    fontWeight: '500',
+    marginLeft: 12,
   },
 });
 

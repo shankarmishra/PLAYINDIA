@@ -395,7 +395,7 @@ export default function CoachRegister() {
       setRegistrationStatus('pending');
       
       Alert.alert('Success', 'Registration submitted successfully! Please wait for verification.', [
-        { text: 'OK', onPress: () => navigation.navigate('CoachLogin') }
+        { text: 'OK', onPress: () => navigation.navigate('Login') }
       ]);
     } catch (error) {
       console.error('Registration submission error:', error);

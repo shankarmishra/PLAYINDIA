@@ -19,6 +19,11 @@ const bannerController = require('../controllers/banner.controller');
 
 const router = express.Router();
 
+// Debug route to verify routing works
+router.get('/stores/test', (req, res) => {
+  res.json({ success: true, message: 'Store routes are working' });
+});
+
 // User routes
 router.route('/users/nearby')
   .get(protect, userController.getNearbyPlayers);

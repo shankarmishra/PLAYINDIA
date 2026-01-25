@@ -186,8 +186,17 @@ exports.getStoreProfile = async (req, res, next) => {
  */
 exports.getStoreDashboard = async (req, res, next) => {
   try {
-    console.log('Store dashboard endpoint called for user:', req.user.id);
-    const store = await Store.findOne({ userId: req.user.id })
+    // Get user ID - handle both _id and id
+    const userId = req.user._id || req.user.id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User ID not found in request'
+      });
+    }
+
+    console.log('Store dashboard endpoint called for user:', userId);
+    const store = await Store.findOne({ userId: userId })
       .populate('userId', 'name mobile email');
 
     if (!store) {
@@ -225,7 +234,7 @@ exports.getStoreDashboard = async (req, res, next) => {
     // Get store wallet
     let wallet = null;
     try {
-      wallet = await Wallet.findOne({ userId: req.user.id });
+      wallet = await Wallet.findOne({ userId: userId });
     } catch (err) {
       console.error('Error fetching wallet:', err);
     }

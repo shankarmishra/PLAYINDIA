@@ -32,6 +32,23 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Suppress console errors for 404s (route not deployed or resource doesn't exist)
+    if (error.response?.status === 404) {
+      // Mark as silent to prevent axios from logging
+      if (error.config) {
+        error.config.silent = true;
+        // Try to prevent axios from logging by setting validateStatus
+        error.config.validateStatus = () => true;
+      }
+      // Suppress the error from being logged
+      error.suppressLog = true;
+      error.isNotFound = true;
+      error.isHandled = true;
+      // Note: Axios logs 404s by default - this is expected behavior
+      // The dashboard will still work correctly despite these logs
+      // Once the backend route is deployed, these 404s will stop
+    }
+    
     // Handle rate limiting (429)
     if (error.response?.status === 429) {
       const retryAfter = error.response.headers['retry-after'] || '60';
@@ -152,7 +169,8 @@ export const ApiService = {
   stores: {
     getProfile: async () => {
       try {
-        return await apiClient.get('/api/stores/profile');
+        const response = await apiClient.get('/api/stores/profile');
+        return response;
       } catch (error: any) {
         // Check if it's a "not found" error
         const errorMessage = error.response?.data?.message || error.message || '';
@@ -167,6 +185,10 @@ export const ApiService = {
           error.isHandled = true;
           // Suppress console error for not found cases
           error.suppressLog = true;
+          // Prevent axios from logging by marking config as silent
+          if (error.config) {
+            error.config.silent = true;
+          }
         }
         throw error;
       }
@@ -181,15 +203,21 @@ export const ApiService = {
           // Log but don't suppress - this is a real error
           console.error('Dashboard API returned 500 error:', error.response?.data);
         }
-        // Check if it's a "not found" error
+        // Check if it's a "not found" error (404)
         const errorMessage = error.response?.data?.message || error.message || '';
         const isNotFound = error.response?.status === 404 || 
                           errorMessage.toLowerCase().includes('not found') ||
-                          errorMessage.toLowerCase().includes('store profile not found');
+                          errorMessage.toLowerCase().includes('store profile not found') ||
+                          errorMessage.toLowerCase().includes('route not found');
         
         if (isNotFound) {
           error.isNotFound = true;
           error.isHandled = true;
+          error.suppressLog = true;
+          // Prevent axios from logging
+          if (error.config) {
+            error.config.silent = true;
+          }
         }
         throw error;
       }
