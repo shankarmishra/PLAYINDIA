@@ -247,7 +247,9 @@ const StoreProducts = () => {
   const handleToggleStatus = async (product: Product) => {
     try {
       await ApiService.stores.updateProduct(product._id, {
-        'availability.isActive': !product.availability.isActive,
+        availability: {
+          isActive: !product.availability.isActive,
+        },
       });
       if (storeId) {
         await loadProducts(storeId);

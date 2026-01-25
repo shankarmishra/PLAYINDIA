@@ -7,13 +7,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Validate request body
+    if (!req.body) {
+      return res.status(400).json({
+        success: false,
+        message: 'Request body is required'
+      });
+    }
+
     // Normalize email (lowercase and trim) before sending to backend
     const normalizedBody = {
       ...req.body,
       email: req.body.email ? req.body.email.trim().toLowerCase() : req.body.email,
     };
 
+    // Validate that we have either email or mobile
+    if (!normalizedBody.email && !normalizedBody.mobile) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide either email or mobile number'
+      });
+    }
+
+    // Validate that we have password
+    if (!normalizedBody.password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required'
+      });
+    }
+
     const loginUrl = API_CONFIG.ENDPOINTS.AUTH.LOGIN;
+    
+    // Log the request for debugging
+    console.log('Login API - Request URL:', loginUrl);
+    console.log('Login API - Request body:', { 
+      email: normalizedBody.email || null,
+      mobile: normalizedBody.mobile || null,
+      hasPassword: !!normalizedBody.password 
+    });
     
     let response;
     try {
@@ -24,6 +56,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         body: JSON.stringify(normalizedBody),
       });
+      
+      // Log response status for debugging
+      console.log('Login API - Response status:', response.status);
     } catch (fetchError) {
       // Network error - backend server is not reachable
       console.error('Login API network error:', fetchError);
@@ -38,12 +73,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const text = await response.text();
       if (!text) {
+        console.error('Login API - Empty response from server');
         return res.status(500).json({ 
           success: false,
           message: 'Empty response from server' 
         });
       }
       data = JSON.parse(text);
+      console.log('Login API - Response data:', { ...data, token: data.token ? '***' : undefined });
     } catch (parseError) {
       console.error('Login API parse error:', parseError);
       return res.status(500).json({ 
@@ -53,6 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (!response.ok) {
+      console.error('Login API - Error response:', response.status, data);
       return res.status(response.status).json(data);
     }
 

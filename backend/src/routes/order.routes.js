@@ -35,11 +35,16 @@ router.use(protect);
 // Customer routes
 router.post('/', validateOrder, createOrder);
 router.get('/my-orders', getMyOrders);
-router.get('/:id', getOrder);
-router.put('/:id/cancel', cancelOrder);
+
+// Seller/Store routes - MUST be before /:id to prevent route conflict
+router.get('/store', authorize('seller', 'store'), getSellerOrders);
 
 // Seller routes
 router.get('/seller/orders', authorize('seller'), getSellerOrders);
+
+// Parameterized routes - MUST come after specific routes
+router.get('/:id', getOrder);
+router.put('/:id/cancel', cancelOrder);
 router.put('/:id/status', authorize('seller'), updateOrderStatus);
 
 // Admin routes

@@ -286,6 +286,13 @@ exports.login = async (req, res, next) => {
   try {
     const { email, mobile, password } = req.body;
 
+    // Log login attempt (without sensitive data)
+    console.log('Login attempt:', { 
+      email: email ? email.toLowerCase().trim() : null, 
+      mobile: mobile || null,
+      hasPassword: !!password 
+    });
+
     // Validate input
     if (!password) {
       return res.status(400).json({
@@ -294,12 +301,17 @@ exports.login = async (req, res, next) => {
       });
     }
 
+    // Normalize email if provided
+    const normalizedEmail = email ? email.toLowerCase().trim() : null;
+
     // Check if user provided email or mobile
     let user;
-    if (email) {
-      user = await User.findOne({ email }).select('+password');
+    if (normalizedEmail) {
+      user = await User.findOne({ email: normalizedEmail }).select('+password');
+      console.log('User lookup by email:', normalizedEmail, user ? 'Found' : 'Not found');
     } else if (mobile) {
       user = await User.findOne({ mobile }).select('+password');
+      console.log('User lookup by mobile:', mobile, user ? 'Found' : 'Not found');
     } else {
       return res.status(400).json({
         success: false,
@@ -307,7 +319,18 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    if (!user || !(await user.comparePassword(password))) {
+    if (!user) {
+      console.log('Login failed: User not found');
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    // Check password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      console.log('Login failed: Invalid password for user:', user.email || user.mobile);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'

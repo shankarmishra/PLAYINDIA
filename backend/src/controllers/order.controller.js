@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require('../models/order.model');
 const Product = require('../models/product.model');
 const Store = require('../models/Store.model');
@@ -150,8 +151,17 @@ exports.getStoreOrders = async (req, res, next) => {
   try {
     const { status, dateFrom, dateTo } = req.query;
     
+    // Get user ID - handle both _id and id
+    const userId = req.user._id || req.user.id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User ID not found in request'
+      });
+    }
+    
     // Get store profile
-    const store = await Store.findOne({ userId: req.user.id });
+    const store = await Store.findOne({ userId: userId });
     if (!store) {
       return res.status(404).json({
         success: false,
@@ -181,6 +191,7 @@ exports.getStoreOrders = async (req, res, next) => {
       data: orders
     });
   } catch (error) {
+    console.error('Get store orders error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -194,6 +205,26 @@ exports.getStoreOrders = async (req, res, next) => {
 exports.getOrder = async (req, res, next) => {
   try {
     const { id } = req.params;
+    
+    // Validate that id is a valid ObjectId (not a string like "store", "my-orders", "seller")
+    // This should not happen if routes are ordered correctly, but adding safety check
+    const reservedPaths = ['store', 'my-orders', 'seller', 'orders'];
+    if (reservedPaths.includes(id)) {
+      // This should never happen if route order is correct
+      // If it does, it means the route wasn't matched correctly
+      console.error(`Route conflict detected: /orders/${id} matched /orders/:id instead of specific route`);
+      return res.status(404).json({
+        success: false,
+        message: 'Route not found. Please check route configuration.'
+      });
+    }
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid order ID format'
+      });
+    }
     
     const order = await Order.findById(id)
       .populate('userId', 'name mobile')

@@ -754,18 +754,48 @@ exports.updateProduct = async (req, res, next) => {
     const { id } = req.params;
     const updateData = req.body;
     
-    const product = await Product.findByIdAndUpdate(
-      id,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-
-    if (!product) {
+    // Get existing product first
+    const existingProduct = await Product.findById(id);
+    if (!existingProduct) {
       return res.status(404).json({
         success: false,
         message: 'Product not found'
       });
     }
+    
+    // If price is being updated partially, merge with existing price
+    if (updateData.price && typeof updateData.price === 'object') {
+      updateData.price = {
+        original: updateData.price.original !== undefined ? updateData.price.original : existingProduct.price.original,
+        selling: updateData.price.selling !== undefined ? updateData.price.selling : existingProduct.price.selling,
+        discount: updateData.price.discount !== undefined ? updateData.price.discount : existingProduct.price.discount
+      };
+    }
+    
+    // If inventory is being updated partially, merge with existing inventory
+    if (updateData.inventory && typeof updateData.inventory === 'object') {
+      updateData.inventory = {
+        quantity: updateData.inventory.quantity !== undefined ? updateData.inventory.quantity : existingProduct.inventory.quantity,
+        reserved: updateData.inventory.reserved !== undefined ? updateData.inventory.reserved : existingProduct.inventory.reserved,
+        lowStockThreshold: updateData.inventory.lowStockThreshold !== undefined ? updateData.inventory.lowStockThreshold : existingProduct.inventory.lowStockThreshold,
+        totalSold: updateData.inventory.totalSold !== undefined ? updateData.inventory.totalSold : existingProduct.inventory.totalSold
+      };
+    }
+    
+    // If availability is being updated partially, merge with existing availability
+    if (updateData.availability && typeof updateData.availability === 'object') {
+      updateData.availability = {
+        isActive: updateData.availability.isActive !== undefined ? updateData.availability.isActive : existingProduct.availability?.isActive,
+        inStock: updateData.availability.inStock !== undefined ? updateData.availability.inStock : existingProduct.availability?.inStock,
+        isAvailable: updateData.availability.isAvailable !== undefined ? updateData.availability.isAvailable : existingProduct.availability?.isAvailable
+      };
+    }
+    
+    const product = await Product.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
 
     res.status(200).json({
       success: true,

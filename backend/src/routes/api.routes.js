@@ -131,13 +131,15 @@ router.route('/bookings/:id/complete')
   .put(protect, bookingController.completeBooking);
 
 // Order routes
+// IMPORTANT: Define specific routes BEFORE parameterized routes
 router.route('/orders')
   .post(protect, orderController.createOrder)
   .get(protect, orderController.getUserOrders);
 
-router.route('/orders/store')
-  .get(protect, authorize('seller', 'store'), orderController.getStoreOrders);
+// Store orders route - MUST be before /orders/:id to prevent route conflict
+router.get('/orders/store', protect, authorize('seller', 'store'), orderController.getStoreOrders);
 
+// Parameterized routes - MUST come after specific routes
 router.route('/orders/:id')
   .get(protect, orderController.getOrder)
   .put(protect, orderController.updateOrderStatus);

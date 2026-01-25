@@ -16,6 +16,19 @@ const Login = () => {
     setLoading(true);
     setError(null);
     
+    // Validate inputs before sending
+    if (!email.trim()) {
+      setError('Please enter your email address');
+      setLoading(false);
+      return;
+    }
+    
+    if (!password) {
+      setError('Please enter your password');
+      setLoading(false);
+      return;
+    }
+    
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -24,11 +37,18 @@ const Login = () => {
         },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
-          password,
+          password: password,
         }),
       });
       
       const data = await response.json();
+      
+      // Log response for debugging
+      console.log('Login response:', {
+        status: response.status,
+        success: data.success,
+        message: data.message
+      });
       
       // Handle pending approval - backend returns 403 with message
       if (response.status === 403 && data.message && data.message.includes('pending approval')) {
@@ -46,6 +66,13 @@ const Login = () => {
         // Provide more helpful error messages
         let errorMessage = data.message || 'Login failed';
         
+        // Log the error for debugging
+        console.error('Login error:', {
+          status: response.status,
+          message: errorMessage,
+          data: data
+        });
+        
         // If it's an invalid credentials error, provide helpful hints
         if (errorMessage.toLowerCase().includes('invalid credentials') || response.status === 401) {
           errorMessage = 'Invalid email or password. Please check your credentials and try again.';
@@ -54,6 +81,11 @@ const Login = () => {
         // If it's a network/server error
         if (response.status === 503 || response.status === 500) {
           errorMessage = 'Unable to connect to server. Please check your internet connection and try again.';
+        }
+        
+        // If account is pending approval
+        if (response.status === 403 && errorMessage.toLowerCase().includes('pending')) {
+          errorMessage = 'Your account is pending approval. Please wait for admin approval.';
         }
         
         throw new Error(errorMessage);
