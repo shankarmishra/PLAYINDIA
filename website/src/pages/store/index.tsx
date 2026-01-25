@@ -112,11 +112,43 @@ const StoreDashboard = () => {
             )
           ]) as any;
         } catch (apiErr: any) {
+          // Check if it's a network error (server not running, connection refused, etc.)
+          const isNetworkError = apiErr.isNetworkError || 
+                                apiErr.code === 'ECONNREFUSED' || 
+                                apiErr.code === 'ENOTFOUND' ||
+                                apiErr.message?.includes('Network Error') ||
+                                apiErr.message?.includes('Failed to fetch') ||
+                                apiErr.message?.includes('fetch failed');
+          
+          if (isNetworkError) {
+            // Server might not be running - show dashboard with default data
+            setDashboardData({
+              store: userData.roleData || {},
+              stats: {
+                totalProducts: 0,
+                todayOrders: 0,
+                monthlyRevenue: 0,
+                pendingOrders: 0,
+                totalOrders: 0,
+                completedOrders: 0
+              },
+              sections: {
+                recentOrders: [],
+                topProducts: []
+              }
+            });
+            setLoading(false);
+            setError('Unable to connect to server. Please ensure the backend server is running.');
+            return; // Exit early with default data
+          }
+          
           // Check if it's a 500 error (server error)
           if (apiErr.response?.status === 500) {
-            console.error('Dashboard API returned 500 error:', apiErr.response?.data);
-            // Don't throw, let it fall through to try profile API
-            // Or use default data
+            // Don't log if suppressed
+            if (!apiErr.suppressLog) {
+              console.error('Dashboard API returned 500 error:', apiErr.response?.data);
+            }
+            // Use default data
             setDashboardData({
               store: userData.roleData || {},
               stats: {
@@ -138,7 +170,7 @@ const StoreDashboard = () => {
           
           // Check if it's a 404 error
           const errorMessage = apiErr.response?.data?.message || apiErr.message || '';
-          const isNotFound = apiErr.response?.status === 404;
+          const isNotFound = apiErr.response?.status === 404 || apiErr.isNotFound;
           
           // If dashboard endpoint returns 404, it might be because:
           // 1. Route not deployed yet (endpoint doesn't exist)
@@ -327,8 +359,46 @@ const StoreDashboard = () => {
         }
       } // Close catch at line 186
       } catch (outerErr: any) {
-        // Handle any unexpected errors that weren't caught by inner try-catch blocks
-        console.error('Unexpected error in fetchData:', outerErr);
+        // Check if error should be suppressed (404s, network errors, etc.)
+        const shouldSuppress = outerErr.suppressLog || 
+                              outerErr.isNotFound || 
+                              outerErr.isNetworkError ||
+                              outerErr.code === 'ECONNREFUSED' ||
+                              outerErr.code === 'ENOTFOUND';
+        
+        // Only log unexpected errors that shouldn't be suppressed
+        if (!shouldSuppress) {
+          console.error('Unexpected error in fetchData:', outerErr);
+        }
+        
+        // Check if it's a network error (server not running, connection refused, etc.)
+        const isNetworkError = outerErr.isNetworkError || 
+                              outerErr.code === 'ECONNREFUSED' || 
+                              outerErr.code === 'ENOTFOUND' ||
+                              outerErr.message?.includes('Network Error') ||
+                              outerErr.message?.includes('Failed to fetch') ||
+                              outerErr.message?.includes('fetch failed');
+        
+        if (isNetworkError) {
+          setDashboardData({
+            store: userData?.roleData || {},
+            stats: {
+              totalProducts: 0,
+              todayOrders: 0,
+              monthlyRevenue: 0,
+              pendingOrders: 0,
+              totalOrders: 0,
+              completedOrders: 0
+            },
+            sections: {
+              recentOrders: [],
+              topProducts: []
+            }
+          });
+          setError('Unable to connect to server. Please ensure the backend server is running.');
+          setLoading(false);
+          return;
+        }
         
         // Check if it's a 401 error (unauthorized)
         if (outerErr.response?.status === 401 || outerErr.message?.includes('401')) {
@@ -362,7 +432,10 @@ const StoreDashboard = () => {
             topProducts: []
           }
         });
-        setError(outerErr.message || 'Failed to load dashboard data. Please try again later.');
+        // Only show error message if it's not a suppressed error
+        if (!shouldSuppress) {
+          setError(outerErr.message || 'Failed to load dashboard data. Please try again later.');
+        }
         setLoading(false);
       } finally {
         // Always set loading to false

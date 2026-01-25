@@ -49,6 +49,25 @@ apiClient.interceptors.response.use(
       // Once the backend route is deployed, these 404s will stop
     }
     
+    // Suppress network errors (ECONNREFUSED, ENOTFOUND, etc.) for better UX
+    if (error.code === 'ECONNREFUSED' || 
+        error.code === 'ENOTFOUND' || 
+        error.code === 'ETIMEDOUT' ||
+        error.message?.includes('Network Error') ||
+        error.message?.includes('Failed to fetch') ||
+        error.message?.includes('fetch failed') ||
+        (error.request && !error.response)) {
+      if (error.config) {
+        error.config.silent = true;
+        // Prevent axios from logging by marking as handled
+        error.config.validateStatus = () => true;
+      }
+      error.suppressLog = true;
+      error.isNetworkError = true;
+      // Don't log network errors to console
+      return Promise.reject(error);
+    }
+    
     // Handle rate limiting (429)
     if (error.response?.status === 429) {
       const retryAfter = error.response.headers['retry-after'] || '60';
