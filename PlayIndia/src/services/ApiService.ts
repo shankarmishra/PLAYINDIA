@@ -242,6 +242,48 @@ const ApiService = {
       apiClient.put(API_ENDPOINTS.ORDERS.UPDATE_STATUS(id), data),
   },
 
+  // Products API methods (for users)
+  products: {
+    getAll: (params?: any) =>
+      apiClient.get(`${API_BASE_URL}/api/products`, { params }),
+    
+    getProduct: (id: string) =>
+      apiClient.get(`${API_BASE_URL}/api/stores/products/${id}`),
+  },
+
+  // Ads API methods
+  ads: {
+    getStoreAds: (params?: any) =>
+      apiClient.get(`${API_BASE_URL}/api/stores/ads`, { params }),
+    
+    getAd: (id: string) =>
+      apiClient.get(`${API_BASE_URL}/api/stores/ads/${id}`),
+    
+    createAd: (data: any) =>
+      apiClient.post(`${API_BASE_URL}/api/stores/ads`, data),
+    
+    updateAd: (id: string, data: any) =>
+      apiClient.put(`${API_BASE_URL}/api/stores/ads/${id}`, data),
+    
+    deleteAd: (id: string) =>
+      apiClient.delete(`${API_BASE_URL}/api/stores/ads/${id}`),
+    
+    submitAd: (id: string, paymentData: any) =>
+      apiClient.post(`${API_BASE_URL}/api/stores/ads/${id}/submit`, paymentData),
+    
+    toggleAd: (id: string) =>
+      apiClient.post(`${API_BASE_URL}/api/stores/ads/${id}/toggle`),
+    
+    getActiveAds: (params?: any) =>
+      apiClient.get(`${API_BASE_URL}/api/ads/active`, { params }),
+    
+    trackClick: (id: string) =>
+      apiClient.post(`${API_BASE_URL}/api/ads/${id}/click`),
+    
+    trackView: (id: string) =>
+      apiClient.post(`${API_BASE_URL}/api/ads/${id}/view`),
+  },
+
   // Generic methods
   get: (url: string, params?: any) => 
     apiClient.get(url, { params }),

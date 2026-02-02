@@ -644,7 +644,7 @@ const StoreDashboard = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <Link href={`/store/orders/${order._id}`} className="text-red-600 hover:underline">View</Link>
+                        <Link href="/store/orders" className="text-red-600 hover:underline">View Orders</Link>
                       </td>
                     </tr>
                   ))}
@@ -674,7 +674,7 @@ const StoreDashboard = () => {
                   <p className="text-gray-600 mb-4">Price: ₹{product.price?.toLocaleString() || '0'}</p>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500">Sold: {product.soldCount || 0} units</span>
-                    <Link href={`/store/products/${product._id}`} className="text-red-600 hover:underline text-sm">Edit</Link>
+                    <Link href={`/store/products/edit/${product._id}`} className="text-red-600 hover:underline text-sm">Edit</Link>
                   </div>
                 </div>
               ))}

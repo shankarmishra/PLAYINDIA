@@ -12,6 +12,7 @@ import {
   Image,
   Modal,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'react-native';
@@ -151,8 +152,11 @@ const ManageProductsScreen = () => {
 
   const toggleProductStatus = async (product: Product) => {
     try {
+      // Use nested object structure for partial updates (matching website)
       const updateData = {
-        'availability.isActive': !product.availability.isActive,
+        availability: {
+          isActive: !product.availability.isActive,
+        },
       };
       
       const response = await ApiService.stores.updateProduct(product._id, updateData);
@@ -166,7 +170,7 @@ const ManageProductsScreen = () => {
       }
     } catch (error: any) {
       console.error('Error updating product:', error);
-      Alert.alert('Error', 'Failed to update product status');
+      Alert.alert('Error', error.response?.data?.message || 'Failed to update product status');
     }
   };
 
@@ -180,17 +184,49 @@ const ManageProductsScreen = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const renderProduct = ({ item }: { item: Product }) => (
-    <View style={styles.productCard}>
+  const getProductImage = (product: Product): string => {
+    // Check multiple possible image sources
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      const firstImage = product.images[0];
+      if (firstImage && typeof firstImage === 'string' && firstImage.trim()) {
+        return firstImage.trim();
+      }
+    }
+    // Fallback to placeholder
+    return 'https://via.placeholder.com/300x300?text=No+Image';
+  };
+
+  const ProductImage = ({ product }: { product: Product }) => {
+    const [imageError, setImageError] = useState(false);
+    const imageUri = getProductImage(product);
+    const hasValidImage = imageUri && imageUri !== 'https://via.placeholder.com/300x300?text=No+Image';
+    
+    if (imageError || !hasValidImage) {
+      return (
+        <View style={[styles.productImage, styles.imagePlaceholder]}>
+          <Ionicons name="image-outline" size={48} color="#9CA3AF" />
+          <Text style={styles.imagePlaceholderText}>No Image</Text>
+        </View>
+      );
+    }
+    
+    return (
       <Image
-        source={{
-          uri: item.images && item.images.length > 0
-            ? item.images[0]
-            : 'https://via.placeholder.com/150',
-        }}
+        source={{ uri: imageUri }}
         style={styles.productImage}
         resizeMode="cover"
+        onError={() => {
+          console.log('Image load error for:', imageUri);
+          setImageError(true);
+        }}
       />
+    );
+  };
+
+  const renderProduct = ({ item }: { item: Product }) => {
+    return (
+    <View style={styles.productCard}>
+      <ProductImage product={item} />
       
       <View style={styles.productInfo}>
         <Text style={styles.productName} numberOfLines={2}>
@@ -286,7 +322,8 @@ const ManageProductsScreen = () => {
         </View>
       </View>
     </View>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -517,6 +554,17 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
     backgroundColor: '#F3F4F6',
+  },
+  imagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  imagePlaceholderText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
   },
   productInfo: {
     padding: 16,

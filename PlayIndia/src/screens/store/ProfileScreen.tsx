@@ -10,6 +10,8 @@ import {
   Alert,
   TextInput,
   Modal,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'react-native';
@@ -47,12 +49,21 @@ interface StoreProfile {
     email: string;
     mobile: string;
   };
+  documents?: {
+    ownerID?: {
+      front?: string;
+      back?: string;
+    };
+    additionalDocs?: string[];
+  };
   stats?: {
     totalOrders: number;
     totalRevenue: number;
     averageRating: number;
   };
 }
+
+const { width } = Dimensions.get('window');
 
 const ProfileScreen = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -73,6 +84,8 @@ const ProfileScreen = () => {
     pincode: '',
     phone: '',
   });
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -85,6 +98,13 @@ const ProfileScreen = () => {
       
       if (response.data && response.data.success) {
         const data = response.data.data;
+        console.log('Store profile loaded:', {
+          storeName: data.storeName,
+          hasDocuments: !!data.documents,
+          ownerID: data.documents?.ownerID,
+          additionalDocs: data.documents?.additionalDocs,
+          additionalDocsLength: data.documents?.additionalDocs?.length
+        });
         setStoreProfile(data);
         setFormData({
           storeName: data.storeName || '',
@@ -197,6 +217,113 @@ const ProfileScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* Profile Header with Images */}
+        <View style={styles.profileHeader}>
+          {/* Store Photo */}
+          <View style={styles.imageSection}>
+            <Text style={styles.imageSectionTitle}>Store Photo</Text>
+            <TouchableOpacity
+              style={styles.imageContainer}
+              onPress={() => {
+                // Try multiple possible locations for store photo
+                const storePhoto = 
+                  storeProfile?.documents?.additionalDocs?.[0] ||
+                  storeProfile?.documents?.additionalDocs?.[1] ||
+                  storeProfile?.storePhoto ||
+                  storeProfile?.photo;
+                if (storePhoto) {
+                  setSelectedImage(storePhoto);
+                  setImageModalVisible(true);
+                } else {
+                  Alert.alert('No Photo', 'Store photo not available');
+                }
+              }}
+            >
+              {(() => {
+                // Try multiple possible locations for store photo
+                const storePhoto = 
+                  storeProfile?.documents?.additionalDocs?.[0] ||
+                  storeProfile?.documents?.additionalDocs?.[1] ||
+                  storeProfile?.storePhoto ||
+                  storeProfile?.photo;
+                
+                if (storePhoto) {
+                  return (
+                    <Image
+                      source={{ uri: storePhoto }}
+                      style={styles.profileImage}
+                      resizeMode="cover"
+                      onError={(error) => {
+                        console.log('Store photo load error:', error);
+                      }}
+                    />
+                  );
+                }
+                return (
+                  <View style={[styles.profileImage, styles.imagePlaceholder]}>
+                    <Ionicons name="storefront" size={40} color="#9CA3AF" />
+                    <Text style={styles.placeholderText}>No Photo</Text>
+                  </View>
+                );
+              })()}
+              <View style={styles.imageOverlay}>
+                <Ionicons name="camera" size={20} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Owner Photo */}
+          <View style={styles.imageSection}>
+            <Text style={styles.imageSectionTitle}>Owner Photo</Text>
+            <TouchableOpacity
+              style={styles.imageContainer}
+              onPress={() => {
+                // Try multiple possible locations for owner photo
+                const ownerPhoto = 
+                  storeProfile?.documents?.ownerID?.front ||
+                  storeProfile?.documents?.ownerPhoto ||
+                  storeProfile?.ownerPhoto;
+                if (ownerPhoto) {
+                  setSelectedImage(ownerPhoto);
+                  setImageModalVisible(true);
+                } else {
+                  Alert.alert('No Photo', 'Owner photo not available');
+                }
+              }}
+            >
+              {(() => {
+                // Try multiple possible locations for owner photo
+                const ownerPhoto = 
+                  storeProfile?.documents?.ownerID?.front ||
+                  storeProfile?.documents?.ownerPhoto ||
+                  storeProfile?.ownerPhoto;
+                
+                if (ownerPhoto) {
+                  return (
+                    <Image
+                      source={{ uri: ownerPhoto }}
+                      style={styles.profileImage}
+                      resizeMode="cover"
+                      onError={(error) => {
+                        console.log('Owner photo load error:', error);
+                      }}
+                    />
+                  );
+                }
+                return (
+                  <View style={[styles.profileImage, styles.imagePlaceholder]}>
+                    <Ionicons name="person" size={40} color="#9CA3AF" />
+                    <Text style={styles.placeholderText}>No Photo</Text>
+                  </View>
+                );
+              })()}
+              <View style={styles.imageOverlay}>
+                <Ionicons name="camera" size={20} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Status Badge */}
         <View style={styles.statusCard}>
           <View style={styles.statusRow}>
@@ -544,6 +671,38 @@ const ProfileScreen = () => {
           </View>
         )}
       </ScrollView>
+
+      {/* Image Modal */}
+      <Modal
+        visible={imageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImageModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalCloseArea}
+            activeOpacity={1}
+            onPress={() => setImageModalVisible(false)}
+          >
+            <View style={styles.modalContent}>
+              {selectedImage && (
+                <Image
+                  source={{ uri: selectedImage }}
+                  style={styles.modalImage}
+                  resizeMode="contain"
+                />
+              )}
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setImageModalVisible(false)}
+              >
+                <Ionicons name="close-circle" size={32} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -588,13 +747,96 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
+  profileHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+    gap: 16,
+  },
+  imageSection: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  imageSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 12,
+  },
+  imageContainer: {
+    position: 'relative',
+    width: (width - 72) / 2,
+    height: (width - 72) / 2,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#F3F4F6',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+  },
+  placeholderText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseArea: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: width - 40,
+    height: width - 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalImage: {
+    width: '100%',
+    height: '100%',
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    padding: 8,
+  },
   statusCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   statusRow: {
     flexDirection: 'row',
@@ -622,24 +864,36 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#1F2937',
-    marginBottom: 16,
+    marginBottom: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: '#1ED760',
+    paddingBottom: 8,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+    backgroundColor: '#FAFBFC',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 8,
   },
   infoContent: {
     flex: 1,
@@ -651,9 +905,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#1F2937',
-    fontWeight: '600',
+    fontWeight: '700',
+    flexShrink: 1,
   },
   inputGroup: {
     marginBottom: 16,
@@ -704,11 +959,18 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '30%',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
     margin: 6,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
   statValue: {
     fontSize: 16,
@@ -725,9 +987,13 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+    backgroundColor: '#FAFBFC',
+    borderRadius: 8,
+    marginBottom: 8,
   },
   actionText: {
     flex: 1,

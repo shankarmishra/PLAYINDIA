@@ -108,15 +108,30 @@ const AdminApprovals = () => {
         }
         
         // Parse successful response
-        // Safely get content type - handle cases where headers might be undefined
-        const contentType = response.headers?.get?.('content-type') || null;
-        if (contentType && !contentType.includes('application/json')) {
+        // Read as text first, then parse as JSON (response body can only be read once)
+        try {
           const text = await response.text();
-          throw new Error(text || 'Invalid response from server');
+          
+          // Try to parse as JSON
+          if (text) {
+            try {
+              return JSON.parse(text);
+            } catch (parseError) {
+              // If it's not valid JSON, return a structured response
+              return { 
+                data: { message: text }, 
+                success: response.status >= 200 && response.status < 300 
+              };
+            }
+          } else {
+            // Empty response
+            return { data: {}, success: true };
+          }
+        } catch (readError: any) {
+          // If we can't read the response, return empty success response
+          console.warn('Could not read response body:', readError.message);
+          return { data: {}, success: true };
         }
-        
-        // If no content type header, try to parse as JSON anyway
-        return await response.json();
       };
 
       // Helper to fetch with delay and retry logic to avoid rate limiting
@@ -156,29 +171,29 @@ const AdminApprovals = () => {
       const allPendingRes = await fetchWithDelay(`${backendUrl}/api/users?status=pending&limit=1000`, 0);
       
       // Use empty responses for role-specific queries (we'll filter from allPendingRes instead)
-      // Create proper mock Response objects with headers
+      // Create proper mock Response objects with headers that return success
       const mockHeaders = new Headers();
       mockHeaders.set('content-type', 'application/json');
       const coachesRes = { 
-        ok: false, 
+        ok: true, 
         status: 200,
         headers: mockHeaders,
-        json: async () => ({ data: { users: [] }, success: false }),
-        text: async () => JSON.stringify({ data: { users: [] }, success: false })
+        json: async () => ({ data: { users: [] }, success: true }),
+        text: async () => JSON.stringify({ data: { users: [] }, success: true })
       } as Response;
       const storesRes1 = { 
-        ok: false, 
+        ok: true, 
         status: 200,
         headers: mockHeaders,
-        json: async () => ({ data: { users: [] }, success: false }),
-        text: async () => JSON.stringify({ data: { users: [] }, success: false })
+        json: async () => ({ data: { users: [] }, success: true }),
+        text: async () => JSON.stringify({ data: { users: [] }, success: true })
       } as Response;
       const deliveryRes = { 
-        ok: false, 
+        ok: true, 
         status: 200,
         headers: mockHeaders,
-        json: async () => ({ data: { users: [] }, success: false }),
-        text: async () => JSON.stringify({ data: { users: [] }, success: false })
+        json: async () => ({ data: { users: [] }, success: true }),
+        text: async () => JSON.stringify({ data: { users: [] }, success: true })
       } as Response;
 
       // Helper function to safely extract users array from response

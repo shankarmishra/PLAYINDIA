@@ -103,8 +103,18 @@ exports.getMyStoreProfile = async (req, res, next) => {
       .select('name price inventory.quantity ratings.average')
       .limit(10);
 
+    // Convert store to object and ensure all fields including documents are included
+    const storeObject = store.toObject();
+    
+    // Log documents for debugging
+    console.log('Store profile - documents:', JSON.stringify({
+      ownerID: storeObject.documents?.ownerID,
+      additionalDocs: storeObject.documents?.additionalDocs,
+      hasDocuments: !!storeObject.documents
+    }, null, 2));
+
     const profileData = {
-      ...store.toObject(),
+      ...storeObject,
       stats: {
         totalOrders,
         totalRevenue: totalRevenue[0] ? totalRevenue[0].total : 0,
@@ -118,6 +128,7 @@ exports.getMyStoreProfile = async (req, res, next) => {
       data: profileData
     });
   } catch (error) {
+    console.error('Error in getMyStoreProfile:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -569,6 +580,7 @@ exports.updateStoreProfile = [
             });
             updateData['documents.ownerID.front'] = uploadResult.url;
             updateData['documents.ownerID.verified'] = false;
+            console.log('Owner photo uploaded:', uploadResult.url);
           } catch (error) {
             console.error('Error uploading owner photo:', error);
           }
@@ -583,14 +595,17 @@ exports.updateStoreProfile = [
               folder: 'stores/photos',
               resource_type: 'image'
             });
-            // Store photo can be saved in additionalDocs or as a separate field
+            // Store photo should be the first item in additionalDocs
             if (!updateData['documents.additionalDocs']) {
               updateData['documents.additionalDocs'] = [];
             }
             if (!Array.isArray(updateData['documents.additionalDocs'])) {
               updateData['documents.additionalDocs'] = [updateData['documents.additionalDocs']];
             }
-            updateData['documents.additionalDocs'].push(uploadResult.url);
+            // Remove existing store photo if any, then add new one at the beginning
+            const existingDocs = updateData['documents.additionalDocs'].filter((doc, index) => index !== 0 || !doc);
+            updateData['documents.additionalDocs'] = [uploadResult.url, ...existingDocs];
+            console.log('Store photo uploaded:', uploadResult.url);
           } catch (error) {
             console.error('Error uploading store photo:', error);
           }
@@ -649,17 +664,39 @@ exports.updateStoreProfile = [
         const additionalDocs = Array.isArray(updateData['documents.additionalDocs']) 
           ? updateData['documents.additionalDocs'] 
           : [updateData['documents.additionalDocs']];
-        store.documents.additionalDocs = [
-          ...(store.documents.additionalDocs || []),
-          ...additionalDocs
-        ];
+        // If first item is a new store photo, replace the first item; otherwise append
+        if (additionalDocs.length > 0 && store.documents.additionalDocs && store.documents.additionalDocs.length > 0) {
+          // Check if we're updating the store photo (first item)
+          const existingStorePhoto = store.documents.additionalDocs[0];
+          const newStorePhoto = additionalDocs[0];
+          if (newStorePhoto && newStorePhoto !== existingStorePhoto) {
+            // Replace first item with new store photo, keep rest
+            store.documents.additionalDocs = [newStorePhoto, ...store.documents.additionalDocs.slice(1), ...additionalDocs.slice(1)];
+          } else {
+            // Append new docs
+            store.documents.additionalDocs = [...(store.documents.additionalDocs || []), ...additionalDocs];
+          }
+        } else {
+          // No existing docs, just set the new ones
+          store.documents.additionalDocs = additionalDocs;
+        }
+        console.log('Updated additionalDocs:', store.documents.additionalDocs);
       }
 
       await store.save();
 
+      // Reload store to get updated data including documents
+      const updatedStore = await Store.findById(store._id)
+        .populate('userId', 'name mobile email');
+
+      console.log('Store updated - documents:', JSON.stringify({
+        ownerID: updatedStore.documents?.ownerID,
+        additionalDocs: updatedStore.documents?.additionalDocs
+      }, null, 2));
+
       res.status(200).json({
         success: true,
-        data: store
+        data: updatedStore.toObject()
       });
     } catch (error) {
       console.error('Update store profile error:', error);
@@ -670,6 +707,105 @@ exports.updateStoreProfile = [
     }
   }
 ];
+
+/**
+ * Get all products (for users to browse)
+ */
+exports.getAllProducts = async (req, res, next) => {
+  try {
+    const { category, search, minPrice, maxPrice, sort, limit = 100, page = 1 } = req.query;
+    
+    // Build query - only show active products from active stores
+    let query = { 'availability.isActive': true };
+    
+    // Only show products from active and verified stores
+    // If no stores are active, show products from all stores (for development/testing)
+    const activeStores = await Store.find({ status: 'active', verified: true }).select('_id');
+    const storeIds = activeStores.map(s => s._id);
+    
+    if (storeIds.length > 0) {
+      query.storeId = { $in: storeIds };
+    } else {
+      // If no active stores, show products from any store (for development)
+      console.log('No active stores found, showing all products');
+      // Don't filter by storeId - show all products
+    }
+    
+    if (category && category !== 'All' && category !== 'all') {
+      // Map category names to backend enum values
+      const categoryMap = {
+        'Cricket': 'cricket',
+        'Football': 'football',
+        'Badminton': 'badminton',
+        'Tennis': 'tennis',
+        'Yoga': 'gym', // Yoga might map to gym
+        'Gym': 'gym',
+        'Basketball': 'multi-sports',
+        'Running': 'multi-sports',
+      };
+      const mappedCategory = categoryMap[category] || category.toLowerCase();
+      query.category = mappedCategory;
+      console.log('Filtering products by category:', mappedCategory);
+    }
+    
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { brand: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    if (minPrice || maxPrice) {
+      query['price.selling'] = {};
+      if (minPrice) query['price.selling'].$gte = parseFloat(minPrice);
+      if (maxPrice) query['price.selling'].$lte = parseFloat(maxPrice);
+    }
+    
+    let sortOption = {};
+    if (sort === 'price-low') {
+      sortOption = { 'price.selling': 1 };
+    } else if (sort === 'price-high') {
+      sortOption = { 'price.selling': -1 };
+    } else if (sort === 'rating') {
+      sortOption = { 'ratings.average': -1 };
+    } else if (sort === 'popularity') {
+      sortOption = { 'analytics.purchases': -1 };
+    } else {
+      sortOption = { createdAt: -1 };
+    }
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    console.log('Products query:', JSON.stringify(query, null, 2));
+    console.log('Store IDs found:', storeIds.length);
+    
+    const products = await Product.find(query)
+      .populate('storeId', 'storeName')
+      .sort(sortOption)
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await Product.countDocuments(query);
+    
+    console.log('Products found:', products.length, 'Total:', total);
+
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / parseInt(limit)),
+      data: products
+    });
+  } catch (error) {
+    console.error('Error fetching all products:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
 
 /**
  * Get store products

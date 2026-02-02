@@ -14,6 +14,8 @@ import InventoryScreen from '../screens/store/InventoryScreen';
 import ReportsScreen from '../screens/store/ReportsScreen';
 import ReviewsScreen from '../screens/store/ReviewsScreen';
 import SettingsScreen from '../screens/store/SettingsScreen';
+import AdsScreen from '../screens/store/AdsScreen';
+import CreateAdScreen from '../screens/store/CreateAdScreen';
 
 export type StoreTabParamList = {
   HomeTab: undefined;
@@ -27,6 +29,8 @@ export type StoreTabParamList = {
   Reports: undefined;
   Reviews: undefined;
   Settings: undefined;
+  Ads: undefined;
+  CreateAd: { adId?: string } | undefined;
 };
 
 const Tab = createBottomTabNavigator();
@@ -99,6 +103,8 @@ const StoreNav = () => {
       <Stack.Screen name="Reports" component={ReportsScreen} />
       <Stack.Screen name="Reviews" component={ReviewsScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Ads" component={AdsScreen} />
+      <Stack.Screen name="CreateAd" component={CreateAdScreen} />
     </Stack.Navigator>
   );
 };

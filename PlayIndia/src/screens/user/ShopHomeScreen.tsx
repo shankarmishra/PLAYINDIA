@@ -11,6 +11,7 @@ import {
   TextInput,
   RefreshControl,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -43,52 +44,25 @@ const categories = [
   { id: '8', name: 'Running', icon: 'walk-outline', color: '#74B9FF' },
 ];
 
-// Expanded product list with more products
-const mockProducts = [
-  // Cricket
-  { id: '1', name: 'Professional Cricket Bat', price: 2499, originalPrice: 3999, discount: 38, rating: 4.5, image: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Cricket' },
-  { id: '2', name: 'Cricket Helmet', price: 1499, originalPrice: 1999, discount: 25, rating: 4.3, image: 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Cricket' },
-  { id: '3', name: 'Cricket Gloves', price: 899, originalPrice: 1199, discount: 25, rating: 4.6, image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Cricket' },
-  { id: '4', name: 'Cricket Pads', price: 1999, originalPrice: 2999, discount: 33, rating: 4.4, image: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Cricket' },
-  { id: '5', name: 'Cricket Ball (Leather)', price: 299, originalPrice: 499, discount: 40, rating: 4.7, image: 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Cricket' },
-  
-  // Football
-  { id: '6', name: 'Professional Football', price: 899, originalPrice: 1299, discount: 31, rating: 4.5, image: 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Football' },
-  { id: '7', name: 'Football Boots', price: 2499, originalPrice: 3999, discount: 38, rating: 4.6, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Football' },
-  { id: '8', name: 'Football Shin Guards', price: 599, originalPrice: 899, discount: 33, rating: 4.4, image: 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Football' },
-  { id: '9', name: 'Goalkeeper Gloves', price: 1299, originalPrice: 1999, discount: 35, rating: 4.7, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Football' },
-  
-  // Badminton
-  { id: '10', name: 'Badminton Racket Pro', price: 1299, originalPrice: 1999, discount: 35, rating: 4.7, image: 'https://images.unsplash.com/photo-1622163642992-6c4ad786e58a?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Badminton' },
-  { id: '11', name: 'Badminton Shuttlecock', price: 399, originalPrice: 599, discount: 33, rating: 4.5, image: 'https://images.unsplash.com/photo-1622163642992-6c4ad786e58a?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Badminton' },
-  { id: '12', name: 'Badminton Shoes', price: 1999, originalPrice: 2999, discount: 33, rating: 4.6, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Badminton' },
-  
-  // Tennis
-  { id: '13', name: 'Tennis Racket Pro', price: 2199, originalPrice: 3499, discount: 37, rating: 4.4, image: 'https://images.unsplash.com/photo-1622163642992-6c4ad786e58a?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Tennis' },
-  { id: '14', name: 'Tennis Balls (Pack of 3)', price: 499, originalPrice: 799, discount: 38, rating: 4.6, image: 'https://images.unsplash.com/photo-1622163642992-6c4ad786e58a?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Tennis' },
-  { id: '15', name: 'Tennis Shoes', price: 2499, originalPrice: 3999, discount: 38, rating: 4.5, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Tennis' },
-  
-  // Yoga
-  { id: '16', name: 'Premium Yoga Mat', price: 599, originalPrice: 899, discount: 33, rating: 4.8, image: 'https://images.unsplash.com/photo-1601925260368-ae2f83d34b08?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Yoga' },
-  { id: '17', name: 'Yoga Block Set', price: 799, originalPrice: 1199, discount: 33, rating: 4.7, image: 'https://images.unsplash.com/photo-1601925260368-ae2f83d34b08?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Yoga' },
-  { id: '18', name: 'Yoga Strap', price: 299, originalPrice: 499, discount: 40, rating: 4.6, image: 'https://images.unsplash.com/photo-1601925260368-ae2f83d34b08?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Yoga' },
-  
-  // Gym
-  { id: '19', name: 'Dumbbells Set (5kg x 2)', price: 2999, originalPrice: 4999, discount: 40, rating: 4.6, image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Gym' },
-  { id: '20', name: 'Resistance Bands Set', price: 899, originalPrice: 1499, discount: 40, rating: 4.5, image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Gym' },
-  { id: '21', name: 'Kettlebell (10kg)', price: 1999, originalPrice: 2999, discount: 33, rating: 4.7, image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Gym' },
-  { id: '22', name: 'Pull Up Bar', price: 1299, originalPrice: 1999, discount: 35, rating: 4.4, image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Gym' },
-  
-  // Basketball
-  { id: '23', name: 'Basketball', price: 1299, originalPrice: 1999, discount: 35, rating: 4.5, image: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Basketball' },
-  { id: '24', name: 'Basketball Shoes', price: 2999, originalPrice: 4999, discount: 40, rating: 4.6, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Basketball' },
-  
-  // Running
-  { id: '25', name: 'Running Shoes', price: 2499, originalPrice: 3999, discount: 38, rating: 4.7, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Running' },
-  { id: '26', name: 'Sports Watch', price: 3999, originalPrice: 5999, discount: 33, rating: 4.8, image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Running' },
-  { id: '27', name: 'Running Shorts', price: 799, originalPrice: 1299, discount: 38, rating: 4.5, image: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Running' },
-  { id: '28', name: 'Sports Water Bottle', price: 399, originalPrice: 699, discount: 43, rating: 4.6, image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', category: 'Running' },
-];
+
+interface Product {
+  _id: string;
+  id?: string;
+  name: string;
+  price: {
+    selling: number;
+    original?: number;
+  };
+  images?: string[];
+  image?: string;
+  category: string;
+  rating?: number;
+  ratings?: {
+    average?: number;
+  };
+  discount?: number;
+  originalPrice?: number;
+}
 
 const ShopHomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -96,7 +70,9 @@ const ShopHomeScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [shopBanners, setShopBanners] = useState<Banner[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   
   const cartCount = getCartCount();
 
@@ -137,21 +113,113 @@ const ShopHomeScreen = () => {
     }
   };
 
+  // Load products from API
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const params: any = {
+        limit: 100,
+      };
+      
+      // Map category name to backend category
+      if (selectedCategory !== 'All') {
+        const categoryMap: Record<string, string> = {
+          'Cricket': 'cricket',
+          'Football': 'football',
+          'Badminton': 'badminton',
+          'Tennis': 'tennis',
+          'Yoga': 'gym',
+          'Gym': 'gym',
+          'Basketball': 'multi-sports',
+          'Running': 'multi-sports',
+        };
+        params.category = categoryMap[selectedCategory] || selectedCategory.toLowerCase();
+      }
+      
+      if (searchQuery) {
+        params.search = searchQuery;
+      }
+      
+      console.log('Loading products with params:', params);
+      const response = await ApiService.products.getAll(params);
+      console.log('Products API response:', response.data);
+      
+      if (response.data && response.data.success) {
+        // Transform API products to match UI format
+        const transformedProducts = (response.data.data || []).map((product: any) => {
+          const sellingPrice = product.price?.selling || product.price || 0;
+          const originalPrice = product.price?.original || product.price?.selling || sellingPrice;
+          const discount = originalPrice > sellingPrice 
+            ? Math.round(((originalPrice - sellingPrice) / originalPrice) * 100)
+            : 0;
+          const rating = product.ratings?.average || product.rating || 0;
+          const image = product.images && product.images.length > 0 
+            ? product.images[0] 
+            : product.image || 'https://via.placeholder.com/300x300?text=No+Image';
+          
+          // Map backend category to display category
+          const categoryMap: Record<string, string> = {
+            'cricket': 'Cricket',
+            'football': 'Football',
+            'badminton': 'Badminton',
+            'tennis': 'Tennis',
+            'gym': 'Gym',
+            'multi-sports': 'Basketball',
+          };
+          const displayCategory = categoryMap[product.category] || product.category || 'All';
+          
+          return {
+            id: product._id || product.id,
+            _id: product._id || product.id,
+            name: product.name || 'Product',
+            price: sellingPrice,
+            originalPrice: originalPrice,
+            discount: discount,
+            rating: rating,
+            image: image,
+            category: displayCategory,
+          };
+        });
+        console.log('Transformed products:', transformedProducts.length);
+        setProducts(transformedProducts);
+      } else {
+        console.log('No products in response or API failed');
+        setProducts([]);
+      }
+    } catch (error: any) {
+      console.error('Error loading products:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      // On error, set empty array (no fallback to mock data)
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   React.useEffect(() => {
     loadShopBanners();
+    loadProducts();
   }, []);
 
-  const filteredProducts = selectedCategory === 'All' 
-    ? mockProducts.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : mockProducts.filter(product => 
-        product.category === selectedCategory && 
-        product.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+  React.useEffect(() => {
+    // Reload products when category or search changes
+    loadProducts();
+  }, [selectedCategory, searchQuery]);
+
+  // Filter products (category filtering is done in API, but we do search filtering here)
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = !searchQuery || 
+      product.name.toLowerCase().includes(searchQuery.toLowerCase());
+    // Category is already filtered by API, but double-check for safety
+    const matchesCategory = selectedCategory === 'All' || 
+      product.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadShopBanners();
-    setTimeout(() => setRefreshing(false), 1000);
+    await Promise.all([loadShopBanners(), loadProducts()]);
+    setRefreshing(false);
   };
 
   const renderCategory = ({ item }: any) => (
@@ -190,7 +258,7 @@ const ShopHomeScreen = () => {
     <TouchableOpacity 
       style={styles.productCard}
       activeOpacity={0.8}
-      onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+      onPress={() => navigation.navigate('ProductDetail', { productId: item.id || item._id })}
     >
       <View style={styles.productImageContainer}>
         <Image 
@@ -343,7 +411,9 @@ const ShopHomeScreen = () => {
             <Text style={styles.sectionTitle}>
               {selectedCategory === 'All' ? 'All Products' : selectedCategory}
             </Text>
-            <Text style={styles.productCount}>{filteredProducts.length} products</Text>
+            <Text style={styles.productCount}>
+              {loading ? 'Loading...' : `${filteredProducts.length} products`}
+            </Text>
           </View>
           <TouchableOpacity>
             <Text style={styles.seeAllText}>See All</Text>
@@ -351,10 +421,15 @@ const ShopHomeScreen = () => {
         </View>
 
         {/* Products Grid */}
-        {filteredProducts.length > 0 ? (
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#1ED760" />
+            <Text style={styles.loadingText}>Loading products...</Text>
+          </View>
+        ) : filteredProducts.length > 0 ? (
           <View style={styles.productsGrid}>
             {filteredProducts.map((item) => (
-              <View key={item.id} style={styles.productWrapper}>
+              <View key={item.id || item._id || Math.random()} style={styles.productWrapper}>
                 {renderProduct({ item })}
               </View>
             ))}
@@ -364,7 +439,11 @@ const ShopHomeScreen = () => {
             <Ionicons name="search-outline" size={80} color="#CBD5E0" />
             <Text style={styles.emptyText}>No products found</Text>
             <Text style={styles.emptySubtext}>
-              {searchQuery ? 'Try a different search term' : 'Try selecting a different category'}
+              {searchQuery 
+                ? 'Try a different search term' 
+                : products.length === 0
+                  ? 'No products available. Check back later!'
+                  : 'Try selecting a different category'}
             </Text>
             {searchQuery && (
               <TouchableOpacity 
@@ -372,6 +451,14 @@ const ShopHomeScreen = () => {
                 onPress={() => setSearchQuery('')}
               >
                 <Text style={styles.clearSearchText}>Clear Search</Text>
+              </TouchableOpacity>
+            )}
+            {products.length === 0 && !loading && (
+              <TouchableOpacity 
+                style={styles.clearSearchButton}
+                onPress={onRefresh}
+              >
+                <Text style={styles.clearSearchText}>Refresh</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -688,6 +775,17 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     textAlign: 'center',
     marginBottom: 24,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#64748B',
+    marginTop: 12,
   },
   clearSearchButton: {
     backgroundColor: '#1ED760',

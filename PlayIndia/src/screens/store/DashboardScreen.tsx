@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'react-native';
@@ -24,13 +25,13 @@ const { width } = Dimensions.get('window');
 type NavigationProp = StackNavigationProp<StoreTabParamList>;
 
 interface DashboardStats {
+  totalProducts: number;
+  todayOrders: number;
+  monthlyRevenue: number;
+  pendingOrders: number;
   totalOrders: number;
   completedOrders: number;
   totalRevenue: number;
-  availableEarnings: number;
-  pendingEarnings: number;
-  rating: number;
-  totalRatings: number;
 }
 
 interface RecentOrder {
@@ -59,14 +60,16 @@ const DashboardScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [storeData, setStoreData] = useState<any>(null);
   const [stats, setStats] = useState<DashboardStats>({
+    totalProducts: 0,
+    todayOrders: 0,
+    monthlyRevenue: 0,
+    pendingOrders: 0,
     totalOrders: 0,
     completedOrders: 0,
     totalRevenue: 0,
-    availableEarnings: 0,
-    pendingEarnings: 0,
-    rating: 0,
-    totalRatings: 0,
   });
+  const [hasStoreProfile, setHasStoreProfile] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [walletBalance, setWalletBalance] = useState(0);
@@ -78,35 +81,106 @@ const DashboardScreen = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await ApiService.stores.getDashboard();
+      setError(null);
       
-      if (response.data && response.data.success) {
-        const data = response.data.data;
-        setStoreData(data.store);
-        setStats(data.stats || {});
+      // Try to get dashboard data
+      let dashboardResponse: any;
+      try {
+        dashboardResponse = await ApiService.stores.getDashboard();
+      } catch (dashboardErr: any) {
+        // If dashboard fails, try profile API as fallback
+        if (dashboardErr.response?.status === 404) {
+          try {
+            const profileResponse = await ApiService.stores.getMyProfile();
+            if (profileResponse.data?.success) {
+              const profileData = profileResponse.data.data;
+              setStoreData(profileData);
+              setHasStoreProfile(!!profileData.storeName);
+              // Set default stats
+              setStats({
+                totalProducts: 0,
+                todayOrders: 0,
+                monthlyRevenue: 0,
+                pendingOrders: 0,
+                totalOrders: 0,
+                completedOrders: 0,
+                totalRevenue: 0,
+              });
+              setRecentOrders([]);
+              setTopProducts([]);
+              setLoading(false);
+              return;
+            }
+          } catch (profileErr: any) {
+            // Profile also failed - store doesn't exist
+            setHasStoreProfile(false);
+            setStoreData(null);
+            setStats({
+              totalProducts: 0,
+              todayOrders: 0,
+              monthlyRevenue: 0,
+              pendingOrders: 0,
+              totalOrders: 0,
+              completedOrders: 0,
+              totalRevenue: 0,
+            });
+            setRecentOrders([]);
+            setTopProducts([]);
+            setLoading(false);
+            return;
+          }
+        }
+        throw dashboardErr;
+      }
+      
+      if (dashboardResponse.data && dashboardResponse.data.success) {
+        const data = dashboardResponse.data.data;
+        setStoreData(data.store || {});
+        setHasStoreProfile(!!(data.store?.storeName));
+        
+        // Map stats to match website format
+        const statsData = data.stats || {};
+        setStats({
+          totalProducts: statsData.totalProducts || 0,
+          todayOrders: statsData.todayOrders || 0,
+          monthlyRevenue: statsData.totalRevenue || statsData.monthlyRevenue || 0,
+          pendingOrders: statsData.pendingOrders || 0,
+          totalOrders: statsData.totalOrders || 0,
+          completedOrders: statsData.completedOrders || 0,
+          totalRevenue: statsData.totalRevenue || 0,
+        });
         setRecentOrders(data.sections?.recentOrders || []);
         setTopProducts(data.sections?.topSellingProducts || []);
         setWalletBalance(data.store?.walletBalance || 0);
+      } else {
+        // Response not successful, try profile API
+        try {
+          const profileResponse = await ApiService.stores.getMyProfile();
+          if (profileResponse.data?.success) {
+            const profileData = profileResponse.data.data;
+            setStoreData(profileData);
+            setHasStoreProfile(!!profileData.storeName);
+          }
+        } catch (profileErr) {
+          setHasStoreProfile(false);
+        }
       }
     } catch (error: any) {
       console.error('Error loading dashboard:', error);
-      // Set default empty stats on error - all data is dynamic from API
+      setError('Failed to load dashboard data');
+      // Set default empty stats on error
       setStats({
+        totalProducts: 0,
+        todayOrders: 0,
+        monthlyRevenue: 0,
+        pendingOrders: 0,
         totalOrders: 0,
         completedOrders: 0,
         totalRevenue: 0,
-        availableEarnings: 0,
-        pendingEarnings: 0,
-        rating: 0,
-        totalRatings: 0,
       });
       setRecentOrders([]);
       setTopProducts([]);
       setWalletBalance(0);
-      // Show error message to user
-      if (error.response?.status !== 404) {
-        Alert.alert('Error', 'Failed to load dashboard data. Please try again.');
-      }
     } finally {
       setLoading(false);
     }
@@ -149,19 +223,85 @@ const DashboardScreen = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Store Dashboard</Text>
-          <Text style={styles.headerSubtitle}>
-            {storeData?.storeName || 'My Store'}
-          </Text>
+        <View style={styles.headerLeft}>
+          {/* Store Photo */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Profile')}
+            style={styles.storePhotoContainer}
+          >
+            {(() => {
+              // Try multiple possible locations for store photo
+              const storePhoto = 
+                storeData?.documents?.additionalDocs?.[0] ||
+                storeData?.documents?.additionalDocs?.[1] ||
+                storeData?.storePhoto ||
+                storeData?.photo;
+              
+              if (storePhoto) {
+                return (
+                  <Image
+                    source={{ uri: storePhoto }}
+                    style={styles.storePhoto}
+                    resizeMode="cover"
+                    onError={(error) => {
+                      console.log('Dashboard store photo load error:', error);
+                    }}
+                  />
+                );
+              }
+              return (
+                <View style={[styles.storePhoto, styles.storePhotoPlaceholder]}>
+                  <Ionicons name="storefront" size={24} color="#9CA3AF" />
+                </View>
+              );
+            })()}
+          </TouchableOpacity>
+          
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>
+              Hi {user?.name || 'Store Owner'}, Welcome Back!
+            </Text>
+            <Text style={styles.headerSubtitle}>
+              Manage your sports store and track your sales
+            </Text>
+            {storeData?.storeName && (
+              <Text style={styles.storeNameText}>
+                Store: {storeData.storeName}
+              </Text>
+            )}
+          </View>
         </View>
         <TouchableOpacity
           onPress={() => navigation.navigate('Profile')}
           style={styles.profileButton}
         >
-          <Ionicons name="person-circle-outline" size={32} color="#1F2937" />
+          <Ionicons name="settings-outline" size={24} color="#1F2937" />
         </TouchableOpacity>
       </View>
+
+      {/* Warning Banner for Missing Profile */}
+      {!hasStoreProfile && !loading && (
+        <View style={styles.warningBanner}>
+          <View style={styles.warningContent}>
+            <Ionicons name="warning-outline" size={20} color="#F59E0B" />
+            <View style={styles.warningTextContainer}>
+              <Text style={styles.warningTitle}>Store profile not found.</Text>
+              <Text style={styles.warningText}>
+                Please complete your store registration to access all features.
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.warningButton}
+            onPress={() => {
+              // Navigate to registration - you may need to add this route
+              Alert.alert('Registration', 'Please complete your store registration');
+            }}
+          >
+            <Text style={styles.warningButtonText}>Complete Registration</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView
         style={styles.scrollView}
@@ -187,51 +327,70 @@ const DashboardScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Stats Grid */}
+        {/* Stats Grid - Matching Website */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Ionicons name="cart-outline" size={24} color="#3B82F6" />
-            <Text style={styles.statValue}>{stats.totalOrders}</Text>
-            <Text style={styles.statLabel}>Total Orders</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="checkmark-circle-outline" size={24} color="#10B981" />
-            <Text style={styles.statValue}>{stats.completedOrders}</Text>
-            <Text style={styles.statLabel}>Completed</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="cash-outline" size={24} color="#F59E0B" />
-            <Text style={styles.statValue}>
-              {formatCurrency(stats.totalRevenue)}
+            <Text style={styles.statCardTitle}>Total Products</Text>
+            <Text style={[styles.statValue, { color: '#EF4444' }]}>
+              {stats.totalProducts}
             </Text>
-            <Text style={styles.statLabel}>Total Revenue</Text>
+            <Text style={styles.statLabel}>Listed products</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="star-outline" size={24} color="#EF4444" />
-            <Text style={styles.statValue}>
-              {stats.rating > 0 ? stats.rating.toFixed(1) : '0.0'}
+            <Text style={styles.statCardTitle}>Today's Orders</Text>
+            <Text style={[styles.statValue, { color: '#10B981' }]}>
+              {stats.todayOrders}
             </Text>
-            <Text style={styles.statLabel}>Rating</Text>
+            <Text style={styles.statLabel}>New orders today</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statCardTitle}>Monthly Revenue</Text>
+            <Text style={[styles.statValue, { color: '#3B82F6' }]}>
+              {formatCurrency(stats.monthlyRevenue)}
+            </Text>
+            <Text style={styles.statLabel}>This month</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statCardTitle}>Pending Orders</Text>
+            <Text style={[styles.statValue, { color: '#F59E0B' }]}>
+              {stats.pendingOrders}
+            </Text>
+            <Text style={styles.statLabel}>Awaiting processing</Text>
           </View>
         </View>
 
-        {/* Earnings Breakdown */}
+        {/* Quick Actions - Matching Website */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Earnings</Text>
-          <View style={styles.earningsRow}>
-            <View style={styles.earningsItem}>
-              <Text style={styles.earningsLabel}>Available</Text>
-              <Text style={[styles.earningsValue, { color: '#10B981' }]}>
-                {formatCurrency(stats.availableEarnings)}
-              </Text>
-            </View>
-            <View style={styles.earningsDivider} />
-            <View style={styles.earningsItem}>
-              <Text style={styles.earningsLabel}>Pending</Text>
-              <Text style={[styles.earningsValue, { color: '#F59E0B' }]}>
-                {formatCurrency(stats.pendingEarnings)}
-              </Text>
-            </View>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.quickActionsGrid}>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => navigation.navigate('ListProduct')}
+            >
+              <Text style={styles.quickActionIcon}>➕</Text>
+              <Text style={styles.quickActionText}>Add Product</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => navigation.navigate('Orders')}
+            >
+              <Text style={styles.quickActionIcon}>📦</Text>
+              <Text style={styles.quickActionText}>View Orders</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => navigation.navigate('Inventory')}
+            >
+              <Text style={styles.quickActionIcon}>📊</Text>
+              <Text style={styles.quickActionText}>Manage Inventory</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => navigation.navigate('Ads')}
+            >
+              <Text style={styles.quickActionIcon}>📢</Text>
+              <Text style={styles.quickActionText}>Run Ads</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -246,14 +405,14 @@ const DashboardScreen = () => {
             </TouchableOpacity>
           </View>
           {recentOrders.length > 0 ? (
-            recentOrders.map((order) => (
+            recentOrders.slice(0, 5).map((order) => (
               <View key={order._id} style={styles.orderItem}>
                 <View style={styles.orderInfo}>
                   <Text style={styles.orderNumber}>
-                    #{order.orderNumber || order._id.slice(-6)}
+                    #{order.orderNumber || order.orderId || order._id.slice(-6)}
                   </Text>
                   <Text style={styles.orderCustomer}>
-                    {order.userId?.name || 'Customer'}
+                    {order.userId?.name || 'Unknown Customer'}
                   </Text>
                   <Text style={styles.orderDate}>
                     {formatDate(order.createdAt)}
@@ -270,9 +429,11 @@ const DashboardScreen = () => {
                         backgroundColor:
                           order.status === 'delivered'
                             ? '#D1FAE5'
-                            : order.status === 'pending'
+                            : order.status === 'processing'
                             ? '#FEF3C7'
-                            : '#DBEAFE',
+                            : order.status === 'shipped'
+                            ? '#DBEAFE'
+                            : '#F3F4F6',
                       },
                     ]}
                   >
@@ -283,13 +444,15 @@ const DashboardScreen = () => {
                           color:
                             order.status === 'delivered'
                               ? '#10B981'
-                              : order.status === 'pending'
+                              : order.status === 'processing'
                               ? '#F59E0B'
-                              : '#3B82F6',
+                              : order.status === 'shipped'
+                              ? '#3B82F6'
+                              : '#6B7280',
                         },
                       ]}
                     >
-                      {order.status}
+                      {order.status || 'Pending'}
                     </Text>
                   </View>
                 </View>
@@ -299,47 +462,19 @@ const DashboardScreen = () => {
             <View style={styles.emptyState}>
               <Ionicons name="cart-outline" size={48} color="#9CA3AF" />
               <Text style={styles.emptyText}>No orders yet</Text>
+              <Text style={styles.emptySubtext}>
+                Start by adding products to your store!
+              </Text>
+              <TouchableOpacity
+                style={styles.addProductButton}
+                onPress={() => navigation.navigate('ListProduct')}
+              >
+                <Text style={styles.addProductButtonText}>Add Products</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsGrid}>
-            <TouchableOpacity
-              style={styles.quickActionCard}
-              onPress={() => navigation.navigate('Analytics')}
-            >
-              <Ionicons name="analytics-outline" size={24} color="#3B82F6" />
-              <Text style={styles.quickActionText}>Analytics</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.quickActionCard}
-              onPress={() => navigation.navigate('Inventory')}
-            >
-              <Ionicons name="cube-outline" size={24} color="#10B981" />
-              <Text style={styles.quickActionText}>Inventory</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.quickActionCard}
-              onPress={() => navigation.navigate('Reports')}
-            >
-              <Ionicons name="document-text-outline" size={24} color="#F59E0B" />
-              <Text style={styles.quickActionText}>Reports</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.quickActionCard}
-              onPress={() => navigation.navigate('Reviews')}
-            >
-              <Ionicons name="star-outline" size={24} color="#EF4444" />
-              <Text style={styles.quickActionText}>Reviews</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* Top Selling Products */}
         <View style={styles.sectionCard}>
@@ -352,22 +487,26 @@ const DashboardScreen = () => {
             </TouchableOpacity>
           </View>
           {topProducts.length > 0 ? (
-            topProducts.map((product, index) => (
+            topProducts.slice(0, 3).map((product, index) => (
               <View key={product._id} style={styles.productItem}>
-                <View style={styles.productRank}>
-                  <Text style={styles.rankText}>#{index + 1}</Text>
-                </View>
                 <View style={styles.productInfo}>
-                  <Text style={styles.productName}>{product.name}</Text>
+                  <Text style={styles.productName}>{product.name || 'Product Name'}</Text>
+                  <Text style={styles.productBrand}>
+                    Brand: {product.brand || 'N/A'}
+                  </Text>
                   <Text style={styles.productPrice}>
-                    {formatCurrency(product.price)}
+                    Price: {formatCurrency(product.price?.selling || product.price || 0)}
                   </Text>
                 </View>
                 <View style={styles.productSales}>
-                  <Ionicons name="trending-up-outline" size={16} color="#10B981" />
                   <Text style={styles.salesText}>
-                    {product['analytics.purchases'] || 0} sold
+                    Sold: {product['analytics.purchases'] || product.soldCount || 0} units
                   </Text>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('ListProduct', { productId: product._id })}
+                  >
+                    <Text style={styles.editLink}>Edit</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             ))
@@ -375,6 +514,9 @@ const DashboardScreen = () => {
             <View style={styles.emptyState}>
               <Ionicons name="cube-outline" size={48} color="#9CA3AF" />
               <Text style={styles.emptyText}>No products yet</Text>
+              <Text style={styles.emptySubtext}>
+                Add your first product to get started!
+              </Text>
               <TouchableOpacity
                 style={styles.addProductButton}
                 onPress={() => navigation.navigate('ListProduct')}
@@ -409,20 +551,100 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 20,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  storePhotoContainer: {
+    marginRight: 16,
+  },
+  storePhoto: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: '#1ED760',
+  },
+  storePhotoPlaceholder: {
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: '#1F2937',
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
-    marginTop: 2,
+    marginTop: 4,
+  },
+  storeNameText: {
+    fontSize: 13,
+    color: '#1ED760',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  profileButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+  },
+  warningBanner: {
+    backgroundColor: '#FEF3C7',
+    borderLeftWidth: 4,
+    borderLeftColor: '#F59E0B',
+    padding: 16,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 16,
+    borderRadius: 8,
+  },
+  warningContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  warningTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  warningTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#92400E',
+    marginBottom: 4,
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#92400E',
+  },
+  warningButton: {
+    backgroundColor: '#F59E0B',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  warningButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   profileButton: {
     padding: 4,
@@ -481,21 +703,24 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     margin: 6,
-    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  statCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
   statValue: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#1F2937',
-    marginTop: 8,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
     color: '#6B7280',
-    fontWeight: '500',
+    marginTop: 4,
   },
   sectionCard: {
     backgroundColor: '#FFFFFF',
@@ -610,35 +835,53 @@ const styles = StyleSheet.create({
   },
   productInfo: {
     flex: 1,
+    marginRight: 12,
   },
   productName: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#1F2937',
     marginBottom: 4,
+  },
+  productBrand: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 2,
   },
   productPrice: {
     fontSize: 12,
     color: '#6B7280',
+    marginBottom: 8,
   },
   productSales: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
   },
   salesText: {
     fontSize: 12,
-    color: '#10B981',
-    marginLeft: 4,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  editLink: {
+    fontSize: 12,
+    color: '#EF4444',
     fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   emptyState: {
     alignItems: 'center',
     paddingVertical: 32,
   },
   emptyText: {
-    fontSize: 14,
-    color: '#9CA3AF',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
     marginTop: 12,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 8,
+    textAlign: 'center',
   },
   addProductButton: {
     marginTop: 16,
@@ -658,8 +901,9 @@ const styles = StyleSheet.create({
     marginHorizontal: -6,
   },
   quickActionCard: {
-    width: (width - 64) / 2,
-    backgroundColor: '#F9FAFB',
+    flex: 1,
+    minWidth: (width - 64) / 3,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     margin: 6,
@@ -667,11 +911,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  quickActionIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
   quickActionText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#1F2937',
     fontWeight: '600',
-    marginTop: 8,
     textAlign: 'center',
   },
 });

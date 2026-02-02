@@ -263,9 +263,13 @@ const ListProductScreen = () => {
         {formData.imageUrl && (
           <View style={styles.imagePreviewContainer}>
             <Image
-              source={{ uri: formData.imageUrl }}
+              source={{ uri: formData.imageUrl.trim() }}
               style={styles.imagePreview}
               resizeMode="cover"
+              onError={(error) => {
+                console.log('Image preview error:', error);
+                Alert.alert('Image Error', 'Failed to load image. Please check the URL.');
+              }}
             />
             <TouchableOpacity
               style={styles.removeImageButton}

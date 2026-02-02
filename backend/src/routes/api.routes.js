@@ -16,6 +16,7 @@ const supportController = require('../controllers/support.controller');
 const achievementController = require('../controllers/achievement.controller');
 const playpointController = require('../controllers/playpoint.controller');
 const bannerController = require('../controllers/banner.controller');
+const adController = require('../controllers/ad.controller');
 
 const router = express.Router();
 
@@ -75,6 +76,9 @@ router.route('/stores/profile')
 router.route('/stores')
   .get(protect, storeController.getStores);
 
+// Get all products (for users)
+router.get('/products', storeController.getAllProducts);
+
 // Parameterized routes - MUST come after specific routes
 router.route('/stores/:id')
   .get(protect, storeController.getStoreProfile);
@@ -86,6 +90,30 @@ router.route('/stores/:id/products')
 router.route('/stores/products/:id')
   .put(protect, authorize('seller', 'store'), storeController.updateProduct)
   .delete(protect, authorize('seller', 'store'), storeController.deleteProduct);
+
+// Ad routes - Store/Seller
+router.route('/stores/ads')
+  .get(protect, authorize('seller', 'store'), adController.getStoreAds)
+  .post(protect, authorize('seller', 'store'), adController.createAd);
+
+router.route('/stores/ads/:id')
+  .get(protect, authorize('seller', 'store'), adController.getAd)
+  .put(protect, authorize('seller', 'store'), adController.updateAd)
+  .delete(protect, authorize('seller', 'store'), adController.deleteAd);
+
+router.post('/stores/ads/:id/submit', protect, authorize('seller', 'store'), adController.submitAd);
+router.post('/stores/ads/:id/toggle', protect, authorize('seller', 'store'), adController.toggleAdStatus);
+
+// Ad routes - Public (for users)
+router.get('/ads/active', adController.getActiveAds);
+router.post('/ads/:id/click', adController.trackClick);
+router.post('/ads/:id/view', adController.trackView);
+
+// Ad routes - Admin
+router.get('/admin/ads', protect, authorize('admin'), adController.getAllAds);
+router.post('/admin/ads/:id/approve', protect, authorize('admin'), adController.approveAd);
+router.post('/admin/ads/:id/reject', protect, authorize('admin'), adController.rejectAd);
+router.post('/admin/ads/pricing', protect, authorize('admin'), adController.updatePricing);
 
 // Delivery routes
 router.route('/delivery/available')

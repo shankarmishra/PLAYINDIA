@@ -392,8 +392,22 @@ const StoreRegistration = () => {
         }
 
         if (response.ok && responseData.success) {
-          alert('Store profile created successfully!');
-          router.push('/store');
+          // Store profile created successfully
+          // Refresh user data to get updated store info
+          try {
+            const userResponse = await ApiService.auth.me();
+            if (userResponse?.data?.success && userResponse.data.user) {
+              localStorage.setItem('user', JSON.stringify(userResponse.data.user));
+            }
+          } catch (err) {
+            // Ignore errors, just proceed with redirect
+          }
+          
+          // Show success message
+          alert('Store profile created successfully! Redirecting to dashboard...');
+          
+          // Redirect to store dashboard
+          window.location.href = '/store';
         } else {
           const errorMsg = responseData?.message || responseData?.error || 'Store profile creation failed. Please try again.';
           setError(errorMsg);
