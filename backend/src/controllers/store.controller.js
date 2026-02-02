@@ -465,13 +465,40 @@ exports.updateStoreProfile = [
   ]),
   async (req, res, next) => {
     try {
-      const store = await Store.findOne({ userId: req.user.id });
+      let store = await Store.findOne({ userId: req.user.id });
       
+      // If store doesn't exist, create it
       if (!store) {
-        return res.status(404).json({
-          success: false,
-          message: 'Store profile not found'
-        });
+        // Create new store profile
+        const storeData = {
+          userId: req.user.id,
+          storeName: req.body.storeName || req.user.name + "'s Store",
+          ownerName: req.body.ownerName || req.user.name,
+          category: req.body.category || 'multi-sports',
+          status: 'pending', // New stores start as pending
+          verified: false
+        };
+        
+        // Add address if provided
+        if (req.body.address || req.body.city || req.body.state || req.body.pincode) {
+          storeData.address = {
+            street: req.body.address || '',
+            city: req.body.city || '',
+            state: req.body.state || '',
+            pincode: req.body.pincode || '',
+            coordinates: req.user.location?.coordinates || [0, 0]
+          };
+        }
+        
+        // Add business info if provided
+        if (req.body.gstNumber) {
+          storeData.gstNumber = req.body.gstNumber;
+        }
+        if (req.body.businessType) {
+          storeData.businessType = req.body.businessType;
+        }
+        
+        store = await Store.create(storeData);
       }
 
       const updateData = { ...req.body };

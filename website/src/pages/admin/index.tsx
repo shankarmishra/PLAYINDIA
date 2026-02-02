@@ -95,7 +95,8 @@ const AdminDashboard = () => {
         // Handle non-OK responses gracefully
         if (!response.ok) {
           try {
-            const contentType = response.headers.get('content-type');
+            // Safely get content type - handle cases where headers might be undefined
+            const contentType = response.headers?.get?.('content-type') || null;
             if (contentType && contentType.includes('application/json')) {
               const errorData = await response.json();
               const errorMessage = errorData.message || errorData.error || `HTTP error! status: ${response.status}`;
@@ -134,12 +135,14 @@ const AdminDashboard = () => {
         }
         
         // Parse successful response
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
+        // Safely get content type - handle cases where headers might be undefined
+        const contentType = response.headers?.get?.('content-type') || null;
+        if (contentType && !contentType.includes('application/json')) {
           const text = await response.text();
           throw new Error(text || 'Invalid response from server');
         }
         
+        // If no content type header, try to parse as JSON anyway
         return await response.json();
       };
 

@@ -13,13 +13,15 @@
     "test:api": "node src/tests/scripts/test-user-apis.js",
     "test:coach": "node src/tests/scripts/test-coach-apis.js",
     "test:tournament": "node src/tests/scripts/test-tournament-apis.js",
+    "test:store": "node test-store-apis.js",
     "test:all": "node src/tests/scripts/test-all-apis.js",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{js,json}\"",
     "queue:worker": "node src/workers/queue.worker.js",
     "create-admin": "node create-admin.js",
     "check-admin": "node check-admin.js",
-    "reset-admin": "node reset-admin-password.js"
+    "reset-admin": "node reset-admin-password.js",
+    "create-test-store": "node create-test-store.js"
   },
   "dependencies": {
     "@sentry/node": "^7.120.3",

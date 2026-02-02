@@ -6,6 +6,7 @@ import { useRouter } from 'next/router';
 const StoreRegistration = () => {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isExistingUser, setIsExistingUser] = useState(false);
   const [formData, setFormData] = useState({
     // Step 1 - Store Details
     storeName: '',
@@ -28,6 +29,28 @@ const StoreRegistration = () => {
     ownerPhoto: null as File | null,
     storePhoto: null as File | null
   });
+
+  // Check if user is already logged in
+  React.useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
+    if (token) {
+      setIsExistingUser(true);
+      // Try to get user info to pre-fill form
+      ApiService.auth.me().then((response: any) => {
+        if (response?.data?.success && response.data.user) {
+          const user = response.data.user;
+          setFormData(prev => ({
+            ...prev,
+            email: user.email || '',
+            mobile: user.mobile || '',
+            ownerName: user.name || ''
+          }));
+        }
+      }).catch(() => {
+        // If can't get user info, that's okay - user can still fill form
+      });
+    }
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -111,18 +134,21 @@ const StoreRegistration = () => {
       if (mobileDigits.length !== 10) {
         return 'Please enter a valid 10-digit mobile number';
       }
-      if (!formData.password || !formData.password.trim()) {
-        return 'Password is required';
-      }
-      if (formData.password.length < 8) {
-        return 'Password must be at least 8 characters';
-      }
-      const hasUpperCase = /[A-Z]/.test(formData.password);
-      const hasLowerCase = /[a-z]/.test(formData.password);
-      const hasNumber = /\d/.test(formData.password);
-      const hasSpecialChar = /[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/]/.test(formData.password);
-      if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
-        return 'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character';
+      // Password validation only for new users
+      if (!isExistingUser) {
+        if (!formData.password || !formData.password.trim()) {
+          return 'Password is required';
+        }
+        if (formData.password.length < 8) {
+          return 'Password must be at least 8 characters';
+        }
+        const hasUpperCase = /[A-Z]/.test(formData.password);
+        const hasLowerCase = /[a-z]/.test(formData.password);
+        const hasNumber = /\d/.test(formData.password);
+        const hasSpecialChar = /[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/]/.test(formData.password);
+        if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+          return 'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character';
+        }
       }
       if (!formData.address || !formData.address.trim()) {
         return 'Store address is required';
@@ -238,16 +264,18 @@ const StoreRegistration = () => {
         throw new Error('Please provide a valid email');
       }
       
-      // Validate password before submission
-      if (!formData.password || formData.password.length < 8) {
-        throw new Error('Password must be at least 8 characters');
-      }
-      const hasUpperCase = /[A-Z]/.test(formData.password);
-      const hasLowerCase = /[a-z]/.test(formData.password);
-      const hasNumber = /\d/.test(formData.password);
-      const hasSpecialChar = /[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/]/.test(formData.password);
-      if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
-        throw new Error('Password must contain at least one uppercase letter, one lowercase letter, one number and one special character');
+      // Validate password only for new users
+      if (!isExistingUser) {
+        if (!formData.password || formData.password.length < 8) {
+          throw new Error('Password must be at least 8 characters');
+        }
+        const hasUpperCase = /[A-Z]/.test(formData.password);
+        const hasLowerCase = /[a-z]/.test(formData.password);
+        const hasNumber = /\d/.test(formData.password);
+        const hasSpecialChar = /[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/]/.test(formData.password);
+        if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+          throw new Error('Password must contain at least one uppercase letter, one lowercase letter, one number and one special character');
+        }
       }
       
       // Create FormData object to handle both regular fields and files
@@ -304,6 +332,78 @@ const StoreRegistration = () => {
         submissionData.append('storePhoto', formData.storePhoto, formData.storePhoto.name);
       }
       
+      // If user is already logged in, create store profile directly
+      if (isExistingUser) {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
+        if (!token) {
+          throw new Error('Session expired. Please login again.');
+        }
+
+        // Create store profile using PUT /api/stores/profile
+        const storeProfileFormData = new FormData();
+        
+        // Add store-specific fields (skip user registration fields)
+        if (formData.storeName) storeProfileFormData.append('storeName', formData.storeName);
+        if (formData.ownerName) storeProfileFormData.append('ownerName', formData.ownerName);
+        if (formData.address) storeProfileFormData.append('address', formData.address);
+        if (formData.city) storeProfileFormData.append('city', formData.city);
+        if (formData.state) storeProfileFormData.append('state', formData.state);
+        if (formData.pincode) storeProfileFormData.append('pincode', formData.pincode);
+        if (formData.gstNumber) storeProfileFormData.append('gstNumber', formData.gstNumber);
+        if (formData.businessType) storeProfileFormData.append('businessType', formData.businessType);
+        if (formData.category && formData.category.length > 0) {
+          storeProfileFormData.append('category', JSON.stringify(formData.category));
+        }
+        
+        // Add files
+        if (formData.gstCertificate) {
+          storeProfileFormData.append('gstCertificate', formData.gstCertificate, formData.gstCertificate.name);
+        }
+        if (formData.shopAct) {
+          storeProfileFormData.append('shopAct', formData.shopAct, formData.shopAct.name);
+        }
+        if (formData.bankPassbook) {
+          storeProfileFormData.append('bankPassbook', formData.bankPassbook, formData.bankPassbook.name);
+        }
+        if (formData.ownerPhoto) {
+          storeProfileFormData.append('ownerPhoto', formData.ownerPhoto, formData.ownerPhoto.name);
+        }
+        if (formData.storePhoto) {
+          storeProfileFormData.append('storePhoto', formData.storePhoto, formData.storePhoto.name);
+        }
+
+        const response = await fetch('/api/stores/profile', {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: storeProfileFormData,
+        });
+
+        const text = await response.text();
+        let responseData;
+        try {
+          responseData = JSON.parse(text);
+        } catch {
+          responseData = { 
+            success: false, 
+            message: text || 'Store profile creation failed. Please try again.' 
+          };
+        }
+
+        if (response.ok && responseData.success) {
+          alert('Store profile created successfully!');
+          router.push('/store');
+        } else {
+          const errorMsg = responseData?.message || responseData?.error || 'Store profile creation failed. Please try again.';
+          setError(errorMsg);
+          alert(errorMsg);
+        }
+        setIsSubmitting(false);
+        return;
+      }
+
+      // For new users, use the existing registration flow
       // Submit to backend API
       const response = await fetch('/api/store/register', {
         method: 'POST',
@@ -448,9 +548,13 @@ const StoreRegistration = () => {
                       value={formData.email}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
+                      disabled={isExistingUser}
+                      className={`w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium ${isExistingUser ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                       placeholder="Enter your email"
                     />
+                    {isExistingUser && (
+                      <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                    )}
                   </div>
                   
                   <div>
@@ -461,27 +565,41 @@ const StoreRegistration = () => {
                       value={formData.mobile}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
+                      disabled={isExistingUser}
+                      className={`w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium ${isExistingUser ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                       placeholder="Enter your mobile number"
                     />
+                    {isExistingUser && (
+                      <p className="text-xs text-gray-500 mt-1">Mobile number cannot be changed</p>
+                    )}
                   </div>
                   
-                  <div>
-                    <label className="block text-gray-700 mb-2">Password *</label>
-                    <input
-                      type="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required
-                      minLength={8}
-                      className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
-                      placeholder="Min 8 chars: uppercase, lowercase, number, special"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Password must be at least 8 characters and contain uppercase, lowercase, number, and special character
-                    </p>
-                  </div>
+                  {!isExistingUser && (
+                    <div>
+                      <label className="block text-gray-700 mb-2">Password *</label>
+                      <input
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        required
+                        minLength={8}
+                        className="w-full px-4 py-2 border-2 border-gray-700 rounded-lg focus:ring-red-500 focus:border-red-600 focus:outline-none focus:ring-2 transition-colors duration-200 bg-white text-gray-900 font-medium"
+                        placeholder="Min 8 chars: uppercase, lowercase, number, special"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Password must be at least 8 characters and contain uppercase, lowercase, number, and special character
+                      </p>
+                    </div>
+                  )}
+                  
+                  {isExistingUser && (
+                    <div className="md:col-span-2 bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+                      <p className="text-sm text-blue-700">
+                        <strong>Note:</strong> You are already logged in. You only need to complete your store profile information. Password is not required.
+                      </p>
+                    </div>
+                  )}
                   
                   <div className="md:col-span-2">
                     <label className="block text-gray-700 mb-2">Store Address *</label>

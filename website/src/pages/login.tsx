@@ -30,18 +30,39 @@ const Login = () => {
     }
     
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          password: password,
-        }),
-      });
+      let response;
+      let data;
       
-      const data = await response.json();
+      try {
+        response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            password: password,
+          }),
+        });
+        
+        // Try to parse JSON response
+        try {
+          const text = await response.text();
+          if (!text) {
+            throw new Error('Empty response from server. Please check if the backend server is running.');
+          }
+          data = JSON.parse(text);
+        } catch (parseError) {
+          console.error('Failed to parse login response:', parseError);
+          throw new Error('Invalid response from server. Please check if the backend server is running.');
+        }
+      } catch (fetchError) {
+        // Network error - backend server is not reachable
+        console.error('Login network error:', fetchError);
+        setError('Cannot connect to server. Please ensure the backend server is running and try again.');
+        setLoading(false);
+        return;
+      }
       
       // Log response for debugging
       console.log('Login response:', {
@@ -76,6 +97,11 @@ const Login = () => {
         // If it's an invalid credentials error, provide helpful hints
         if (errorMessage.toLowerCase().includes('invalid credentials') || response.status === 401) {
           errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+          
+          // Provide additional help for common issues
+          if (email.includes('@')) {
+            errorMessage += ' Make sure you are using the correct email address and password.';
+          }
         }
         
         // If it's a network/server error
