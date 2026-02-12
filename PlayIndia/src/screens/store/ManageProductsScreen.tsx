@@ -189,7 +189,13 @@ const ManageProductsScreen = () => {
     if (product.images && Array.isArray(product.images) && product.images.length > 0) {
       const firstImage = product.images[0];
       if (firstImage && typeof firstImage === 'string' && firstImage.trim()) {
-        return firstImage.trim();
+        const imageUrl = firstImage.trim();
+        // Validate URL format
+        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+          return imageUrl;
+        }
+        // If relative URL, might need base URL
+        console.log('Invalid image URL format:', imageUrl);
       }
     }
     // Fallback to placeholder
@@ -212,12 +218,22 @@ const ManageProductsScreen = () => {
     
     return (
       <Image
-        source={{ uri: imageUri }}
+        source={{ 
+          uri: imageUri,
+          cache: 'default'
+        }}
         style={styles.productImage}
         resizeMode="cover"
-        onError={() => {
+        onError={(error) => {
           console.log('Image load error for:', imageUri);
+          console.log('Error details:', error);
           setImageError(true);
+        }}
+        onLoadStart={() => {
+          console.log('Image loading started:', imageUri);
+        }}
+        onLoadEnd={() => {
+          console.log('Image loaded successfully:', imageUri);
         }}
       />
     );

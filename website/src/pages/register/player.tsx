@@ -36,11 +36,11 @@ const PlayerRegister = () => {
     if (/[^A-Za-z0-9]/.test(password)) strength++;
 
     const levels = [
-      { label: 'Very Weak', color: 'bg-red-500' },
-      { label: 'Weak', color: 'bg-orange-500' },
-      { label: 'Fair', color: 'bg-yellow-500' },
-      { label: 'Good', color: 'bg-blue-500' },
-      { label: 'Strong', color: 'bg-green-500' },
+      { strength: 1, label: 'Very Weak', color: 'bg-red-500' },
+      { strength: 2, label: 'Weak', color: 'bg-orange-500' },
+      { strength: 3, label: 'Fair', color: 'bg-yellow-500' },
+      { strength: 4, label: 'Good', color: 'bg-blue-500' },
+      { strength: 5, label: 'Strong', color: 'bg-green-500' },
     ];
 
     return levels[Math.min(strength - 1, 4)] || levels[0];

@@ -715,20 +715,22 @@ exports.getAllProducts = async (req, res, next) => {
   try {
     const { category, search, minPrice, maxPrice, sort, limit = 100, page = 1 } = req.query;
     
-    // Build query - only show active products from active stores
-    let query = { 'availability.isActive': true };
+    // Build query - show all products (less restrictive for debugging)
+    let query = {};
     
-    // Only show products from active and verified stores
-    // If no stores are active, show products from all stores (for development/testing)
-    const activeStores = await Store.find({ status: 'active', verified: true }).select('_id');
-    const storeIds = activeStores.map(s => s._id);
+    // Don't filter by availability.isActive - show all products
+    // Products will show even if availability.isActive is false
+    
+    // Get all stores (not just active/verified) - show products from all stores
+    const allStores = await Store.find({}).select('_id');
+    const storeIds = allStores.map(s => s._id);
     
     if (storeIds.length > 0) {
       query.storeId = { $in: storeIds };
+      console.log('Total stores found:', storeIds.length);
     } else {
-      // If no active stores, show products from any store (for development)
-      console.log('No active stores found, showing all products');
-      // Don't filter by storeId - show all products
+      console.log('No stores found in database - showing all products without store filter');
+      // Don't filter by storeId if no stores exist
     }
     
     if (category && category !== 'All' && category !== 'all') {
@@ -780,6 +782,10 @@ exports.getAllProducts = async (req, res, next) => {
     console.log('Products query:', JSON.stringify(query, null, 2));
     console.log('Store IDs found:', storeIds.length);
     
+    // First, let's check total products in database
+    const totalProductsInDB = await Product.countDocuments({});
+    console.log('Total products in database:', totalProductsInDB);
+    
     const products = await Product.find(query)
       .populate('storeId', 'storeName')
       .sort(sortOption)
@@ -788,7 +794,23 @@ exports.getAllProducts = async (req, res, next) => {
     
     const total = await Product.countDocuments(query);
     
-    console.log('Products found:', products.length, 'Total:', total);
+    console.log('Products found with query:', products.length);
+    console.log('Total matching query:', total);
+    console.log('Sample product:', products.length > 0 ? {
+      id: products[0]._id,
+      name: products[0].name,
+      storeId: products[0].storeId,
+      availability: products[0].availability
+    } : 'No products');
+
+    // If no products found, log warning
+    if (products.length === 0) {
+      console.log('WARNING: No products found with query:', JSON.stringify(query, null, 2));
+      console.log('This might mean:');
+      console.log('1. No products exist in database');
+      console.log('2. Products exist but don\'t match the query');
+      console.log('3. Store IDs don\'t match');
+    }
 
     res.status(200).json({
       success: true,
@@ -796,7 +818,12 @@ exports.getAllProducts = async (req, res, next) => {
       total,
       page: parseInt(page),
       pages: Math.ceil(total / parseInt(limit)),
-      data: products
+      data: products,
+      debug: {
+        query,
+        storeIdsCount: storeIds.length,
+        totalProductsInDB
+      }
     });
   } catch (error) {
     console.error('Error fetching all products:', error);

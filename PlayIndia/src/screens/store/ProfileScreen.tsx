@@ -250,11 +250,18 @@ const ProfileScreen = () => {
                 if (storePhoto) {
                   return (
                     <Image
-                      source={{ uri: storePhoto }}
+                      source={{ 
+                        uri: storePhoto,
+                        cache: 'default'
+                      }}
                       style={styles.profileImage}
                       resizeMode="cover"
                       onError={(error) => {
-                        console.log('Store photo load error:', error);
+                        console.log('Store photo load error:', storePhoto);
+                        console.log('Error:', error);
+                      }}
+                      onLoadStart={() => {
+                        console.log('Store photo loading:', storePhoto);
                       }}
                     />
                   );
@@ -301,11 +308,18 @@ const ProfileScreen = () => {
                 if (ownerPhoto) {
                   return (
                     <Image
-                      source={{ uri: ownerPhoto }}
+                      source={{ 
+                        uri: ownerPhoto,
+                        cache: 'default'
+                      }}
                       style={styles.profileImage}
                       resizeMode="cover"
                       onError={(error) => {
-                        console.log('Owner photo load error:', error);
+                        console.log('Owner photo load error:', ownerPhoto);
+                        console.log('Error:', error);
+                      }}
+                      onLoadStart={() => {
+                        console.log('Owner photo loading:', ownerPhoto);
                       }}
                     />
                   );

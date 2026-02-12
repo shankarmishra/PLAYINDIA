@@ -91,7 +91,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!response.ok) {
       console.error('Login API - Error response:', response.status, data);
-      return res.status(response.status).json(data);
+      // Forward the error response from backend
+      const statusCode = response.status || 500;
+      return res.status(statusCode).json({
+        success: false,
+        message: data.message || data.error || 'Login failed',
+        ...data
+      });
     }
 
     res.status(200).json(data);

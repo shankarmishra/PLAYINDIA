@@ -196,7 +196,11 @@ const StoreReviewsPage = () => {
             </div>
             <div className="space-y-2">
               {[5, 4, 3, 2, 1].map((rating) => {
-                const count = stats[rating as keyof typeof stats] as number;
+                const count = rating === 5 ? stats.five : 
+                           rating === 4 ? stats.four : 
+                           rating === 3 ? stats.three : 
+                           rating === 2 ? stats.two : 
+                           stats.one;
                 const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
                 return (
                   <div key={rating} className="flex items-center">

@@ -69,14 +69,20 @@ const AdsScreen = () => {
         params.status = selectedFilter;
       }
       
+      console.log('Loading ads with params:', params);
       const response = await ApiService.ads.getStoreAds(params);
+      console.log('Ads response:', response.data);
       
       if (response.data && response.data.success) {
         setAds(response.data.data || []);
+      } else {
+        console.error('Ads API error:', response.data);
+        Alert.alert('Error', response.data?.message || 'Failed to load ads');
       }
     } catch (error: any) {
       console.error('Error loading ads:', error);
-      Alert.alert('Error', 'Failed to load ads');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to load ads';
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }

@@ -899,10 +899,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginHorizontal: -6,
+    justifyContent: 'space-between',
   },
   quickActionCard: {
-    flex: 1,
-    minWidth: (width - 64) / 3,
+    width: (width - 64) / 2 - 12, // 2 columns with spacing
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,

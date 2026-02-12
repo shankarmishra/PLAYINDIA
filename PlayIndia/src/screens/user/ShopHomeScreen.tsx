@@ -20,6 +20,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { UserTabParamList } from '../../navigation/UserNav';
 import { useCart } from '../../contexts/CartContext';
 import ApiService from '../../services/ApiService';
+import { API_BASE_URL } from '../../config/constants';
 
 type NavigationProp = StackNavigationProp<UserTabParamList>;
 
@@ -73,6 +74,8 @@ const ShopHomeScreen = () => {
   const [loading, setLoading] = useState(true);
   const [shopBanners, setShopBanners] = useState<Banner[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [homeBannerAds, setHomeBannerAds] = useState<any[]>([]);
+  const [sponsoredProducts, setSponsoredProducts] = useState<any[]>([]);
   
   const cartCount = getCartCount();
 
@@ -141,8 +144,10 @@ const ShopHomeScreen = () => {
       }
       
       console.log('Loading products with params:', params);
+      console.log('API URL:', `${API_BASE_URL}/api/products`);
       const response = await ApiService.products.getAll(params);
-      console.log('Products API response:', response.data);
+      console.log('Products API response status:', response.status);
+      console.log('Products API response data:', JSON.stringify(response.data, null, 2));
       
       if (response.data && response.data.success) {
         // Transform API products to match UI format
@@ -196,10 +201,55 @@ const ShopHomeScreen = () => {
     }
   };
 
+  // Load ads
+  const loadAds = async () => {
+    try {
+      // Load home banner ads
+      const bannerAdsResponse = await ApiService.ads.getActiveAds({ 
+        adType: 'home-banner',
+        limit: 5 
+      });
+      if (bannerAdsResponse.data && bannerAdsResponse.data.success) {
+        setHomeBannerAds(bannerAdsResponse.data.data || []);
+        // Track views for ads
+        bannerAdsResponse.data.data.forEach((ad: any) => {
+          if (ad._id) {
+            ApiService.ads.trackView(ad._id).catch(() => {});
+          }
+        });
+      }
+
+      // Load sponsored products
+      const sponsoredResponse = await ApiService.ads.getActiveAds({ 
+        adType: 'sponsored-product',
+        category: selectedCategory !== 'All' ? selectedCategory.toLowerCase() : undefined,
+        limit: 10 
+      });
+      if (sponsoredResponse.data && sponsoredResponse.data.success) {
+        const sponsored = sponsoredResponse.data.data.map((ad: any) => ({
+          ...ad.productId,
+          _id: ad.productId?._id || ad._id,
+          isSponsored: true,
+          adId: ad._id,
+        }));
+        setSponsoredProducts(sponsored);
+      }
+    } catch (error: any) {
+      console.log('Error loading ads:', error.message);
+      // Silently fail - ads are optional
+    }
+  };
+
   React.useEffect(() => {
     loadShopBanners();
     loadProducts();
+    loadAds();
   }, []);
+
+  React.useEffect(() => {
+    // Reload sponsored products when category changes
+    loadAds();
+  }, [selectedCategory]);
 
   React.useEffect(() => {
     // Reload products when category or search changes
@@ -218,7 +268,7 @@ const ShopHomeScreen = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadShopBanners(), loadProducts()]);
+    await Promise.all([loadShopBanners(), loadProducts(), loadAds()]);
     setRefreshing(false);
   };
 
@@ -254,11 +304,24 @@ const ShopHomeScreen = () => {
     </TouchableOpacity>
   );
 
-  const renderProduct = ({ item }: any) => (
+  const renderProduct = ({ item }: any) => {
+    const handleProductClick = async () => {
+      // Track click if sponsored
+      if (item.adId) {
+        try {
+          await ApiService.ads.trackClick(item.adId);
+        } catch (e) {
+          console.log('Click tracking error:', e);
+        }
+      }
+      navigation.navigate('ProductDetail', { productId: item.id || item._id });
+    };
+
+    return (
     <TouchableOpacity 
       style={styles.productCard}
       activeOpacity={0.8}
-      onPress={() => navigation.navigate('ProductDetail', { productId: item.id || item._id })}
+      onPress={handleProductClick}
     >
       <View style={styles.productImageContainer}>
         <Image 
@@ -308,7 +371,8 @@ const ShopHomeScreen = () => {
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -365,6 +429,88 @@ const ShopHomeScreen = () => {
           contentContainerStyle={styles.categoriesContainer}
         />
 
+        {/* Home Banner Ads */}
+        {homeBannerAds.length > 0 && (
+          <View style={styles.sectionHeader}>
+            <View style={styles.sponsoredBadge}>
+              <Text style={styles.sponsoredBadgeText}>🟡 SPONSORED</Text>
+            </View>
+          </View>
+        )}
+        {homeBannerAds.length > 0 && (
+          <FlatList
+            data={homeBannerAds}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                style={styles.adBanner}
+                activeOpacity={0.9}
+                onPress={async () => {
+                  // Track click
+                  if (item._id) {
+                    try {
+                      await ApiService.ads.trackClick(item._id);
+                    } catch (e) {
+                      console.log('Click tracking error:', e);
+                    }
+                  }
+                  // Navigate to product
+                  if (item.productId?._id) {
+                    navigation.navigate('ProductDetail', { productId: item.productId._id });
+                  }
+                }}
+              >
+                <Image 
+                  source={{ 
+                    uri: item.bannerImage || item.productId?.images?.[0],
+                    cache: 'default'
+                  }} 
+                  style={styles.adBannerImage}
+                  resizeMode="cover"
+                  onError={() => {
+                    console.log('Ad banner image error:', item.bannerImage);
+                  }}
+                />
+                <View style={styles.adBannerOverlay}>
+                  <View style={styles.adBannerContent}>
+                    {item.title && (
+                      <Text style={styles.adBannerTitle}>{item.title}</Text>
+                    )}
+                    {item.productId?.name && (
+                      <Text style={styles.adBannerProductName}>{item.productId.name}</Text>
+                    )}
+                    {item.productId?.price?.selling && (
+                      <Text style={styles.adBannerPrice}>
+                        ₹{item.productId.price.selling.toLocaleString('en-IN')}
+                      </Text>
+                    )}
+                    <TouchableOpacity 
+                      style={styles.adBannerButton} 
+                      activeOpacity={0.8}
+                      onPress={async () => {
+                        if (item._id) {
+                          try {
+                            await ApiService.ads.trackClick(item._id);
+                          } catch (e) {}
+                        }
+                        if (item.productId?._id) {
+                          navigation.navigate('ProductDetail', { productId: item.productId._id });
+                        }
+                      }}
+                    >
+                      <Text style={styles.adBannerButtonText}>Shop Now</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+            keyExtractor={(item) => item._id}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.bannersContainer}
+          />
+        )}
+
         {/* Shop Banners */}
         {shopBanners.length > 0 && (
           <FlatList
@@ -420,6 +566,68 @@ const ShopHomeScreen = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Sponsored Products Section */}
+        {sponsoredProducts.length > 0 && (
+          <>
+            <View style={styles.productsHeader}>
+              <View>
+                <View style={styles.sponsoredHeader}>
+                  <Text style={styles.sectionTitle}>Sponsored Products</Text>
+                  <View style={styles.sponsoredTag}>
+                    <Text style={styles.sponsoredTagText}>AD</Text>
+                  </View>
+                </View>
+                <Text style={styles.productCount}>{sponsoredProducts.length} sponsored</Text>
+              </View>
+            </View>
+            <View style={styles.productsGrid}>
+              {sponsoredProducts.slice(0, 2).map((item) => (
+                <View key={item._id || item.id || Math.random()} style={styles.productWrapper}>
+                  <View style={styles.sponsoredProductCard}>
+                    {renderProduct({ item })}
+                    <View style={styles.sponsoredLabel}>
+                      <Text style={styles.sponsoredLabelText}>SPONSORED</Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
+        {/* Search Results - Show Sponsored First */}
+        {searchQuery && sponsoredProducts.length > 0 && (
+          <>
+            <View style={styles.productsHeader}>
+              <View>
+                <View style={styles.sponsoredHeader}>
+                  <Text style={styles.sectionTitle}>Sponsored Results</Text>
+                  <View style={styles.sponsoredTag}>
+                    <Text style={styles.sponsoredTagText}>AD</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+            <View style={styles.productsGrid}>
+              {sponsoredProducts
+                .filter(sp => 
+                  sp.name?.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+                .slice(0, 2)
+                .map((item) => (
+                  <View key={item._id || item.id || Math.random()} style={styles.productWrapper}>
+                    <View style={styles.sponsoredProductCard}>
+                      {renderProduct({ item })}
+                      <View style={styles.sponsoredLabel}>
+                        <Text style={styles.sponsoredLabelText}>SPONSORED</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+            </View>
+          </>
+        )}
+
         {/* Products Grid */}
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -428,11 +636,27 @@ const ShopHomeScreen = () => {
           </View>
         ) : filteredProducts.length > 0 ? (
           <View style={styles.productsGrid}>
-            {filteredProducts.map((item) => (
-              <View key={item.id || item._id || Math.random()} style={styles.productWrapper}>
-                {renderProduct({ item })}
-              </View>
-            ))}
+            {filteredProducts.map((item, index) => {
+              // Check if this product is sponsored
+              const isSponsored = sponsoredProducts.some(sp => 
+                (sp._id || sp.id) === (item._id || item.id)
+              );
+              
+              return (
+                <View key={item.id || item._id || Math.random()} style={styles.productWrapper}>
+                  {isSponsored ? (
+                    <View style={styles.sponsoredProductCard}>
+                      {renderProduct({ item })}
+                      <View style={styles.sponsoredLabel}>
+                        <Text style={styles.sponsoredLabelText}>SPONSORED</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    renderProduct({ item })
+                  )}
+                </View>
+              );
+            })}
           </View>
         ) : (
           <View style={styles.emptyContainer}>
@@ -797,6 +1021,140 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  // Ad Banner Styles
+  adBanner: {
+    width: Dimensions.get('window').width - 40,
+    marginRight: 0,
+    borderRadius: 16,
+    overflow: 'hidden',
+    height: 180,
+    position: 'relative',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#FEF3C7',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  adBannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  adBannerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  adBannerContent: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  adBannerTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  adBannerProductName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  adBannerPrice: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1ED760',
+    marginBottom: 16,
+  },
+  adBannerButton: {
+    backgroundColor: '#1ED760',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  adBannerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  sponsoredBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  sponsoredBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#F59E0B',
+    letterSpacing: 0.5,
+  },
+  sponsoredHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sponsoredTag: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  sponsoredTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  sponsoredProductCard: {
+    position: 'relative',
+    borderWidth: 2,
+    borderColor: '#FEF3C7',
+    borderRadius: 16,
+    overflow: 'visible',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  sponsoredLabel: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  sponsoredLabelText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 });
 

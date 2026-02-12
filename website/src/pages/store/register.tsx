@@ -395,7 +395,7 @@ const StoreRegistration = () => {
           // Store profile created successfully
           // Refresh user data to get updated store info
           try {
-            const userResponse = await ApiService.auth.me();
+            const userResponse: any = await ApiService.auth.me();
             if (userResponse?.data?.success && userResponse.data.user) {
               localStorage.setItem('user', JSON.stringify(userResponse.data.user));
             }

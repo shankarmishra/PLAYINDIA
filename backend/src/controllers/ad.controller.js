@@ -24,7 +24,14 @@ const upload = multer({
  */
 exports.getStoreAds = async (req, res, next) => {
   try {
-    const userId = req.user._id || req.user.id;
+    const userId = req.user?._id || req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
     
     // Find store by userId
     const store = await Store.findOne({ userId });
@@ -47,13 +54,14 @@ exports.getStoreAds = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
+      count: ads.length,
       data: ads
     });
   } catch (error) {
     console.error('Error fetching store ads:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message || 'Server error. Please try again later.'
     });
   }
 };
@@ -99,11 +107,27 @@ exports.getAd = async (req, res, next) => {
 
 /**
  * Create new ad
+ * Multer middleware - only processes if file is present
+ */
+const uploadOptional = (req, res, next) => {
+  // Only use multer if Content-Type is multipart/form-data
+  if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
+    return upload.single('bannerImage')(req, res, next);
+  }
+  // Otherwise, just pass through (JSON body will be parsed by express.json)
+  next();
+};
+
+/**
+ * Create new ad
  */
 exports.createAd = [
-  upload.single('bannerImage'),
+  uploadOptional,
   async (req, res, next) => {
   try {
+    console.log('Create Ad Request Body:', JSON.stringify(req.body, null, 2));
+    console.log('Create Ad Request File:', req.file ? 'File present' : 'No file');
+    
     const userId = req.user._id || req.user.id;
     
     // Find store
@@ -149,7 +173,38 @@ exports.createAd = [
     }
 
     // Calculate pricing based on ad type
-    const pricing = calculatePricing(req.body.adType, req.body.duration);
+    // Handle duration - can come as object or separate startDate/endDate
+    let durationObj = req.body.duration;
+    
+    // If duration is a string, try to parse it
+    if (typeof durationObj === 'string') {
+      try {
+        durationObj = JSON.parse(durationObj);
+      } catch (e) {
+        console.log('Could not parse duration string:', e);
+      }
+    }
+    
+    // Fallback to separate fields
+    if (!durationObj || !durationObj.startDate || !durationObj.endDate) {
+      if (req.body.startDate && req.body.endDate) {
+        durationObj = {
+          startDate: req.body.startDate,
+          endDate: req.body.endDate
+        };
+      }
+    }
+    
+    console.log('Duration object:', durationObj);
+    
+    if (!durationObj || !durationObj.startDate || !durationObj.endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Duration with startDate and endDate is required. Received: ' + JSON.stringify(req.body)
+      });
+    }
+    
+    const pricing = calculatePricing(req.body.adType, durationObj);
 
     // Create ad
     const adData = {

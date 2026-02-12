@@ -19,6 +19,7 @@ import SettingsScreen from '../screens/user/SettingsScreen';
 import HelpSupportScreen from '../screens/user/HelpSupportScreen';
 import NotificationsScreen from '../screens/user/NotificationsScreen';
 import ChatScreen from '../screens/user/ChatScreen';
+import AdsManagementScreen from '../screens/admin/AdsManagementScreen';
 
 export type AdminTabParamList = {
   HomeTab: undefined;
@@ -37,6 +38,7 @@ export type AdminTabParamList = {
   HelpSupport: undefined;
   Notifications: undefined;
   Chat: { userId?: string };
+  AdsManagement: undefined;
 };
 
 const Tab = createBottomTabNavigator();
@@ -114,6 +116,7 @@ const AdminNav = () => {
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="AdsManagement" component={AdsManagementScreen} />
     </Stack.Navigator>
   );
 };

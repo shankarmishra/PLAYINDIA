@@ -11,6 +11,8 @@ import {
   Image,
   Dimensions,
   FlatList,
+  Modal,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'react-native';
@@ -89,6 +91,10 @@ const CreateAdScreen = () => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [tempStartDate, setTempStartDate] = useState('');
+  const [tempEndDate, setTempEndDate] = useState('');
 
   useEffect(() => {
     loadStoreAndProducts();
@@ -181,31 +187,89 @@ const CreateAdScreen = () => {
 
     try {
       setSaving(true);
+      
+      // Validate dates
+      if (!formData.startDate || !formData.endDate) {
+        Alert.alert('Error', 'Please select both start and end dates');
+        setSaving(false);
+        return;
+      }
+
+      // Calculate days for pricing
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+      const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (days <= 0) {
+        Alert.alert('Error', 'End date must be after start date');
+        setSaving(false);
+        return;
+      }
+
       const adData = {
         productId: formData.productId,
         adType: formData.adType,
         title: formData.title || products.find(p => p._id === formData.productId)?.name,
         description: formData.description,
-        bannerImage: formData.bannerImage,
-        targetCities: formData.targetCities,
-        targetStates: formData.targetStates,
-        targetCategory: formData.targetCategory,
-        targetGender: formData.targetGender,
+        bannerImage: formData.bannerImage || (products.find(p => p._id === formData.productId)?.images?.[0] || ''),
+        targetCities: Array.isArray(formData.targetCities) ? formData.targetCities : [],
+        targetStates: Array.isArray(formData.targetStates) ? formData.targetStates : [],
+        targetCategory: formData.targetCategory || 'all',
+        targetGender: formData.targetGender || 'all',
+        // Backend needs both: duration object for pricing calculation AND separate startDate/endDate
+        duration: {
+          startDate: formData.startDate,
+          endDate: formData.endDate
+        },
         startDate: formData.startDate,
         endDate: formData.endDate,
-        totalBudget: parseFloat(formData.totalBudget),
-        dailyBudget: parseFloat(formData.dailyBudget),
+        totalBudget: parseFloat(formData.totalBudget) || 0,
+        dailyBudget: parseFloat(formData.dailyBudget) || 0,
       };
+
+      console.log('Creating ad with data:', JSON.stringify(adData, null, 2));
 
       const response = await ApiService.ads.createAd(adData);
 
       if (response.data && response.data.success) {
-        Alert.alert('Success', 'Ad created! Complete payment to submit for approval.', [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('Ads'),
-          },
-        ]);
+        const ad = response.data.data;
+        const paymentAmount = ad.payment?.amount || estimatedCost;
+        
+        // Show payment options
+        Alert.alert(
+          'Ad Created Successfully!',
+          `Total Cost: ₹${paymentAmount.toLocaleString('en-IN')}\n\nChoose payment method:`,
+          [
+            {
+              text: 'Pay with Wallet',
+              onPress: async () => {
+                try {
+                  const submitResponse = await ApiService.ads.submitAd(ad._id, {
+                    paymentMethod: 'wallet'
+                  });
+                  if (submitResponse.data && submitResponse.data.success) {
+                    Alert.alert('Success', 'Payment completed! Ad submitted for approval.', [
+                      { text: 'OK', onPress: () => navigation.navigate('Ads') }
+                    ]);
+                  } else {
+                    throw new Error('Payment failed');
+                  }
+                } catch (error: any) {
+                  Alert.alert('Payment Failed', error.response?.data?.message || 'Insufficient balance or payment failed');
+                }
+              }
+            },
+            {
+              text: 'Pay Later',
+              style: 'cancel',
+              onPress: () => {
+                Alert.alert('Payment Pending', 'Please complete payment to submit ad for approval.', [
+                  { text: 'OK', onPress: () => navigation.navigate('Ads') }
+                ]);
+              }
+            }
+          ]
+        );
       } else {
         throw new Error('Failed to create ad');
       }
@@ -309,11 +373,19 @@ const CreateAdScreen = () => {
                     setErrors({ ...errors, productId: '' });
                   }}
                 >
-                  {item.images && item.images[0] ? (
+                  {item.images && item.images[0] && 
+                   typeof item.images[0] === 'string' && 
+                   (item.images[0].startsWith('http://') || item.images[0].startsWith('https://')) ? (
                     <Image
-                      source={{ uri: item.images[0] }}
+                      source={{ 
+                        uri: item.images[0],
+                        cache: 'default'
+                      }}
                       style={styles.productOptionImage}
                       resizeMode="cover"
+                      onError={(error) => {
+                        console.log('Product image load error:', item.images[0]);
+                      }}
                     />
                   ) : (
                     <View style={[styles.productOptionImage, styles.productOptionImagePlaceholder]}>
@@ -442,15 +514,18 @@ const CreateAdScreen = () => {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Start Date *</Text>
-              <TextInput
-                style={[styles.input, errors.startDate && styles.inputError]}
-                placeholder="YYYY-MM-DD"
-                value={formData.startDate}
-                onChangeText={(text) => {
-                  setFormData({ ...formData, startDate: text });
-                  setErrors({ ...errors, startDate: '' });
+              <TouchableOpacity
+                style={[styles.input, styles.dateInput, errors.startDate && styles.inputError]}
+                onPress={() => {
+                  setTempStartDate(formData.startDate || '');
+                  setShowStartDatePicker(true);
                 }}
-              />
+              >
+                <Text style={formData.startDate ? styles.dateText : styles.datePlaceholder}>
+                  {formData.startDate || 'Tap to select start date'}
+                </Text>
+                <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+              </TouchableOpacity>
               {errors.startDate && (
                 <Text style={styles.errorText}>{errors.startDate}</Text>
               )}
@@ -458,15 +533,18 @@ const CreateAdScreen = () => {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>End Date *</Text>
-              <TextInput
-                style={[styles.input, errors.endDate && styles.inputError]}
-                placeholder="YYYY-MM-DD"
-                value={formData.endDate}
-                onChangeText={(text) => {
-                  setFormData({ ...formData, endDate: text });
-                  setErrors({ ...errors, endDate: '' });
+              <TouchableOpacity
+                style={[styles.input, styles.dateInput, errors.endDate && styles.inputError]}
+                onPress={() => {
+                  setTempEndDate(formData.endDate || '');
+                  setShowEndDatePicker(true);
                 }}
-              />
+              >
+                <Text style={formData.endDate ? styles.dateText : styles.datePlaceholder}>
+                  {formData.endDate || 'Tap to select end date'}
+                </Text>
+                <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+              </TouchableOpacity>
               {errors.endDate && (
                 <Text style={styles.errorText}>{errors.endDate}</Text>
               )}
@@ -503,19 +581,77 @@ const CreateAdScreen = () => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Daily Budget (₹) *</Text>
-              <TextInput
-                style={[styles.input, errors.dailyBudget && styles.inputError]}
-                placeholder="0"
-                value={formData.dailyBudget}
-                onChangeText={(text) => {
-                  setFormData({ ...formData, dailyBudget: text });
-                  setErrors({ ...errors, dailyBudget: '' });
-                }}
-                keyboardType="decimal-pad"
-              />
+              <View style={styles.budgetHeader}>
+                <Text style={styles.label}>Daily Budget (₹) *</Text>
+                <Text style={styles.budgetValue}>
+                  ₹{parseFloat(formData.dailyBudget || '0').toLocaleString('en-IN')}
+                </Text>
+              </View>
+              <View style={styles.sliderContainer}>
+                <View style={styles.sliderTrack}>
+                  <View
+                    style={[
+                      styles.sliderFill,
+                      {
+                        width: `${Math.min(
+                          (parseFloat(formData.dailyBudget || '0') / 10000) * 100,
+                          100
+                        )}%`,
+                      },
+                    ]}
+                  />
+                </View>
+                <View style={styles.sliderLabels}>
+                  <Text style={styles.sliderLabel}>₹0</Text>
+                  <Text style={styles.sliderLabel}>₹10,000</Text>
+                </View>
+              </View>
+              <View style={styles.budgetInputRow}>
+                <TouchableOpacity
+                  style={styles.budgetButton}
+                  onPress={() => {
+                    const current = parseFloat(formData.dailyBudget || '0');
+                    const newValue = Math.max(0, current - 100);
+                    setFormData({ ...formData, dailyBudget: newValue.toString() });
+                  }}
+                >
+                  <Ionicons name="remove" size={20} color="#1ED760" />
+                </TouchableOpacity>
+                <TextInput
+                  style={[styles.budgetInput, errors.dailyBudget && styles.inputError]}
+                  placeholder="0"
+                  value={formData.dailyBudget}
+                  onChangeText={(text) => {
+                    const numValue = text.replace(/[^0-9.]/g, '');
+                    setFormData({ ...formData, dailyBudget: numValue });
+                    setErrors({ ...errors, dailyBudget: '' });
+                  }}
+                  keyboardType="decimal-pad"
+                />
+                <TouchableOpacity
+                  style={styles.budgetButton}
+                  onPress={() => {
+                    const current = parseFloat(formData.dailyBudget || '0');
+                    const newValue = Math.min(10000, current + 100);
+                    setFormData({ ...formData, dailyBudget: newValue.toString() });
+                  }}
+                >
+                  <Ionicons name="add" size={20} color="#1ED760" />
+                </TouchableOpacity>
+              </View>
               {errors.dailyBudget && (
                 <Text style={styles.errorText}>{errors.dailyBudget}</Text>
+              )}
+              {days > 0 && formData.dailyBudget && (
+                <View style={styles.estimateCard}>
+                  <Text style={styles.estimateLabel}>Estimated Metrics:</Text>
+                  <Text style={styles.estimateText}>
+                    Views: ~{Math.floor(parseFloat(formData.dailyBudget || '0') * 10).toLocaleString('en-IN')} per day
+                  </Text>
+                  <Text style={styles.estimateText}>
+                    Clicks: ~{Math.floor(parseFloat(formData.dailyBudget || '0') * 0.5).toLocaleString('en-IN')} per day
+                  </Text>
+                </View>
               )}
             </View>
           </View>
@@ -610,6 +746,135 @@ const CreateAdScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Start Date Picker Modal */}
+      <Modal
+        visible={showStartDatePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowStartDatePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.datePickerModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Start Date</Text>
+              <TouchableOpacity onPress={() => setShowStartDatePicker(false)}>
+                <Ionicons name="close" size={24} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.dateInputContainer}>
+              <Text style={styles.dateInputLabel}>Enter date (YYYY-MM-DD)</Text>
+              <TextInput
+                style={styles.modalDateInput}
+                placeholder="2024-01-01"
+                value={tempStartDate}
+                onChangeText={setTempStartDate}
+                keyboardType="default"
+                placeholderTextColor="#9CA3AF"
+              />
+              <Text style={styles.dateHint}>
+                Example: {new Date().toISOString().split('T')[0]}
+              </Text>
+            </View>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowStartDatePicker(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={() => {
+                  // Validate date format
+                  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                  if (dateRegex.test(tempStartDate)) {
+                    const date = new Date(tempStartDate);
+                    if (!isNaN(date.getTime())) {
+                      setFormData({ ...formData, startDate: tempStartDate });
+                      setErrors({ ...errors, startDate: '' });
+                      setShowStartDatePicker(false);
+                    } else {
+                      Alert.alert('Invalid Date', 'Please enter a valid date');
+                    }
+                  } else {
+                    Alert.alert('Invalid Format', 'Please use YYYY-MM-DD format (e.g., 2024-01-15)');
+                  }
+                }}
+              >
+                <Text style={styles.confirmButtonText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* End Date Picker Modal */}
+      <Modal
+        visible={showEndDatePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEndDatePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.datePickerModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select End Date</Text>
+              <TouchableOpacity onPress={() => setShowEndDatePicker(false)}>
+                <Ionicons name="close" size={24} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.dateInputContainer}>
+              <Text style={styles.dateInputLabel}>Enter date (YYYY-MM-DD)</Text>
+              <TextInput
+                style={styles.modalDateInput}
+                placeholder="2024-12-31"
+                value={tempEndDate}
+                onChangeText={setTempEndDate}
+                keyboardType="default"
+                placeholderTextColor="#9CA3AF"
+              />
+              <Text style={styles.dateHint}>
+                Example: {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+              </Text>
+            </View>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowEndDatePicker(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={() => {
+                  // Validate date format
+                  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                  if (dateRegex.test(tempEndDate)) {
+                    const date = new Date(tempEndDate);
+                    if (!isNaN(date.getTime())) {
+                      // Check if end date is after start date
+                      if (formData.startDate && tempEndDate <= formData.startDate) {
+                        Alert.alert('Invalid Date', 'End date must be after start date');
+                        return;
+                      }
+                      setFormData({ ...formData, endDate: tempEndDate });
+                      setErrors({ ...errors, endDate: '' });
+                      setShowEndDatePicker(false);
+                    } else {
+                      Alert.alert('Invalid Date', 'Please enter a valid date');
+                    }
+                  } else {
+                    Alert.alert('Invalid Format', 'Please use YYYY-MM-DD format (e.g., 2024-12-31)');
+                  }
+                }}
+              >
+                <Text style={styles.confirmButtonText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -821,8 +1086,183 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1F2937',
   },
+  dateInput: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dateText: {
+    fontSize: 14,
+    color: '#1F2937',
+  },
+  datePlaceholder: {
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
   inputError: {
     borderColor: '#EF4444',
+  },
+  budgetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  budgetValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1ED760',
+  },
+  sliderContainer: {
+    marginBottom: 16,
+  },
+  sliderTrack: {
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  sliderFill: {
+    height: '100%',
+    backgroundColor: '#1ED760',
+    borderRadius: 4,
+  },
+  sliderLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  sliderLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  budgetInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  budgetButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1ED760',
+  },
+  budgetInput: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    textAlign: 'center',
+  },
+  estimateCard: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1ED760',
+  },
+  estimateLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  estimateText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  // Date Picker Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePickerModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    width: width - 40,
+    maxWidth: 400,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  dateInputContainer: {
+    marginBottom: 20,
+  },
+  dateInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  modalDateInput: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  dateHint: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F3F4F6',
+  },
+  cancelButtonText: {
+    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButton: {
+    backgroundColor: '#1ED760',
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   errorText: {
     fontSize: 12,
