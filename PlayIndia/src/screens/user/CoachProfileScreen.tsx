@@ -66,11 +66,11 @@ const CoachProfileScreen = () => {
           <Text style={styles.reviewUserName}>{item.userName}</Text>
           <View style={styles.reviewRating}>
             {[...Array(5)].map((_, i) => (
-              <Ionicons 
-                key={i} 
-                name={i < item.rating ? "star" : "star-outline"} 
-                size={14} 
-                color={i < item.rating ? theme.colors.accent.orange : theme.colors.text.disabled} 
+              <Ionicons
+                key={i}
+                name={i < item.rating ? "star" : "star-outline"}
+                size={14}
+                color={i < item.rating ? theme.colors.accent.orange : theme.colors.text.disabled}
               />
             ))}
           </View>
@@ -85,12 +85,12 @@ const CoachProfileScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+        <TouchableOpacity style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#1B5E20" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{coach.name}</Text>
-        <TouchableOpacity>
-          <Ionicons name="share" size={24} color={theme.colors.text.primary} />
+        <Text style={styles.headerTitle}>Coach Profile</Text>
+        <TouchableOpacity style={styles.shareButton}>
+          <Ionicons name="share-outline" size={24} color="#1B5E20" />
         </TouchableOpacity>
       </View>
 
@@ -113,11 +113,11 @@ const CoachProfileScreen = () => {
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         {['About', 'Reviews', 'Schedule'].map((tab) => (
-          <TouchableOpacity 
+          <TouchableOpacity
             key={tab}
             style={[
               styles.tab,
-              { 
+              {
                 borderBottomWidth: selectedTab === tab ? 2 : 0,
                 borderBottomColor: theme.colors.accent.neonGreen,
               }
@@ -126,10 +126,10 @@ const CoachProfileScreen = () => {
           >
             <Text style={[
               styles.tabText,
-              { 
-                color: selectedTab === tab 
-                  ? theme.colors.accent.neonGreen 
-                  : theme.colors.text.secondary 
+              {
+                color: selectedTab === tab
+                  ? theme.colors.accent.neonGreen
+                  : theme.colors.text.secondary
               }
             ]}>
               {tab}
@@ -151,7 +151,7 @@ const CoachProfileScreen = () => {
                 <Text style={styles.readMoreText}>Read more</Text>
               </TouchableOpacity>
             )}
-            
+
             <Text style={styles.sectionTitle}>Qualifications</Text>
             <View style={styles.qualificationsContainer}>
               {coach.qualifications.map((qual, index) => (
@@ -182,34 +182,34 @@ const CoachProfileScreen = () => {
             <Text style={styles.sectionTitle}>Available Slots</Text>
             <View style={styles.scheduleContainer}>
               {coach.availableSlots.map((slot, index) => (
-                <TouchableOpacity 
-                  key={index} 
+                <TouchableOpacity
+                  key={index}
                   style={[
                     styles.slotItem,
-                    { 
-                      backgroundColor: slot.available 
-                        ? theme.colors.background.card 
-                        : theme.colors.background.tertiary 
+                    {
+                      backgroundColor: slot.available
+                        ? theme.colors.background.card
+                        : theme.colors.background.tertiary
                     }
                   ]}
                   disabled={!slot.available}
                 >
                   <Text style={[
                     styles.slotDay,
-                    { 
-                      color: slot.available 
-                        ? theme.colors.text.primary 
-                        : theme.colors.text.disabled 
+                    {
+                      color: slot.available
+                        ? theme.colors.text.primary
+                        : theme.colors.text.disabled
                     }
                   ]}>
                     {slot.day}
                   </Text>
                   <Text style={[
                     styles.slotTime,
-                    { 
-                      color: slot.available 
-                        ? theme.colors.text.primary 
-                        : theme.colors.text.disabled 
+                    {
+                      color: slot.available
+                        ? theme.colors.text.primary
+                        : theme.colors.text.disabled
                     }
                   ]}>
                     {slot.time}
@@ -235,33 +235,53 @@ const CoachProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: '#E8F5E9',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.background.card,
-    ...theme.shadows.small,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#E8F5E9',
+    borderBottomWidth: 1,
+    borderBottomColor: '#C8E6C9',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: '#C8E6C9',
+  },
+  shareButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: '#C8E6C9',
   },
   profileHeader: {
     flexDirection: 'row',
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.background.card,
-    ...theme.shadows.small,
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 20,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginRight: theme.spacing.md,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    marginRight: 16,
+    borderWidth: 3,
+    borderColor: '#C8E6C9',
   },
   profileInfo: {
     flex: 1,
@@ -270,12 +290,13 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: theme.colors.text.primary,
+    color: '#1B5E20',
   },
   profileSport: {
     fontSize: 16,
-    color: theme.colors.accent.neonGreen,
-    marginBottom: theme.spacing.xs,
+    color: '#2E7D32',
+    fontWeight: '600',
+    marginBottom: 4,
   },
   profileDetails: {
     flexDirection: 'row',
@@ -288,99 +309,112 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginLeft: theme.spacing.xs,
+    color: '#4A5568',
+    marginLeft: 6,
+    fontWeight: '500',
   },
   price: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: theme.colors.accent.orange,
+    color: '#2E7D32',
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.background.card,
-    ...theme.shadows.small,
+    backgroundColor: '#FFFFFF',
+    marginTop: 16,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    padding: 4,
   },
   tab: {
     flex: 1,
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 10,
     alignItems: 'center',
+    borderRadius: 10,
   },
   tabText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: 'bold',
   },
   content: {
     flex: 1,
-    padding: theme.spacing.md,
+    padding: 16,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
+    color: '#1B5E20',
+    marginBottom: 12,
+    marginTop: 8,
   },
   bioText: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    lineHeight: 24,
-    marginBottom: theme.spacing.lg,
+    fontSize: 15,
+    color: '#4A5568',
+    lineHeight: 22,
+    marginBottom: 12,
   },
   readMoreText: {
-    color: theme.colors.accent.neonGreen,
-    fontWeight: '600',
-    marginBottom: theme.spacing.lg,
+    color: '#2E7D32',
+    fontWeight: 'bold',
+    marginBottom: 16,
   },
   qualificationsContainer: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 16,
   },
   qualificationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 10,
   },
   qualificationText: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    marginLeft: theme.spacing.sm,
+    fontSize: 15,
+    color: '#475569',
+    marginLeft: 10,
   },
   reviewCard: {
-    backgroundColor: theme.colors.background.card,
-    borderRadius: theme.borderRadius.large,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.small,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   reviewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 10,
   },
   reviewUserImage: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: theme.spacing.sm,
+    marginRight: 12,
   },
   reviewUserInfo: {
     flex: 1,
   },
   reviewUserName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#1B5E20',
   },
   reviewRating: {
     flexDirection: 'row',
-    marginTop: theme.spacing.xs,
+    marginTop: 4,
   },
   reviewDate: {
     fontSize: 12,
-    color: theme.colors.text.secondary,
+    color: '#94A3B8',
   },
   reviewComment: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
+    color: '#475569',
     lineHeight: 20,
   },
   scheduleContainer: {
@@ -390,31 +424,36 @@ const styles = StyleSheet.create({
   },
   slotItem: {
     width: '48%',
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.medium,
-    marginBottom: theme.spacing.sm,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
     alignItems: 'center',
-    ...theme.shadows.small,
+    borderWidth: 1.5,
+    borderColor: '#C8E6C9',
   },
   slotDay: {
     fontSize: 16,
-    fontWeight: '600',
-    marginBottom: theme.spacing.xs,
+    fontWeight: 'bold',
+    marginBottom: 4,
   },
   slotTime: {
-    fontSize: 14,
-    marginBottom: theme.spacing.sm,
+    fontSize: 13,
+    marginBottom: 8,
   },
   bookButton: {
-    backgroundColor: theme.colors.accent.neonGreen,
-    paddingVertical: theme.spacing.lg,
-    margin: theme.spacing.md,
-    borderRadius: theme.borderRadius.medium,
+    backgroundColor: '#2E7D32',
+    paddingVertical: 16,
+    margin: 16,
+    borderRadius: 14,
     alignItems: 'center',
-    ...theme.shadows.medium,
+    elevation: 4,
+    shadowColor: '#2E7D32',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   bookButtonText: {
-    color: theme.colors.text.inverted,
+    color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 18,
   },

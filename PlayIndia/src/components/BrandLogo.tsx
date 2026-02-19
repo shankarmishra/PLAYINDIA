@@ -10,7 +10,7 @@ const BrandLogo: React.FC<BrandLogoProps> = ({ style, size = 40 }) => {
     // Try to load the logo, with fallback to text
     let logoSource;
     try {
-        logoSource = require('../assets/PLAYINDIA.png');
+        logoSource = require('../assets/TeamupIndia.png');
     } catch (error) {
         logoSource = null;
     }

@@ -144,11 +144,14 @@ const updateUserLocation = async (userId, lat, lng, address = null) => {
  * @param {number} lat - Latitude
  * @param {number} lng - Longitude
  * @param {number} radius - Radius in meters
+ * @param {Object} ageParams - Age filtering parameters
+ * @param {number} ageParams.minAge - Minimum age
+ * @param {number} ageParams.maxAge - Maximum age
  * @returns {Promise<Array>} Nearby users
  */
-const getNearbyUsers = async (lat, lng, radius = 5000) => { // Default 5km radius
+const getNearbyUsers = async (lat, lng, radius = 5000, ageParams = {}) => { // Default 5km radius
   try {
-    const nearbyUsers = await User.find({
+    const query = {
       location: {
         $near: {
           $geometry: {
@@ -160,7 +163,20 @@ const getNearbyUsers = async (lat, lng, radius = 5000) => { // Default 5km radiu
       },
       status: 'active', // Only active users
       isActive: true // Only active users
-    }).limit(50); // Limit to 50 users
+    };
+    
+    // Add age filtering if provided
+    if (ageParams.minAge !== undefined && ageParams.maxAge !== undefined) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { 'preferences.age': { $exists: false } }, // Default behavior if no age stored
+          { 'preferences.age': { $gte: ageParams.minAge, $lte: ageParams.maxAge } }
+        ]
+      });
+    }
+    
+    const nearbyUsers = await User.find(query).limit(50); // Limit to 50 users
 
     return nearbyUsers.map(user => ({
       id: user._id,
@@ -170,13 +186,15 @@ const getNearbyUsers = async (lat, lng, radius = 5000) => { // Default 5km radiu
       role: user.role,
       trustScore: user.trustScore,
       location: user.location,
-      lastActive: user.lastActive
+      lastActive: user.lastActive,
+      preferences: user.preferences
     }));
   } catch (error) {
     console.error('Get nearby users error:', error);
     throw error;
   }
 };
+
 
 /**
  * Get nearby coaches within a radius

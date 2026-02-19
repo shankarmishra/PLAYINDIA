@@ -1,361 +1,251 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Switch,
+  Alert,
+  StatusBar,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, CommonActions } from '@react-navigation/native';
-import { theme } from '../../theme/colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import useAuth from '../../hooks/useAuth';
 
-const SettingsScreen = () => {
+const UserSettingsScreen = () => {
   const navigation = useNavigation();
   const { logout } = useAuth();
-  const [notifications, setNotifications] = useState({
-    matchInvites: true,
-    bookingUpdates: true,
-    promotional: false,
-    locationUpdates: true,
-  });
 
-  const [privacy, setPrivacy] = useState({
-    showLocation: true,
-    showProfile: true,
-    allowContact: true,
-    hideProfile: false,
-  });
-
-  const [account, setAccount] = useState({
-    twoFactorAuth: false,
-    autoLogin: true,
-  });
+  const handleLogoutPress = () => {
+    Alert.alert('Logout', 'Are you sure you want to exit?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await logout();
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              })
+            );
+          } catch (error) {
+            console.error('Logout error:', error);
+          }
+        }
+      }
+    ]);
+  };
 
   const settingsSections = [
     {
       title: 'Account',
       items: [
         { id: '1', title: 'Edit Profile', icon: 'person-outline', screen: 'EditProfile' },
-        { id: '2', title: 'Privacy Settings', icon: 'lock-closed-outline', screen: 'PrivacySettings' },
-        { id: '3', title: 'Security', icon: 'shield-checkmark-outline', screen: 'Security' },
-        { id: '4', title: 'Change Password', icon: 'key-outline', screen: 'ChangePassword' },
+        { id: '2', title: 'Security', icon: 'shield-checkmark-outline', screen: 'Security' },
+        { id: '3', title: 'Privacy Settings', icon: 'lock-closed-outline', screen: 'PrivacyPolicy' },
       ],
     },
     {
       title: 'Preferences',
       items: [
-        { id: '5', title: 'Language', icon: 'globe-outline', value: 'English' },
-        { id: '6', title: 'Currency', icon: 'cash-outline', value: 'INR' },
-        { id: '7', title: 'Distance Unit', icon: 'location-outline', value: 'Kilometers' },
-        { id: '8', title: 'Theme', icon: 'color-palette-outline', value: 'Light' },
+        { id: '4', title: 'Language', icon: 'globe-outline', value: 'English' },
+        { id: '5', title: 'Theme', icon: 'color-palette-outline', value: 'Light' },
+        { id: '6', title: 'Notifications', icon: 'notifications-outline', screen: 'Notifications' },
       ],
     },
     {
       title: 'Support',
       items: [
-        { id: '9', title: 'Help Center', icon: 'help-circle-outline', screen: 'HelpCenter' },
-        { id: '10', title: 'FAQs', icon: 'information-circle-outline', screen: 'FAQs' },
-        { id: '11', title: 'Contact Us', icon: 'chatbubble-outline', screen: 'Contact' },
-        { id: '12', title: 'Report an Issue', icon: 'alert-circle-outline', screen: 'Report' },
+        { id: '7', title: 'Help Center', icon: 'help-circle-outline', screen: 'HelpSupport' },
+        { id: '8', title: 'Contact Us', icon: 'chatbubble-outline', screen: 'HelpSupport' },
       ],
     },
     {
       title: 'Other',
       items: [
-        { id: '13', title: 'About Us', icon: 'business-outline', screen: 'About' },
-        { id: '14', title: 'Terms of Service', icon: 'document-text-outline', screen: 'Terms' },
-        { id: '15', title: 'Privacy Policy', icon: 'document-lock-outline', screen: 'PrivacyPolicy' },
-        { id: '16', title: 'Log Out', icon: 'log-out-outline', screen: 'Logout' },
+        { id: '9', title: 'About Us', icon: 'business-outline', screen: 'About' },
+        { id: '10', title: 'Terms of Service', icon: 'document-text-outline', screen: 'Terms' },
+        { id: '11', title: 'Privacy Policy', icon: 'document-lock-outline', screen: 'PrivacyPolicy' },
+        { id: '12', title: 'Log Out', icon: 'log-out-outline', action: 'logout' },
       ],
     },
   ];
 
-  const toggleNotification = (key: string) => {
-    setNotifications(prev => ({
-      ...prev,
-      [key]: !prev[key as keyof typeof prev]
-    }));
-  };
-
-  const togglePrivacy = (key: string) => {
-    setPrivacy(prev => ({
-      ...prev,
-      [key]: !prev[key as keyof typeof prev]
-    }));
-  };
-
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#E8F5E9" />
       <View style={styles.header}>
-        <TouchableOpacity>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#0F172A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Settings</Text>
-        <View style={{ width: 24 }} /> {/* Spacer */}
+        <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Notification Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notifications</Text>
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <Ionicons name="calendar-outline" size={20} color={theme.colors.text.secondary} />
-              <Text style={styles.settingLabel}>Match Invites</Text>
-            </View>
-            <Switch
-              value={notifications.matchInvites}
-              onValueChange={() => toggleNotification('matchInvites')}
-              trackColor={{ false: theme.colors.ui.border, true: theme.colors.accent.neonGreen }}
-              thumbColor={theme.colors.background.card}
-            />
-          </View>
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <Ionicons name="calendar-outline" size={20} color={theme.colors.text.secondary} />
-              <Text style={styles.settingLabel}>Booking Updates</Text>
-            </View>
-            <Switch
-              value={notifications.bookingUpdates}
-              onValueChange={() => toggleNotification('bookingUpdates')}
-              trackColor={{ false: theme.colors.ui.border, true: theme.colors.accent.neonGreen }}
-              thumbColor={theme.colors.background.card}
-            />
-          </View>
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <Ionicons name="megaphone-outline" size={20} color={theme.colors.text.secondary} />
-              <Text style={styles.settingLabel}>Promotional</Text>
-            </View>
-            <Switch
-              value={notifications.promotional}
-              onValueChange={() => toggleNotification('promotional')}
-              trackColor={{ false: theme.colors.ui.border, true: theme.colors.accent.neonGreen }}
-              thumbColor={theme.colors.background.card}
-            />
-          </View>
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <Ionicons name="location-outline" size={20} color={theme.colors.text.secondary} />
-              <Text style={styles.settingLabel}>Location Updates</Text>
-            </View>
-            <Switch
-              value={notifications.locationUpdates}
-              onValueChange={() => toggleNotification('locationUpdates')}
-              trackColor={{ false: theme.colors.ui.border, true: theme.colors.accent.neonGreen }}
-              thumbColor={theme.colors.background.card}
-            />
-          </View>
-        </View>
-
-        {/* Privacy Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Privacy</Text>
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <Ionicons name="location-outline" size={20} color={theme.colors.text.secondary} />
-              <Text style={styles.settingLabel}>Show My Location</Text>
-            </View>
-            <Switch
-              value={privacy.showLocation}
-              onValueChange={() => togglePrivacy('showLocation')}
-              trackColor={{ false: theme.colors.ui.border, true: theme.colors.accent.neonGreen }}
-              thumbColor={theme.colors.background.card}
-            />
-          </View>
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <Ionicons name="eye-outline" size={20} color={theme.colors.text.secondary} />
-              <Text style={styles.settingLabel}>Show Profile to Others</Text>
-            </View>
-            <Switch
-              value={privacy.showProfile}
-              onValueChange={() => togglePrivacy('showProfile')}
-              trackColor={{ false: theme.colors.ui.border, true: theme.colors.accent.neonGreen }}
-              thumbColor={theme.colors.background.card}
-            />
-          </View>
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <Ionicons name="call-outline" size={20} color={theme.colors.text.secondary} />
-              <Text style={styles.settingLabel}>Allow Contact Requests</Text>
-            </View>
-            <Switch
-              value={privacy.allowContact}
-              onValueChange={() => togglePrivacy('allowContact')}
-              trackColor={{ false: theme.colors.ui.border, true: theme.colors.accent.neonGreen }}
-              thumbColor={theme.colors.background.card}
-            />
-          </View>
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <Ionicons name="eye-off-outline" size={20} color={theme.colors.text.secondary} />
-              <Text style={styles.settingLabel}>Hide My Profile</Text>
-            </View>
-            <Switch
-              value={privacy.hideProfile}
-              onValueChange={() => togglePrivacy('hideProfile')}
-              trackColor={{ false: theme.colors.ui.border, true: theme.colors.accent.neonGreen }}
-              thumbColor={theme.colors.background.card}
-            />
-          </View>
-        </View>
-
-        {/* General Settings */}
-        {settingsSections.map((section, sectionIndex) => (
-          <View key={sectionIndex} style={styles.section}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {settingsSections.map((section, index) => (
+          <View key={index} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
-            {section.items.map((item) => (
-              <TouchableOpacity key={item.id} style={styles.optionItem}>
-                <View style={styles.optionContent}>
-                  <Ionicons name={item.icon as any} size={20} color={theme.colors.text.secondary} />
-                  <Text style={styles.optionText}>{item.title}</Text>
-                </View>
-                {item.value ? (
-                  <View style={styles.optionValueContainer}>
-                    <Text style={styles.optionValue}>{item.value}</Text>
-                    <Ionicons name="chevron-forward" size={20} color={theme.colors.text.disabled} />
+            <View style={styles.sectionCard}>
+              {section.items.map((item, itemIndex) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.optionItem,
+                    itemIndex === section.items.length - 1 && { borderBottomWidth: 0 }
+                  ]}
+                  onPress={() => {
+                    if (item.action === 'logout') {
+                      handleLogoutPress();
+                    } else if (item.screen) {
+                      navigation.navigate(item.screen as any);
+                    }
+                  }}
+                >
+                  <View style={styles.optionLeft}>
+                    <View style={styles.iconContainer}>
+                      <Ionicons name={item.icon as any} size={20} color="#2E7D32" />
+                    </View>
+                    <Text style={styles.optionText}>{item.title}</Text>
                   </View>
-                ) : (
-                  <Ionicons name="chevron-forward" size={20} color={theme.colors.text.disabled} />
-                )}
-              </TouchableOpacity>
-            ))}
+                  <View style={styles.optionRight}>
+                    {item.value && <Text style={styles.optionValue}>{item.value}</Text>}
+                    <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         ))}
 
-        {/* Log Out Button */}
-        <TouchableOpacity 
-          style={styles.logoutButton}
-          onPress={() => {
-            Alert.alert(
-              'Logout',
-              'Are you sure you want to logout?',
-              [
-                {
-                  text: 'Cancel',
-                  style: 'cancel',
-                },
-                {
-                  text: 'Logout',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      await logout();
-                      // Navigate to login screen
-                      navigation.dispatch(
-                        CommonActions.reset({
-                          index: 0,
-                          routes: [{ name: 'LoginWelcome' }],
-                        }),
-                      );
-                    } catch (error) {
-                      Alert.alert('Error', 'Failed to logout. Please try again.');
-                    }
-                  },
-                },
-              ],
-            );
-          }}
-        >
-          <Ionicons name="log-out-outline" size={20} color={theme.colors.status.error} />
-          <Text style={styles.logoutText}>Log Out</Text>
+        <TouchableOpacity style={styles.dangerButton} onPress={handleLogoutPress}>
+          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+          <Text style={styles.dangerButtonText}>Sign Out</Text>
         </TouchableOpacity>
+
+        <Text style={styles.versionText}>PLAYINDIA Premium v2.4.1</Text>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: '#E8F5E9',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.background.card,
-    ...theme.shadows.small,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: '#C8E6C9',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#0F172A',
+    letterSpacing: -0.5,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+    paddingHorizontal: 16,
   },
   section: {
-    backgroundColor: theme.colors.background.card,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    borderRadius: theme.borderRadius.large,
-    padding: theme.spacing.md,
-    ...theme.shadows.small,
+    marginTop: 24,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1B5E20',
+    marginBottom: 12,
+    marginLeft: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.ui.divider,
-  },
-  settingContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingLabel: {
-    fontSize: 16,
-    color: theme.colors.text.primary,
-    marginLeft: theme.spacing.md,
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: theme.spacing.md,
+    padding: 18,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.ui.divider,
+    borderBottomColor: '#F0FDF4',
   },
-  optionContent: {
+  optionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+    backgroundColor: '#F0FDF4',
+  },
   optionText: {
     fontSize: 16,
-    color: theme.colors.text.primary,
-    marginLeft: theme.spacing.md,
+    fontWeight: '700',
+    color: '#1E293B',
   },
-  optionValueContainer: {
+  optionRight: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   optionValue: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    marginRight: theme.spacing.sm,
+    fontSize: 14,
+    color: '#64748B',
+    marginRight: 8,
+    fontWeight: '600',
   },
-  logoutButton: {
+  dangerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.background.card,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    paddingVertical: theme.spacing.lg,
-    borderRadius: theme.borderRadius.large,
-    ...theme.shadows.small,
+    backgroundColor: '#FEF2F2',
+    marginTop: 32,
+    height: 60,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#FEE2E2',
   },
-  logoutText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.status.error,
-    marginLeft: theme.spacing.sm,
+  dangerButtonText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#EF4444',
+    marginLeft: 8,
+  },
+  versionText: {
+    textAlign: 'center',
+    marginTop: 24,
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });
 
-export default SettingsScreen;
+export default UserSettingsScreen;

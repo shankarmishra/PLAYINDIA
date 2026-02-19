@@ -3,75 +3,41 @@ buildscript {
         buildToolsVersion = "35.0.0"
         minSdkVersion = 24
         compileSdkVersion = 35
-        targetSdkVersion = 36
-        ndkVersion = "27.0.12077973"
-        kotlinVersion = "2.1.20"
+        targetSdkVersion = 35
+        ndkVersion = "26.1.10909125"
+        kotlinVersion = "1.9.25"
     }
-
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle")
+        classpath("com.android.tools.build:gradle:8.7.3")
         classpath("com.facebook.react:react-native-gradle-plugin")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
     }
 }
 
 apply plugin: "com.facebook.react.rootproject"
 
-subprojects {
-    // Force c++_shared for all Android Library subprojects (e.g., native modules)
-    pluginManager.withPlugin("com.android.library") {
-        android {
-            defaultConfig {
-                externalNativeBuild {
-                    cmake {
-                        arguments "-DANDROID_STL=c++_shared", "-DCMAKE_SHARED_LINKER_FLAGS=-lc++_shared"
-                    }
-                }
-            }
+allprojects {
+    repositories {
+        maven {
+            url(new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), "../android"))
         }
-    }
-
-    // Force c++_shared for Android Application subprojects (e.g., app module)
-    pluginManager.withPlugin("com.android.application") {
-        android {
-            defaultConfig {
-                externalNativeBuild {
-                    cmake {
-                        arguments "-DANDROID_STL=c++_shared", "-DCMAKE_SHARED_LINKER_FLAGS=-lc++_shared"
-                    }
-                }
-            }
+        maven {
+            url(new File(["node", "--print", "require.resolve('jsc-android/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim(), "../dist"))
         }
-    }
-    
-    // Early fix for vector-icons fonts task - catch it as soon as it's added
-    if (project.hasProperty("android")) {
-        tasks.whenTaskAdded { task ->
-            if (task.name.contains("copyReactNativeVectorIconFonts")) {
-                task.doNotTrackState("Workaround for OneDrive symlink issue with font files")
-            }
-        }
+        google()
+        mavenCentral()
+        maven { url 'https://www.jitpack.io' }
     }
 }
 
-// Fix for async-storage codegen issue on Windows/OneDrive
-gradle.projectsEvaluated {
-    subprojects { project ->
-        if (project.hasProperty("android")) {
-            project.tasks.configureEach { task ->
-                if (task.name.contains("generateCodegenSchemaFromJavaScript")) {
-                    task.doNotTrackState("Workaround for OneDrive symlink issue")
-                }
-            }
-            
-            // Fix for vector-icons fonts task - must be done after all tasks are created
-            project.tasks.matching { it.name.contains("copyReactNativeVectorIconFonts") }.configureEach { task ->
-                task.doNotTrackState("Workaround for OneDrive symlink issue with font files")
-            }
+subprojects {
+    configurations.all {
+        resolutionStrategy {
+            force "com.google.android.gms:play-services-location:21.0.1"
         }
     }
 }

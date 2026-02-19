@@ -99,7 +99,7 @@ exports.updateLocation = async (req, res, next) => {
  */
 exports.getNearbyUsers = async (req, res, next) => {
   try {
-    const { lat, lng, radius = 5000 } = req.query;
+    const { lat, lng, radius = 5000, ageMin, ageMax } = req.query;
     
     if (!lat || !lng) {
       return res.status(400).json({
@@ -108,7 +108,13 @@ exports.getNearbyUsers = async (req, res, next) => {
       });
     }
 
-    const users = await getNearbyUsers(parseFloat(lat), parseFloat(lng), parseInt(radius));
+    const ageParams = {};
+    if (ageMin !== undefined && ageMax !== undefined) {
+      ageParams.minAge = parseInt(ageMin);
+      ageParams.maxAge = parseInt(ageMax);
+    }
+    
+    const users = await getNearbyUsers(parseFloat(lat), parseFloat(lng), parseInt(radius), ageParams);
 
     res.status(200).json({
       success: true,

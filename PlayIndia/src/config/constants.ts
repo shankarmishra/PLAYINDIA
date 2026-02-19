@@ -4,7 +4,7 @@
  */
 
 // API Base URL
-export const API_BASE_URL = 'https://playindia-3.onrender.com'; // Production backend on Render
+export const API_BASE_URL = 'https://playindia-3.onrender.com'; // Using production backend
 
 // API Endpoints
 export const API_ENDPOINTS = {

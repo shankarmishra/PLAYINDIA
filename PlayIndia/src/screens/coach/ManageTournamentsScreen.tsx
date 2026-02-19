@@ -1,11 +1,11 @@
-// Example for ManageTournamentsScreen.tsx
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 const ManageTournamentsScreen = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Manage Tournaments Screen</Text>
+      <Text style={styles.title}>Manage Tournaments</Text>
+      <Text style={styles.subtitle}>Tournament management coming soon</Text>
     </View>
   );
 };
@@ -17,10 +17,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1e1e1e',
+    backgroundColor: '#FFFFFF',
+    padding: 20,
   },
-  text: {
-    color: '#fff',
-    fontSize: 18,
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });

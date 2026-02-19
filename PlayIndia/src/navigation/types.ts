@@ -1,0 +1,27 @@
+export type UserTabParamList = {
+    HomeTab: undefined;
+    Home: undefined;
+    Tournaments: undefined;
+    TournamentDetail: { tournamentId: string };
+    FindPlayers: undefined;
+    FindPlayersForm: undefined;
+    LiveSearchMap: { searchRequest?: any };
+    LiveMap: { searchRequest?: any; userLocation?: any; userAddress?: string };
+    ShopHome: undefined;
+    Profile: undefined;
+    CoachProfile: { coachId?: string };
+    ProductDetail: { productId?: string };
+    Cart: undefined;
+    Checkout: { addressId?: string; paymentMethod?: string };
+    OrderTracking: { orderId?: string };
+    MyOrders: undefined;
+    Wallet: undefined;
+    Settings: undefined;
+    HelpSupport: undefined;
+    Notifications: undefined;
+    Chat: { userId?: string };
+    NearbyPlayers: undefined;
+    PlayersRank: undefined;
+    EditProfile: undefined;
+    Bookings: undefined;
+};

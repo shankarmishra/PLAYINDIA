@@ -61,7 +61,7 @@ const FindCoachScreen = () => {
   const filteredCoaches = mockCoaches.filter(coach => {
     const sportMatch = selectedSport === 'All' || coach.sport === selectedSport;
     let filterMatch = true;
-    
+
     if (selectedFilter === 'Available') {
       filterMatch = coach.availability === 'Available';
     } else if (selectedFilter === 'Top Rated') {
@@ -71,7 +71,7 @@ const FindCoachScreen = () => {
     } else if (selectedFilter === 'Most Experienced') {
       filterMatch = parseInt(coach.experience) >= 8;
     }
-    
+
     return sportMatch && filterMatch;
   });
 
@@ -91,24 +91,24 @@ const FindCoachScreen = () => {
           </View>
         </View>
       </View>
-      
+
       <Text style={styles.coachBio}>{item.bio}</Text>
-      
+
       <View style={styles.coachFooter}>
         <View style={[
-          styles.availabilityBadge, 
-          { 
-            backgroundColor: item.availability === 'Available' 
-              ? `${theme.colors.status.success}20` 
-              : `${theme.colors.status.warning}20` 
+          styles.availabilityBadge,
+          {
+            backgroundColor: item.availability === 'Available'
+              ? `${theme.colors.status.success}20`
+              : `${theme.colors.status.warning}20`
           }
         ]}>
           <Text style={[
-            styles.availabilityText, 
-            { 
-              color: item.availability === 'Available' 
-                ? theme.colors.status.success 
-                : theme.colors.status.warning 
+            styles.availabilityText,
+            {
+              color: item.availability === 'Available'
+                ? theme.colors.status.success
+                : theme.colors.status.warning
             }
           ]}>
             {item.availability}
@@ -125,36 +125,36 @@ const FindCoachScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity>
-          <Ionicons name="search" size={24} color={theme.colors.text.primary} />
+        <TouchableOpacity style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#1B5E20" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Find Coach</Text>
-        <TouchableOpacity>
-          <Ionicons name="filter" size={24} color={theme.colors.text.primary} />
+        <TouchableOpacity style={styles.filterButton}>
+          <Ionicons name="options-outline" size={24} color="#1B5E20" />
         </TouchableOpacity>
       </View>
 
       {/* Sport Filters */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterContainer}>
         {sports.map((sport, index) => (
-          <TouchableOpacity 
-            key={index} 
+          <TouchableOpacity
+            key={index}
             style={[
               styles.filterChip,
-              { 
-                backgroundColor: selectedSport === sport 
-                  ? theme.colors.accent.neonGreen 
-                  : theme.colors.background.secondary 
+              {
+                backgroundColor: selectedSport === sport
+                  ? theme.colors.accent.neonGreen
+                  : theme.colors.background.secondary
               }
             ]}
             onPress={() => setSelectedSport(sport)}
           >
             <Text style={[
               styles.filterText,
-              { 
-                color: selectedSport === sport 
-                  ? theme.colors.text.inverted 
-                  : theme.colors.text.primary 
+              {
+                color: selectedSport === sport
+                  ? theme.colors.text.inverted
+                  : theme.colors.text.primary
               }
             ]}>
               {sport}
@@ -178,58 +178,76 @@ const FindCoachScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: '#E8F5E9',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.background.card,
-    ...theme.shadows.small,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#E8F5E9',
+    borderBottomWidth: 1,
+    borderBottomColor: '#C8E6C9',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: '#C8E6C9',
+  },
+  filterButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: '#C8E6C9',
   },
   filterContainer: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.background.card,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
   },
   filterChip: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.large,
-    marginRight: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.ui.border,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 10,
+    borderWidth: 1.5,
+    borderColor: '#C8E6C9',
+    backgroundColor: '#FFFFFF',
   },
   filterText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
   contentContainer: {
-    padding: theme.spacing.md,
+    padding: 16,
   },
   coachCard: {
-    backgroundColor: theme.colors.background.card,
-    borderRadius: theme.borderRadius.large,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.small,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   coachHeader: {
     flexDirection: 'row',
-    marginBottom: theme.spacing.md,
+    marginBottom: 12,
   },
   coachImage: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    marginRight: theme.spacing.md,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#C8E6C9',
   },
   coachInfo: {
     flex: 1,
@@ -237,12 +255,13 @@ const styles = StyleSheet.create({
   coachName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: theme.colors.text.primary,
+    color: '#1B5E20',
   },
   coachSport: {
     fontSize: 14,
-    color: theme.colors.accent.neonGreen,
-    marginBottom: theme.spacing.xs,
+    color: '#2E7D32',
+    fontWeight: '600',
+    marginBottom: 4,
   },
   coachDetails: {
     flexDirection: 'row',
@@ -254,44 +273,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   detailText: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginLeft: theme.spacing.xs,
+    fontSize: 13,
+    color: '#4A5568',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   price: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: theme.colors.accent.orange,
+    color: '#2E7D32',
   },
   coachBio: {
     fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.md,
+    color: '#4A5568',
+    marginBottom: 12,
     lineHeight: 20,
   },
   coachFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#E8F5E9',
+    paddingTop: 12,
   },
   availabilityBadge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.small,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   availabilityText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
   bookButton: {
-    backgroundColor: theme.colors.accent.neonGreen,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.medium,
+    backgroundColor: '#2E7D32',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
   bookButtonText: {
-    color: theme.colors.text.inverted,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontWeight: 'bold',
     fontSize: 14,
   },
 });

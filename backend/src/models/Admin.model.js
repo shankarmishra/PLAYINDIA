@@ -118,15 +118,15 @@ const adminSchema = new mongoose.Schema({
   performance: {
     rating: {
       type: Number,
-      min: 0,
+      min: 1,
       max: 5,
-      default: 0
+      default: 1
     },
     satisfaction: {
       type: Number,
-      min: 0,
+      min: 1,
       max: 5,
-      default: 0
+      default: 1
     }
   },
   notifications: {

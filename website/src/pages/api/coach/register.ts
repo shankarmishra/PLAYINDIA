@@ -45,6 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('Received fields:', Object.keys(fields));
     
     // Extract basic user registration fields
+    // Extract basic user registration fields
     const name = Array.isArray(fields.name) ? fields.name[0] : fields.name;
     const email = Array.isArray(fields.email) ? fields.email[0] : fields.email;
     const password = Array.isArray(fields.password) ? fields.password[0] : fields.password;
@@ -84,16 +85,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
     
-    // Create JSON data for user registration (backend expects JSON, not FormData)
-    const userRegistrationData = {
+    // Create form data for user registration
+    const userRegistrationFormData = new FormData();
+    
+    userRegistrationFormData.append('name', name as string);
+    userRegistrationFormData.append('email', email as string);
+    userRegistrationFormData.append('password', password as string);
+    userRegistrationFormData.append('mobile', formattedMobile);
+    userRegistrationFormData.append('role', 'coach'); // Explicitly set role to coach for this endpoint
+    
+    console.log('Submitting user registration with data:', {
       name: name as string,
       email: email as string,
-      password: password as string,
       mobile: formattedMobile,
       role: 'coach'
-    };
-    
-    console.log('Submitting user registration with data:', userRegistrationData);
+    });
         
     // Register user first
     console.log('Making request to backend:', API_CONFIG.ENDPOINTS.AUTH.REGISTER);
@@ -102,10 +108,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       userResponse = await fetch(API_CONFIG.ENDPOINTS.AUTH.REGISTER, {
         method: 'POST',
+        body: userRegistrationFormData as any,
         headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(userRegistrationData)
+          ...userRegistrationFormData.getHeaders()
+        }
       });
     } catch (error: any) {
       console.error('Network error when contacting backend:', error);
@@ -117,28 +123,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
         
     if (!userResponse.ok) {
-      // Handle non-JSON responses (like 429 rate limit errors)
-      // Always read as text first, then try to parse as JSON
-      // This prevents "body already consumed" errors
-      let errorData;
-      try {
-        const text = await userResponse.text();
-        // Try to parse as JSON
-        try {
-          errorData = JSON.parse(text);
-        } catch {
-          // If not JSON, use text as message
-          errorData = { message: text || 'Request failed', error: text };
-        }
-      } catch (parseError: any) {
-        // If reading text fails, create a generic error
-        console.error('Error reading error response:', parseError);
-        errorData = { 
-          message: `Request failed with status ${userResponse.status}`, 
-          error: parseError.message || 'Unknown error' 
-        };
-      }
-      
+      const errorData = await userResponse.json();
       console.error('Backend registration failed:', errorData);
       return res.status(userResponse.status).json({
         success: false,
@@ -147,39 +132,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
         
-    // Parse successful response
-    // Always read as text first, then try to parse as JSON
-    let userData;
-    try {
-      const text = await userResponse.text();
-      // Try to parse as JSON
-      try {
-        userData = JSON.parse(text);
-      } catch {
-        // If not JSON, throw error
-        throw new Error(`Invalid response format: ${text}`);
-      }
-    } catch (parseError: any) {
-      console.error('Error parsing user registration response:', parseError);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to parse registration response',
-        error: parseError.message
-      });
-    }
+    const userData = await userResponse.json();
     console.log('User registration successful:', userData);
-    
-    // Extract token from response (could be userData.token or userData.data.token)
-    const token = userData.token || userData.data?.token;
-    
-    if (!token) {
-      console.error('No token found in user registration response:', userData);
-      // Still return success since user was created, but note the issue
-      return res.status(200).json({
-        ...userData,
-        warning: 'User registered but coach profile update may fail - no token available'
-      });
-    }
         
     // If user registration was successful, update coach profile with additional data
     // Create form data for coach profile update
@@ -190,32 +144,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Don't add basic user fields again
       if (key !== 'name' && key !== 'email' && key !== 'password' && key !== 'mobile' && key !== 'role') {
         const value = Array.isArray(fields[key]) ? fields[key][0] : fields[key];
-        if (value !== undefined && value !== null && value !== '') {
+        if (value !== undefined) {
           coachProfileFormData.append(key, value as string);
         }
       }
     });
         
     // Add files to the coach profile form data
-    console.log('Files to upload:', Object.keys(files));
     for (const key of Object.keys(files)) {
       const file = Array.isArray(files[key]) ? files[key][0] : files[key];
       if (file && typeof file !== 'string') {
         try {
           const fileBuffer = fs.readFileSync(file.filepath);
           const filename = file.originalFilename || 'file';
-          console.log(`Uploading file ${key}: ${filename} (${fileBuffer.length} bytes)`);
           coachProfileFormData.append(key, fileBuffer, {
             filename,
             contentType: file.mimetype || 'application/octet-stream'
           });
         } catch (error) {
           console.error(`Error reading file ${key}:`, error);
-          // Don't fail the whole registration if one file fails
-          console.warn(`Skipping file ${key} due to error, continuing with other files`);
+          return res.status(400).json({
+            success: false,
+            message: 'Error reading uploaded file',
+            error: error instanceof Error ? error.message : String(error)
+          });
         }
       }
     }
+        
+    // Get the token from the user registration response to authenticate the coach profile update
+    const token = userData.token;
         
     // Update coach profile
     const coachResponse = await fetch(API_CONFIG.ENDPOINTS.COACHES.BASE, {
@@ -227,23 +185,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     });
         
-    // Parse coach profile response safely
-    // Always read as text first, then try to parse as JSON
-    let coachData;
-    try {
-      const text = await coachResponse.text();
-      // Try to parse as JSON
-      try {
-        coachData = JSON.parse(text);
-      } catch {
-        // If not JSON, create error object
-        coachData = { success: false, message: `Invalid response format: ${text}` };
-      }
-    } catch (parseError: any) {
-      console.error('Error parsing coach profile response:', parseError);
-      // Don't fail the whole registration if coach profile update fails
-      coachData = { success: false, message: 'Coach profile update failed but user was registered' };
-    }
+    const coachData = await coachResponse.json();
         
     if (!coachResponse.ok) {
       // If coach profile update fails, return the user registration data but note the issue

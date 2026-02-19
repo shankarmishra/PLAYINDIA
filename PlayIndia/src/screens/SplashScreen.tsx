@@ -1,13 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, Animated, StatusBar, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import AsyncStorage from '../utils/AsyncStorageSafe';
-import { theme } from '../theme/colors';
-import BrandLogo from '../components/BrandLogo';
 import { RootStackParamList } from '../navigation/AppNavigator';
-
-const { width, height } = Dimensions.get('window');
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'Splash'>;
 
@@ -18,7 +14,7 @@ const SplashScreen = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    StatusBar.setBarStyle('light-content');
+    StatusBar.setBarStyle('dark-content');
     
     // Start animations
     Animated.parallel([
@@ -77,96 +73,112 @@ const SplashScreen = () => {
   }, [fadeAnim, scaleAnim, navigation]);
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary.navy} />
+    <View style={styles.mainContainer}>
+      <StatusBar barStyle="dark-content" backgroundColor="#E8F5E9" />
       
-      {/* Background gradient effect */}
-      <View style={styles.background} />
-      
-      {/* App logo with animations */}
-      <Animated.View 
-        style={[
-          styles.logoContainer,
-          { 
-            opacity: fadeAnim, 
-            transform: [{ scale: scaleAnim }] 
-          }
-        ]}
-      >
-        <BrandLogo size={120} />
-      </Animated.View>
-      
-      {/* App name */}
-      <Animated.View 
-        style={[
-          styles.textContainer,
-          { opacity: fadeAnim }
-        ]}
-      >
-        <Text style={styles.appName}>PLAYINDIA</Text>
-        <Text style={styles.tagline}>IND'S PREMIER SPORTS NETWORK</Text>
-      </Animated.View>
-      
-      {/* Loading indicator */}
-      <Animated.View 
-        style={[
-          styles.footer,
-          { opacity: fadeAnim }
-        ]}
-      >
-        <Text style={styles.footerText}>CONNECT. PLAY. COMPETE.</Text>
-      </Animated.View>
+      <View style={styles.overlay}>
+        {/* App logo with animations */}
+        <Animated.View 
+          style={[
+            styles.logoContainer,
+            { 
+              opacity: fadeAnim, 
+              transform: [{ scale: scaleAnim }] 
+            }
+          ]}
+        >
+          <Image
+            source={require('../assets/TeamupIndia.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+        </Animated.View>
+        
+        {/* App name */}
+        <Animated.View 
+          style={[
+            styles.textContainer,
+            { opacity: fadeAnim }
+          ]}
+        >
+          <Text style={styles.appNameSmaller}>TEAMUPINDIA</Text>
+          <Text style={styles.taglineSmaller}>IND'S PREMIER SPORTS NETWORK</Text>
+        </Animated.View>
+        
+        {/* Loading indicator */}
+        <Animated.View 
+          style={[
+            styles.footer,
+            { opacity: fadeAnim }
+          ]}
+        >
+          <Text style={styles.footerText}>CONNECT. PLAY. COMPETE.</Text>
+        </Animated.View>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#E8F5E9',
+  },
+  overlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.primary.navy,
-  },
-  background: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: theme.colors.primary.navy,
   },
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: theme.spacing.xl,
+    marginBottom: 20,
+  },
+  logoImage: {
+    width: 180,
+    height: 180,
   },
   textContainer: {
     alignItems: 'center',
-    marginTop: theme.spacing.lg,
+    marginTop: 15,
   },
   appName: {
     fontSize: 32,
     fontWeight: '900',
-    color: theme.colors.text.inverted,
+    color: '#2E7D32',
     textAlign: 'center',
     letterSpacing: 2,
-    marginBottom: theme.spacing.sm,
+    marginBottom: 8,
   },
   tagline: {
-    fontSize: 14,
-    color: theme.colors.accent.neonGreen,
+    fontSize: 12,
+    color: '#558B2F',
     textAlign: 'center',
     fontWeight: '600',
     letterSpacing: 1,
   },
+  appNameSmaller: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#2E7D32',
+    letterSpacing: 1,
+    marginTop: 12,
+  },
+  taglineSmaller: {
+    fontSize: 9,
+    color: '#558B2F',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
   footer: {
     position: 'absolute',
-    bottom: 50,
+    bottom: 60,
     alignItems: 'center',
   },
   footerText: {
-    fontSize: 12,
-    color: theme.colors.text.secondary,
+    fontSize: 11,
+    color: '#558B2F',
     letterSpacing: 2,
     fontWeight: '600',
   },

@@ -38,8 +38,8 @@ async function createAdmin() {
       role: 'super_admin',
       status: 'active',
       performance: {
-        rating: 0, // Default value (now allowed)
-        satisfaction: 0 // Default value (now allowed)
+        rating: 1, // Default value (minimum allowed)
+        satisfaction: 1 // Default value (minimum allowed)
       },
       permissions: {
         users: {

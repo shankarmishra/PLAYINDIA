@@ -15,7 +15,7 @@ const Review = require('../models/Review.model');
  */
 exports.getNearbyPlayers = async (req, res, next) => {
   try {
-    const { lat, lng, distance = 5, game, skill, availability } = req.query;
+    const { lat, lng, distance = 5, game, skill, availability, date, time } = req.query;
     const userId = req.user.id;
 
     // Convert distance to radians for MongoDB geospatial queries
@@ -46,35 +46,40 @@ exports.getNearbyPlayers = async (req, res, next) => {
     }
 
     if (availability === 'true') {
-      // Add availability filter if needed
       query['availability.isAvailable'] = true;
     }
 
     const users = await User.find(query)
-      .select('name mobile location preferences trustScore level')
+      .select('name mobile location preferences profile trustScore level')
       .limit(50);
 
     // Calculate AI-based matching scores
     const usersWithScores = users.map(user => {
-      // Simple matching algorithm - can be enhanced with ML
       let score = 0;
-      
+
       // Distance factor (closer is better)
       const userLat = user.location.coordinates[1];
       const userLng = user.location.coordinates[0];
-      const distance = calculateDistance(lat, lng, userLat, userLng);
-      score += Math.max(0, 100 - (distance * 10)); // Up to 100 points for distance
-      
-      // Skill compatibility
+      const dist = calculateDistance(lat, lng, userLat, userLng);
+      score += Math.max(0, 100 - (dist * 10)); // Up to 100 points for distance
+
+      // Game compatibility
       if (game && user.preferences.favoriteGames.includes(game)) {
         score += 30;
       }
-      
+
+      // Time compatibility
+      if (time && user.preferences.preferredPlayTime &&
+        user.preferences.preferredPlayTime.some(t => t.toLowerCase() === time.toLowerCase())) {
+        score += 40;
+      }
+
       // Trust score factor
-      score += user.trustScore;
-      
+      score += (user.trustScore || 75);
+
       return {
         ...user.toObject(),
+        distance: dist, // Now properly returning the distance
         matchScore: Math.min(score, 100)
       };
     });
@@ -101,7 +106,7 @@ exports.getNearbyPlayers = async (req, res, next) => {
 exports.getUserProfile = async (req, res, next) => {
   try {
     const { id } = req.params;
-    
+
     const user = await User.findById(id)
       .populate('achievements.achievementId', 'name description icon badgeColor points level rarity')
       .populate('referral.referredBy', 'name mobile');
@@ -154,7 +159,7 @@ exports.getUserProfile = async (req, res, next) => {
 exports.updatePreferences = async (req, res, next) => {
   try {
     const { preferences } = req.body;
-    
+
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { preferences },
@@ -228,7 +233,7 @@ exports.getUserDashboard = async (req, res, next) => {
         fitnessSummary: {} // Implement based on integration with health APIs
       },
       sections: {
-        todayBookings: recentBookings.filter(b => 
+        todayBookings: recentBookings.filter(b =>
           new Date(b.schedule.date).toDateString() === new Date().toDateString()
         ),
         nearbyPlayers: [], // Will be populated by separate API call
@@ -265,7 +270,7 @@ exports.getUserAchievements = async (req, res, next) => {
       .populate('achievements.achievementId', 'name description icon badgeColor points level rarity');
 
     const unlockedAchievements = user.achievements.filter(a => a.unlocked);
-    
+
     res.status(200).json({
       success: true,
       data: {
@@ -289,11 +294,11 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371; // Earth's radius in km
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // Distance in km
 }
 
@@ -356,10 +361,25 @@ exports.updateUserProfile = async (req, res, next) => {
       });
     }
 
-    const user = await User.findByIdAndUpdate(req.user.id, req.body, {
-      new: true,
-      runValidators: true
-    }).select('-password');
+    // Use a more robust update for nested objects if preferences are provided
+    let updateData = req.body;
+    let query = { _id: req.user.id };
+    let options = { new: true, runValidators: true };
+
+    if (req.body.preferences) {
+      // Flatten preferences to avoid overwriting the whole object
+      const prefs = req.body.preferences;
+      Object.keys(prefs).forEach(key => {
+        updateData[`preferences.${key}`] = prefs[key];
+      });
+      delete updateData.preferences;
+    }
+
+    const user = await User.findOneAndUpdate(
+      query,
+      { $set: updateData },
+      options
+    ).select('-password');
 
     if (!user) {
       return res.status(404).json({

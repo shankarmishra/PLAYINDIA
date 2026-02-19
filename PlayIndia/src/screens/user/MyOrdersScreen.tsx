@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
-  FlatList, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  FlatList,
   Image,
   StatusBar,
   ActivityIndicator,
@@ -14,246 +14,123 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { UserTabParamList } from '../../navigation/UserNav';
+import { UserTabParamList } from '../../navigation/types';
+import ApiService from '../../services/ApiService';
 
 type NavigationProp = StackNavigationProp<UserTabParamList>;
 
-// Mock orders data
-const mockOrders = [
-  {
-    id: 'ORD-2024-001',
-    date: '2024-01-15',
-    status: 'Delivered',
-    total: 4897,
-    items: [
-      { name: 'Professional Cricket Bat', quantity: 1, image: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80' },
-      { name: 'Cricket Helmet', quantity: 1, image: 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80' },
-    ],
-  },
-  {
-    id: 'ORD-2024-002',
-    date: '2024-01-12',
-    status: 'Shipped',
-    total: 2199,
-    items: [
-      { name: 'Tennis Racket Pro', quantity: 1, image: 'https://images.unsplash.com/photo-1622163642992-6c4ad786e58a?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80' },
-    ],
-  },
-  {
-    id: 'ORD-2024-003',
-    date: '2024-01-10',
-    status: 'Processing',
-    total: 1299,
-    items: [
-      { name: 'Badminton Racket Pro', quantity: 1, image: 'https://images.unsplash.com/photo-1622163642992-6c4ad786e58a?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80' },
-    ],
-  },
-  {
-    id: 'ORD-2024-004',
-    date: '2024-01-08',
-    status: 'Cancelled',
-    total: 899,
-    items: [
-      { name: 'Football', quantity: 1, image: 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80' },
-    ],
-  },
-];
-
 const MyOrdersScreen = () => {
   const navigation = useNavigation<NavigationProp>();
-  const [orders, setOrders] = useState(mockOrders);
-  const [selectedFilter, setSelectedFilter] = useState('All');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<any[]>([]);
 
-  const filters = ['All', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
+  useEffect(() => {
+    loadOrders();
+  }, []);
 
-  const filteredOrders = selectedFilter === 'All' 
-    ? orders 
-    : orders.filter(order => order.status === selectedFilter);
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await ApiService.orders.getMyOrders();
+      if (response.data && response.data.success) {
+        setOrders(response.data.data);
+      }
+    } catch (error) {
+      console.log('Error loading orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Delivered': return '#10B981';
-      case 'Shipped': return '#3B82F6';
-      case 'Processing': return '#F59E0B';
-      case 'Cancelled': return '#EF4444';
-      default: return '#64748B';
+    switch (status.toLowerCase()) {
+      case 'delivered':
+        return '#16A34A';
+      case 'processing':
+        return '#2563EB';
+      case 'shipped':
+        return '#7C3AED';
+      case 'cancelled':
+        return '#DC2626';
+      default:
+        return '#64748B';
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Delivered': return 'checkmark-circle';
-      case 'Shipped': return 'car';
-      case 'Processing': return 'time';
-      case 'Cancelled': return 'close-circle';
-      default: return 'ellipse';
-    }
-  };
-
-  const renderOrder = ({ item }: any) => (
-    <TouchableOpacity 
+  const renderOrderCard = ({ item }: { item: any }) => (
+    <TouchableOpacity
       style={styles.orderCard}
+      onPress={() => navigation.navigate('OrderTracking', { orderId: item._id })}
       activeOpacity={0.8}
-      onPress={() => navigation.navigate('OrderTracking', { orderId: item.id })}
     >
       <View style={styles.orderHeader}>
         <View>
-          <Text style={styles.orderId}>Order #{item.id}</Text>
-          <Text style={styles.orderDate}>
-            {new Date(item.date).toLocaleDateString('en-IN', { 
-              day: 'numeric', 
-              month: 'short', 
-              year: 'numeric' 
-            })}
-          </Text>
+          <Text style={styles.orderId}>Order #{item.orderId || item._id.slice(-8).toUpperCase()}</Text>
+          <Text style={styles.orderDate}>{new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status)}15` }]}>
-          <Ionicons 
-            name={getStatusIcon(item.status) as any} 
-            size={14} 
-            color={getStatusColor(item.status)} 
-          />
-          <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {item.status}
-          </Text>
+        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '15' }]}>
+          <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status.toUpperCase()}</Text>
         </View>
       </View>
 
-      <View style={styles.orderItems}>
-        {item.items.map((orderItem: any, index: number) => (
-          <View key={index} style={styles.orderItem}>
-            <Image 
-              source={{ uri: orderItem.image }} 
-              style={styles.orderItemImage}
-              resizeMode="cover"
+      <View style={styles.orderContent}>
+        <View style={styles.itemsImages}>
+          {item.items.slice(0, 3).map((orderItem: any, idx: number) => (
+            <Image
+              key={idx}
+              source={{ uri: orderItem.product?.images?.[0] || orderItem.product?.image || 'https://via.placeholder.com/100' }}
+              style={styles.itemThumb}
             />
-            <View style={styles.orderItemInfo}>
-              <Text style={styles.orderItemName} numberOfLines={1}>
-                {orderItem.name}
-              </Text>
-              <Text style={styles.orderItemQuantity}>Qty: {orderItem.quantity}</Text>
+          ))}
+          {item.items.length > 3 && (
+            <View style={styles.moreThumb}>
+              <Text style={styles.moreText}>+{item.items.length - 3}</Text>
             </View>
-          </View>
-        ))}
+          )}
+        </View>
+        <View style={styles.orderStats}>
+          <Text style={styles.itemCount}>{item.items.length} {item.items.length === 1 ? 'Item' : 'Items'}</Text>
+          <Text style={styles.orderTotal}>₹{item.totalAmount.toLocaleString()}</Text>
+        </View>
       </View>
 
       <View style={styles.orderFooter}>
-        <Text style={styles.orderTotalLabel}>Total Amount</Text>
-        <Text style={styles.orderTotal}>₹{item.total.toLocaleString()}</Text>
-      </View>
-
-      <View style={styles.orderActions}>
-        {item.status === 'Delivered' && (
-          <>
-            <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
-              <Text style={styles.actionButtonText}>Reorder</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, styles.primaryButton]} activeOpacity={0.7}>
-              <Text style={[styles.actionButtonText, styles.primaryButtonText]}>Rate & Review</Text>
-            </TouchableOpacity>
-          </>
-        )}
-        {item.status === 'Shipped' && (
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.primaryButton]} 
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('OrderTracking', { orderId: item.id })}
-          >
-            <Text style={[styles.actionButtonText, styles.primaryButtonText]}>Track Order</Text>
-          </TouchableOpacity>
-        )}
-        {item.status === 'Processing' && (
-          <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
-            <Text style={styles.actionButtonText}>Cancel Order</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity 
-          style={styles.actionButton}
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('OrderTracking', { orderId: item.id })}
-        >
-          <Text style={styles.actionButtonText}>View Details</Text>
-        </TouchableOpacity>
+        <Text style={styles.footerNote}>Tap to see tracking details</Text>
+        <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
       </View>
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
-      {/* Header */}
+      <StatusBar barStyle="dark-content" backgroundColor="#E8F5E9" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#0F172A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Orders</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 44 }} />
       </View>
 
-      {/* Filters */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filtersContainer}
-      >
-        {filters.map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            style={[
-              styles.filterChip,
-              selectedFilter === filter && styles.filterChipActive
-            ]}
-            onPress={() => setSelectedFilter(filter)}
-            activeOpacity={0.7}
-          >
-            <Text style={[
-              styles.filterText,
-              selectedFilter === filter && styles.filterTextActive
-            ]}>
-              {filter}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Orders List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1ED760" />
-          <Text style={styles.loadingText}>Loading orders...</Text>
+          <ActivityIndicator size="large" color="#2E7D32" />
         </View>
-      ) : filteredOrders.length > 0 ? (
+      ) : orders.length > 0 ? (
         <FlatList
-          data={filteredOrders}
-          renderItem={renderOrder}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.ordersList}
+          data={orders}
+          renderItem={renderOrderCard}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <Ionicons name="receipt-outline" size={80} color="#CBD5E0" />
-          <Text style={styles.emptyText}>No orders found</Text>
-          <Text style={styles.emptySubtext}>
-            {selectedFilter === 'All' 
-              ? 'You haven\'t placed any orders yet' 
-              : `No ${selectedFilter.toLowerCase()} orders`}
-          </Text>
-          {selectedFilter !== 'All' && (
-            <TouchableOpacity 
-              style={styles.clearFilterButton}
-              onPress={() => setSelectedFilter('All')}
-            >
-              <Text style={styles.clearFilterText}>Show All Orders</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity 
-            style={styles.shopButton}
-            onPress={() => navigation.navigate('ShopHome')}
-          >
-            <Text style={styles.shopButtonText}>Start Shopping</Text>
+          <Ionicons name="cart-outline" size={80} color="#C8E6C9" />
+          <Text style={styles.emptyTitle}>No orders yet</Text>
+          <Text style={styles.emptySubtitle}>When you shop, your orders will appear here!</Text>
+          <TouchableOpacity style={styles.shopBtn} onPress={() => navigation.navigate('ShopHome')}>
+            <Text style={styles.shopBtnText}>Start Shopping</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -264,65 +141,47 @@ const MyOrdersScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#E8F5E9',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 12,
-    height: 60,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#E8F5E9',
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: '#C8E6C9',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
     color: '#0F172A',
   },
-  filtersContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 12,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  filterChip: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginRight: 8,
-  },
-  filterChipActive: {
-    backgroundColor: '#1ED760',
-    borderColor: '#1ED760',
-  },
-  filterText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  filterTextActive: {
-    color: '#FFFFFF',
-  },
-  ordersList: {
+  listContent: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 40,
   },
   orderCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 24,
+    padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
   },
   orderHeader: {
     flexDirection: 'row',
@@ -331,150 +190,116 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   orderId: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',
-    marginBottom: 4,
   },
   orderDate: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#64748B',
+    marginTop: 2,
+    fontWeight: '600',
   },
   statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  orderItems: {
-    marginBottom: 16,
-    gap: 12,
+  orderContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#F0FDF4',
   },
-  orderItem: {
+  itemsImages: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
-  orderItemImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
+  itemThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 10,
     backgroundColor: '#F8FAFC',
+    marginRight: -10,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
-  orderItemInfo: {
-    flex: 1,
+  moreThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: '#C8E6C9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
-  orderItemName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
+  moreText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1B5E20',
   },
-  orderItemQuantity: {
+  orderStats: {
+    alignItems: 'flex-end',
+  },
+  itemCount: {
     fontSize: 12,
     color: '#64748B',
+    fontWeight: '600',
+  },
+  orderTotal: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#1B5E20',
+    marginTop: 2,
   },
   orderFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    marginBottom: 16,
-  },
-  orderTotalLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  orderTotal: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1ED760',
-  },
-  orderActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    alignItems: 'center',
-  },
-  primaryButton: {
-    backgroundColor: '#1ED760',
-    borderColor: '#1ED760',
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
     marginTop: 12,
-    fontSize: 15,
-    color: '#64748B',
+  },
+  footerNote: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '600',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    paddingBottom: 60,
   },
-  emptyText: {
-    fontSize: 22,
+  emptyTitle: {
+    fontSize: 20,
     fontWeight: '800',
+    color: '#1B5E20',
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 14,
     color: '#64748B',
-    marginTop: 20,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 24,
   },
-  emptySubtext: {
-    fontSize: 15,
-    color: '#94A3B8',
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  clearFilterButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#1ED760',
-    marginBottom: 16,
-  },
-  clearFilterText: {
-    color: '#1ED760',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  shopButton: {
-    backgroundColor: '#1ED760',
-    paddingHorizontal: 32,
+  shopBtn: {
+    backgroundColor: '#2E7D32',
     paddingVertical: 14,
-    borderRadius: 12,
+    paddingHorizontal: 32,
+    borderRadius: 14,
   },
-  shopButtonText: {
+  shopBtnText: {
     color: '#FFFFFF',
+    fontWeight: '800',
     fontSize: 16,
-    fontWeight: '700',
   },
 });
 

@@ -47,6 +47,7 @@ const createSendToken = (user, statusCode, res, message = 'Success') => {
       experiencePoints: user.experiencePoints,
       walletBalance: user.walletBalance,
       preferences: user.preferences,
+      profile: user.profile,
       ...(user.location && { location: user.location })
     }
   });
@@ -56,63 +57,6 @@ const createSendToken = (user, statusCode, res, message = 'Success') => {
 exports.register = async (req, res, next) => {
   try {
     const { name, email, password, mobile, role = 'user' } = req.body;
-
-    // Validate name (2-50 characters)
-    if (!name || typeof name !== 'string') {
-      return res.status(400).json({
-        success: false,
-        message: 'Name is required'
-      });
-    }
-    const trimmedName = name.trim();
-    if (trimmedName.length < 2 || trimmedName.length > 50) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name must be between 2 and 50 characters'
-      });
-    }
-
-    // Validate email
-    if (!email || typeof email !== 'string') {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide a valid email'
-      });
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide a valid email'
-      });
-    }
-
-    // Validate password (minimum 8 characters with complexity)
-    if (!password || typeof password !== 'string') {
-      return res.status(400).json({
-        success: false,
-        message: 'Password is required'
-      });
-    }
-    if (password.length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 8 characters'
-      });
-    }
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    const hasSpecialChar = /[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/]/.test(password);
-    if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character'
-      });
-    }
-
-    // Normalize email to lowercase for consistent checking
-    const normalizedEmail = email ? email.toLowerCase().trim() : email;
 
     // Normalize mobile number - remove country code and keep only 10 digits
     let normalizedMobile = mobile;
@@ -137,47 +81,27 @@ exports.register = async (req, res, next) => {
     }
 
     // Check if user already exists
-    // Email is already stored in lowercase due to schema, so use normalized email directly
-    // Mobile is stored as 10 digits, so use normalized mobile
     const existingUser = await User.findOne({
-      $or: [
-        { email: normalizedEmail }, // Email is already lowercase in DB
-        { mobile: normalizedMobile }
-      ]
+      $or: [{ email }, { mobile: normalizedMobile }]
     });
 
     if (existingUser) {
-      // Check which field matched to provide better error message
-      const emailMatch = existingUser.email && existingUser.email.toLowerCase() === normalizedEmail;
-      const mobileMatch = existingUser.mobile && existingUser.mobile === normalizedMobile;
-      
-      let errorMessage = 'User with this email or mobile already exists.';
-      if (emailMatch && mobileMatch) {
-        errorMessage = 'User with this email and mobile number already exists.';
-      } else if (emailMatch) {
-        errorMessage = 'User with this email already exists.';
-      } else if (mobileMatch) {
-        errorMessage = 'User with this mobile number already exists.';
-      }
-      
       return res.status(400).json({
         success: false,
-        message: errorMessage
+        message: 'User with this email or mobile already exists.'
       });
     }
 
     // Generate referral code
     const referralCode = await generateReferralCode();
 
-    // Extract additional fields from request body
-    const city = req.body.city || '';
-    const favoriteGames = req.body.favoriteGames || req.body.favoriteSports || [];
-    const skillLevel = req.body.skillLevel || 'beginner';
+    // Extract additional data if provided
+    const { additionalData } = req.body;
 
     // Create user with enhanced enterprise features
     const user = await User.create({
-      name: name ? name.trim() : name,
-      email: normalizedEmail, // Use normalized email
+      name,
+      email,
       password,
       mobile: normalizedMobile,
       role: role.toLowerCase(),
@@ -186,24 +110,27 @@ exports.register = async (req, res, next) => {
         code: referralCode
       },
       preferences: {
-        favoriteGames: Array.isArray(favoriteGames) ? favoriteGames : (favoriteGames ? [favoriteGames] : []),
-        skillLevel: skillLevel,
-        city: city,
+        favoriteGames: additionalData?.favoriteGames || [],
+        skillLevel: (additionalData?.skillLevel || 'beginner').toLowerCase(),
         notificationSettings: {
-          push: true,
+          push: additionalData?.notificationsEnabled ?? true,
           email: true,
           sms: false,
           whatsapp: false
         }
       },
-      // Set location city if provided (coordinates can be updated later)
-      ...(city && {
-        location: {
-          type: 'Point',
-          city: city,
-          coordinates: [0, 0] // Placeholder - can be updated when user provides actual location
-        }
-      })
+      profile: {
+        gender: additionalData?.gender,
+        dateOfBirth: additionalData?.dateOfBirth,
+        city: additionalData?.city,
+        bio: additionalData?.bio,
+        experience: additionalData?.experience,
+        preferredTime: additionalData?.preferredTime,
+        availableDays: additionalData?.availableDays,
+        emergencyContact: additionalData?.emergencyContact,
+        preferredRadius: additionalData?.preferredRadius || 5,
+        locationSharing: additionalData?.locationSharing || false
+      }
     });
 
     // Create user wallet
@@ -226,28 +153,12 @@ exports.register = async (req, res, next) => {
         }
       });
     } else if (role === 'seller' || role === 'store') {
-      // Get store details from request body if available
-      const storeName = req.body.storeName || `${name}'s Store`;
-      const ownerName = req.body.ownerName || name;
-      const gstNumber = req.body.gstNumber || '';
-      const category = req.body.category || 'multi-sports';
-      const address = req.body.address || '';
-      const city = req.body.city || '';
-      const state = req.body.state || '';
-      const pincode = req.body.pincode || '';
-      
       await Store.create({
         userId: user._id,
-        storeName: storeName,
-        ownerName: ownerName,
-        gst: { number: gstNumber },
-        category: Array.isArray(category) ? category[0] : (typeof category === 'string' ? (category.startsWith('[') ? JSON.parse(category)[0] : category) : category),
-        address: {
-          street: address,
-          city: city,
-          state: state,
-          pincode: pincode
-        },
+        storeName: `${name}'s Store`,
+        ownerName: name,
+        gst: { number: '' },
+        category: 'multi-sports',
         verified: false,
         earnings: {
           total: 0,
@@ -258,7 +169,7 @@ exports.register = async (req, res, next) => {
     } else if (role === 'delivery') {
       await Delivery.create({
         userId: user._id,
-        vehicle: { 
+        vehicle: {
           type: 'bicycle',
           number: 'XX00XX0000', // Placeholder - should be updated during profile completion
           licenseNumber: 'TEMP-LICENSE' // Placeholder - should be updated during profile completion
@@ -286,13 +197,6 @@ exports.login = async (req, res, next) => {
   try {
     const { email, mobile, password } = req.body;
 
-    // Log login attempt (without sensitive data)
-    console.log('Login attempt:', { 
-      email: email ? email.toLowerCase().trim() : null, 
-      mobile: mobile || null,
-      hasPassword: !!password 
-    });
-
     // Validate input
     if (!password) {
       return res.status(400).json({
@@ -301,17 +205,12 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // Normalize email if provided
-    const normalizedEmail = email ? email.toLowerCase().trim() : null;
-
     // Check if user provided email or mobile
     let user;
-    if (normalizedEmail) {
-      user = await User.findOne({ email: normalizedEmail }).select('+password');
-      console.log('User lookup by email:', normalizedEmail, user ? 'Found' : 'Not found');
+    if (email) {
+      user = await User.findOne({ email }).select('+password');
     } else if (mobile) {
       user = await User.findOne({ mobile }).select('+password');
-      console.log('User lookup by mobile:', mobile, user ? 'Found' : 'Not found');
     } else {
       return res.status(400).json({
         success: false,
@@ -319,18 +218,7 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    if (!user) {
-      console.log('Login failed: User not found');
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    // Check password
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      console.log('Login failed: Invalid password for user:', user.email || user.mobile);
+    if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -338,19 +226,10 @@ exports.login = async (req, res, next) => {
     }
 
     // Check if account is active
-    // Regular users can login even if pending, but coaches, sellers, and delivery partners need approval
     if (user.status === 'suspended' || user.status === 'rejected') {
       return res.status(401).json({
         success: false,
         message: 'Account is inactive or suspended'
-      });
-    }
-
-    // For coach, seller, and delivery roles, they must be approved (active) to login
-    if ((user.role === 'coach' || user.role === 'seller' || user.role === 'delivery') && user.status === 'pending') {
-      return res.status(403).json({
-        success: false,
-        message: 'Your account is pending approval. Please wait for admin approval before logging in. You will receive an email notification once your account is approved.'
       });
     }
 
@@ -380,29 +259,9 @@ exports.adminLogin = async (req, res, next) => {
       });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
-    const admin = await Admin.findOne({ email: normalizedEmail }).select('+password');
+    const admin = await Admin.findOne({ email }).select('+password');
 
-    if (!admin) {
-      console.error(`Admin login failed: Admin not found with email: ${normalizedEmail}`);
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    // Check if password is already hashed (shouldn't be, but just in case)
-    if (!admin.password || admin.password.length < 20) {
-      console.error(`Admin login failed: Password not properly hashed for email: ${normalizedEmail}`);
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    const isPasswordValid = await admin.comparePassword(password);
-    if (!isPasswordValid) {
-      console.error(`Admin login failed: Invalid password for email: ${normalizedEmail}`);
+    if (!admin || !(await admin.comparePassword(password))) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -464,7 +323,7 @@ exports.getMe = async (req, res, next) => {
 
     // Get user wallet and additional data
     const wallet = await Wallet.findOne({ userId: req.userId });
-    
+
     let roleData = {};
     if (user.role === 'coach') {
       roleData = await Coach.findOne({ userId: req.userId });
@@ -504,26 +363,55 @@ exports.updateMe = async (req, res, next) => {
         }
       ).select('-password');
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         admin
       });
-    } else {
-      // Update user profile
-      const user = await User.findByIdAndUpdate(
-        req.userId,
-        req.body,
-        {
-          new: true,
-          runValidators: true
-        }
-      ).select('-password');
+    }
 
-      res.status(200).json({
-        success: true,
-        user
+    // Update regular user profile
+    let updateData = { ...req.body };
+
+    // Handle nested preferences
+    if (req.body.preferences) {
+      const prefs = req.body.preferences;
+      Object.keys(prefs).forEach(key => {
+        updateData[`preferences.${key}`] = prefs[key];
+      });
+      delete updateData.preferences;
+    }
+
+    // Handle nested profile info
+    if (req.body.profile) {
+      const profileInfo = req.body.profile;
+      Object.keys(profileInfo).forEach(key => {
+        updateData[`profile.${key}`] = profileInfo[key];
+      });
+      delete updateData.profile;
+    }
+
+    // Ensure age is synced if provided at top level or in preferences
+    if (req.body.age) {
+      updateData['preferences.age'] = req.body.age;
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
       });
     }
+
+    res.status(200).json({
+      success: true,
+      user
+    });
   } catch (error) {
     res.status(400).json({
       success: false,
@@ -750,7 +638,7 @@ exports.firebaseLogin = async (req, res, next) => {
     if (!user) {
       // Create new user if doesn't exist
       const referralCode = await generateReferralCode();
-      
+
       user = await User.create({
         name: name || 'New User',
         email: email || '',
@@ -835,8 +723,8 @@ exports.getDashboard = async (req, res, next) => {
     const { role } = req.user;
 
     let dashboardUrl = '';
-    
-    switch(role) {
+
+    switch (role) {
       case 'user':
         dashboardUrl = '/user-dashboard';
         break;

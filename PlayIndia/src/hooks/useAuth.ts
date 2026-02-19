@@ -183,22 +183,22 @@ const useAuth = () => {
     }
   };
 
-  const register = async (name: string, email: string, password: string, mobile: string, role: string = 'user', additionalData?: { city?: string; favoriteGames?: string[] }) => {
+  const register = async (name: string, email: string, password: string, mobile: string, role: string = 'user', additionalData?: any) => {
     try {
       setLoading(true);
       
       const registerData: any = { name, email, password, mobile, role };
       
-      // Add optional fields if provided
+      // Add all additional data fields
       if (additionalData) {
-        if (additionalData.city) {
-          registerData.city = additionalData.city;
-        }
-        if (additionalData.favoriteGames && additionalData.favoriteGames.length > 0) {
-          registerData.favoriteGames = additionalData.favoriteGames;
-        }
+        Object.keys(additionalData).forEach(key => {
+          if (additionalData[key] !== undefined && additionalData[key] !== '') {
+            registerData[key] = additionalData[key];
+          }
+        });
       }
       
+      console.log('Sending registration data:', registerData);
       const response = await ApiService.auth.register(registerData);
       
       if (response.data.success) {

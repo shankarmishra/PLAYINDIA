@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
   StatusBar,
   Alert,
   ActivityIndicator,
@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { UserTabParamList } from '../../navigation/UserNav';
+import { UserTabParamList } from '../../navigation/types';
 import { useCart } from '../../contexts/CartContext';
 
 type NavigationProp = StackNavigationProp<UserTabParamList>;
@@ -23,11 +23,14 @@ const CheckoutScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<CheckoutRouteProp>();
   const { cartItems, getCartTotal, clearCart } = useCart();
-  
+
   const [loading, setLoading] = useState(false);
   const [selectedPayment] = useState(route.params?.paymentMethod || 'cod');
 
   const total = getCartTotal();
+  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const tax = Math.round(subtotal * 0.18);
+  const deliveryFee = 99;
 
   const handlePlaceOrder = async () => {
     if (cartItems.length === 0) {
@@ -36,12 +39,9 @@ const CheckoutScreen = () => {
     }
 
     setLoading(true);
-    
-    // Simulate API call
     setTimeout(() => {
       setLoading(false);
       const orderId = `ORD-${Date.now()}`;
-      
       Alert.alert(
         'Order Placed!',
         `Your order has been placed successfully.\nOrder ID: ${orderId}`,
@@ -60,122 +60,90 @@ const CheckoutScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
-      {/* Header */}
+      <StatusBar barStyle="dark-content" backgroundColor="#E8F5E9" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#0F172A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Checkout</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Order Items Summary */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Items ({cartItems.length})</Text>
-          {cartItems.map((item) => (
-            <View key={item.id} style={styles.orderItem}>
-              <View style={styles.orderItemInfo}>
-                <Text style={styles.orderItemName}>{item.name}</Text>
-                <Text style={styles.orderItemDetails}>
-                  Qty: {item.quantity} × ₹{item.price.toLocaleString()}
-                </Text>
+          <Text style={styles.sectionTitle}>Review Items</Text>
+          <View style={styles.sectionCard}>
+            {cartItems.map((item, index) => (
+              <View key={item.id} style={[styles.orderItem, index === cartItems.length - 1 && { borderBottomWidth: 0 }]}>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemName}>{item.name}</Text>
+                  <Text style={styles.itemPrice}>Qty: {item.quantity} × ₹{item.price.toLocaleString()}</Text>
+                </View>
+                <Text style={styles.itemTotal}>₹{(item.price * item.quantity).toLocaleString()}</Text>
               </View>
-              <Text style={styles.orderItemTotal}>
-                ₹{(item.price * item.quantity).toLocaleString()}
-              </Text>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
 
-        {/* Payment Method */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payment Method</Text>
-          <View style={styles.paymentMethodCard}>
-            <Ionicons 
-              name={
-                selectedPayment === 'cod' ? 'cash-outline' :
-                selectedPayment === 'card' ? 'card-outline' :
-                selectedPayment === 'upi' ? 'phone-portrait-outline' :
-                'wallet-outline'
-              } 
-              size={24} 
-              color="#1ED760" 
-            />
-            <View style={styles.paymentMethodInfo}>
-              <Text style={styles.paymentMethodName}>
-                {selectedPayment === 'cod' ? 'Cash on Delivery' :
-                 selectedPayment === 'card' ? 'Credit/Debit Card' :
-                 selectedPayment === 'upi' ? 'UPI' :
-                 'Wallet'}
-              </Text>
-              <Text style={styles.paymentMethodDesc}>
-                {selectedPayment === 'cod' ? 'Pay when you receive' :
-                 selectedPayment === 'card' ? 'Secure card payment' :
-                 selectedPayment === 'upi' ? 'Quick UPI payment' :
-                 'Pay from wallet'}
-              </Text>
+          <View style={styles.paymentCard}>
+            <View style={styles.paymentIconBox}>
+              <Ionicons
+                name={selectedPayment === 'cod' ? 'cash' : 'card'}
+                size={24}
+                color="#2E7D32"
+              />
             </View>
-            <Ionicons name="checkmark-circle" size={24} color="#1ED760" />
+            <View style={styles.paymentMeta}>
+              <Text style={styles.paymentName}>
+                {selectedPayment === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
+              </Text>
+              <Text style={styles.paymentDesc}>Secure transaction guaranteed</Text>
+            </View>
+            <Ionicons name="checkmark-circle" size={24} color="#2E7D32" />
           </View>
         </View>
 
-        {/* Order Summary */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Summary</Text>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>
-              ₹{cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0).toLocaleString()}
-            </Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Delivery</Text>
-            <Text style={styles.summaryValue}>₹99</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Tax (GST)</Text>
-            <Text style={styles.summaryValue}>
-              ₹{Math.round(cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0) * 0.18).toLocaleString()}
-            </Text>
-          </View>
-          <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total Amount</Text>
-            <Text style={styles.totalValue}>₹{total.toLocaleString()}</Text>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Subtotal</Text>
+              <Text style={styles.summaryValue}>₹{subtotal.toLocaleString()}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Delivery Fee</Text>
+              <Text style={styles.summaryValue}>₹{deliveryFee}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>GST (18%)</Text>
+              <Text style={styles.summaryValue}>₹{tax.toLocaleString()}</Text>
+            </View>
+            <View style={[styles.summaryRow, styles.totalRow]}>
+              <Text style={styles.totalLabel}>Total Payable</Text>
+              <Text style={styles.totalValue}>₹{total.toLocaleString()}</Text>
+            </View>
           </View>
         </View>
 
-        {/* Terms */}
-        <View style={styles.termsContainer}>
-          <Ionicons name="information-circle-outline" size={20} color="#64748B" />
-          <Text style={styles.termsText}>
-            By placing this order, you agree to our Terms & Conditions and Privacy Policy
-          </Text>
+        <View style={styles.termsBox}>
+          <Ionicons name="shield-checkmark-outline" size={16} color="#64748B" />
+          <Text style={styles.termsText}>Secure checkout powered by PLAYINDIA</Text>
         </View>
       </ScrollView>
 
-      {/* Place Order Button */}
       <View style={styles.footer}>
-        <View style={styles.footerTotal}>
-          <Text style={styles.footerTotalLabel}>Total</Text>
-          <Text style={styles.footerTotalValue}>₹{total.toLocaleString()}</Text>
+        <View style={styles.footerPrice}>
+          <Text style={styles.footerLabel}>Total Amount</Text>
+          <Text style={styles.footerValue}>₹{total.toLocaleString()}</Text>
         </View>
-        <TouchableOpacity 
-          style={[styles.placeOrderButton, loading && styles.placeOrderButtonDisabled]}
+        <TouchableOpacity
+          style={[styles.placeBtn, loading && styles.placeBtnDisabled]}
           onPress={handlePlaceOrder}
           disabled={loading}
-          activeOpacity={0.8}
         >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.placeOrderButtonText}>Place Order</Text>
-          )}
+          {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.placeBtnText}>Confirm Order</Text>}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -183,175 +151,40 @@ const CheckoutScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  scrollContent: {
-    paddingBottom: 100,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 12,
-    height: 60,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  section: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 16,
-  },
-  orderItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  orderItemInfo: {
-    flex: 1,
-  },
-  orderItemName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
-  },
-  orderItemDetails: {
-    fontSize: 13,
-    color: '#64748B',
-  },
-  orderItemTotal: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1ED760',
-  },
-  paymentMethodCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#F0FDF4',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#1ED760',
-    gap: 12,
-  },
-  paymentMethodInfo: {
-    flex: 1,
-  },
-  paymentMethodName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
-  },
-  paymentMethodDesc: {
-    fontSize: 13,
-    color: '#64748B',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-  },
-  summaryLabel: {
-    fontSize: 15,
-    color: '#64748B',
-  },
-  summaryValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  totalRow: {
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    marginTop: 8,
-    paddingTop: 12,
-  },
-  totalLabel: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  totalValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1ED760',
-  },
-  termsContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    padding: 12,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    gap: 8,
-  },
-  termsText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#64748B',
-    lineHeight: 18,
-  },
-  footer: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  footerTotal: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  footerTotalLabel: {
-    fontSize: 15,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  footerTotalValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1ED760',
-  },
-  placeOrderButton: {
-    backgroundColor: '#1ED760',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  placeOrderButtonDisabled: {
-    opacity: 0.6,
-  },
-  placeOrderButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 16,
-  },
+  container: { flex: 1, backgroundColor: '#E8F5E9' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
+  backButton: { padding: 8, borderRadius: 12, backgroundColor: '#C8E6C9' },
+  headerTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A' },
+  scrollContent: { padding: 16, paddingBottom: 120 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1B5E20', marginBottom: 12, marginLeft: 4 },
+  sectionCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#C8E6C9' },
+  orderItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F0FDF4' },
+  itemInfo: { flex: 1 },
+  itemName: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  itemPrice: { fontSize: 13, color: '#64748B', marginTop: 2 },
+  itemTotal: { fontSize: 16, fontWeight: '800', color: '#1B5E20' },
+  paymentCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 16, flexDirection: 'row', alignItems: 'center', borderWidth: 2, borderColor: '#2E7D32' },
+  paymentIconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center' },
+  paymentMeta: { flex: 1, marginLeft: 16 },
+  paymentName: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
+  paymentDesc: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  summaryCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#C8E6C9' },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  summaryLabel: { fontSize: 14, color: '#64748B', fontWeight: '600' },
+  summaryValue: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  totalRow: { borderTopWidth: 2, borderTopColor: '#F0FDF4', borderStyle: 'dashed', marginTop: 10, paddingTop: 16 },
+  totalLabel: { fontSize: 18, fontWeight: '900', color: '#1B5E20' },
+  totalValue: { fontSize: 20, fontWeight: '900', color: '#2E7D32' },
+  termsBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10 },
+  termsText: { fontSize: 12, color: '#64748B', fontWeight: '600' },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#C8E6C9', flexDirection: 'row', alignItems: 'center', gap: 16 },
+  footerPrice: { flex: 1 },
+  footerLabel: { fontSize: 12, color: '#64748B', fontWeight: '700' },
+  footerValue: { fontSize: 20, fontWeight: '900', color: '#1B5E20' },
+  placeBtn: { flex: 2, height: 60, borderRadius: 20, backgroundColor: '#2E7D32', justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#2E7D32', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  placeBtnDisabled: { opacity: 0.6 },
+  placeBtnText: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
 });
 
 export default CheckoutScreen;

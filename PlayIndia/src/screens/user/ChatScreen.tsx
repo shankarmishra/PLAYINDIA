@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, FlatList, Image } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import ChatBot from '../../components/ChatBot';
 
 // Mock data for messages
 const mockMessages = [
@@ -57,13 +59,15 @@ const mockMessages = [
 ];
 
 const ChatScreen = () => {
+  const navigation = useNavigation();
   const [messages, setMessages] = useState(mockMessages);
   const [messageText, setMessageText] = useState('');
+  const [showBot, setShowBot] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   const handleSend = () => {
     if (messageText.trim() === '') return;
-    
+
     const newMessage = {
       id: (messages.length + 1).toString(),
       text: messageText,
@@ -71,10 +75,10 @@ const ChatScreen = () => {
       sender: 'me',
       read: false,
     };
-    
+
     setMessages([...messages, newMessage]);
     setMessageText('');
-    
+
     // Scroll to bottom
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
@@ -84,29 +88,29 @@ const ChatScreen = () => {
   const renderMessage = ({ item }: any) => (
     <View style={[
       styles.messageContainer,
-      { 
+      {
         alignSelf: item.sender === 'me' ? 'flex-end' : 'flex-start',
-        backgroundColor: item.sender === 'me' 
-          ? theme.colors.accent.neonGreen 
-          : theme.colors.background.card 
+        backgroundColor: item.sender === 'me'
+          ? theme.colors.accent.neonGreen
+          : theme.colors.background.card
       }
     ]}>
       <Text style={[
         styles.messageText,
-        { 
-          color: item.sender === 'me' 
-            ? theme.colors.text.inverted 
-            : theme.colors.text.primary 
+        {
+          color: item.sender === 'me'
+            ? theme.colors.text.inverted
+            : theme.colors.text.primary
         }
       ]}>
         {item.text}
       </Text>
       <Text style={[
         styles.messageTime,
-        { 
-          color: item.sender === 'me' 
-            ? theme.colors.text.inverted 
-            : theme.colors.text.secondary 
+        {
+          color: item.sender === 'me'
+            ? theme.colors.text.inverted
+            : theme.colors.text.secondary
         }
       ]}>
         {item.time}
@@ -116,77 +120,92 @@ const ChatScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Image 
-            source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} 
-            style={styles.contactImage} 
-          />
-          <View style={styles.contactInfo}>
-            <Text style={styles.contactName}>Rahul Patel</Text>
-            <Text style={styles.contactStatus}>Online</Text>
+      {showBot ? (
+        <ChatBot onClose={() => setShowBot(false)} />
+      ) : (
+        <>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerContent}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+              </TouchableOpacity>
+              <Image
+                source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }}
+                style={styles.contactImage}
+              />
+              <View style={styles.contactInfo}>
+                <Text style={styles.contactName}>Rahul Patel</Text>
+                <Text style={styles.contactStatus}>Online</Text>
+              </View>
+            </View>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.botToggleButton}
+                onPress={() => setShowBot(true)}
+              >
+                <Ionicons name="help-buoy-outline" size={22} color="#2E7D32" />
+              </TouchableOpacity>
+              <TouchableOpacity>
+                <Ionicons name="call-outline" size={24} color={theme.colors.text.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.headerAction}>
+                <Ionicons name="videocam-outline" size={24} color={theme.colors.text.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.headerAction}>
+                <Ionicons name="information-circle-outline" size={24} color={theme.colors.text.primary} />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity>
-            <Ionicons name="call-outline" size={24} color={theme.colors.text.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerAction}>
-            <Ionicons name="videocam-outline" size={24} color={theme.colors.text.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerAction}>
-            <Ionicons name="information-circle-outline" size={24} color={theme.colors.text.primary} />
-          </TouchableOpacity>
-        </View>
-      </View>
 
-      {/* Messages */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        style={styles.messagesContainer}
-        contentContainerStyle={styles.messagesContent}
-        showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-      />
-
-      {/* Input Area */}
-      <View style={styles.inputContainer}>
-        <TouchableOpacity style={styles.attachmentButton}>
-          <Ionicons name="attach-outline" size={24} color={theme.colors.text.secondary} />
-        </TouchableOpacity>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Type a message..."
-          placeholderTextColor={theme.colors.text.disabled}
-          value={messageText}
-          onChangeText={setMessageText}
-          multiline
-        />
-        <TouchableOpacity 
-          style={[
-            styles.sendButton,
-            { 
-              backgroundColor: messageText.trim() === '' 
-                ? theme.colors.ui.border 
-                : theme.colors.accent.neonGreen 
-            }
-          ]}
-          onPress={handleSend}
-          disabled={messageText.trim() === ''}
-        >
-          <Ionicons 
-            name="send" 
-            size={20} 
-            color={messageText.trim() === '' 
-              ? theme.colors.text.disabled 
-              : theme.colors.text.inverted} 
+          {/* Messages */}
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item) => item.id}
+            style={styles.messagesContainer}
+            contentContainerStyle={styles.messagesContent}
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           />
-        </TouchableOpacity>
-      </View>
+
+          {/* Input Area */}
+          <View style={styles.inputContainer}>
+            <TouchableOpacity style={styles.attachmentButton}>
+              <Ionicons name="attach-outline" size={24} color={theme.colors.text.secondary} />
+            </TouchableOpacity>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Type a message..."
+              placeholderTextColor={theme.colors.text.disabled}
+              value={messageText}
+              onChangeText={setMessageText}
+              multiline
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                {
+                  backgroundColor: messageText.trim() === ''
+                    ? theme.colors.ui.border
+                    : theme.colors.accent.neonGreen
+                }
+              ]}
+              onPress={handleSend}
+              disabled={messageText.trim() === ''}
+            >
+              <Ionicons
+                name="send"
+                size={20}
+                color={messageText.trim() === ''
+                  ? theme.colors.text.disabled
+                  : theme.colors.text.inverted}
+              />
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
     </View>
   );
 };
@@ -208,6 +227,11 @@ const styles = StyleSheet.create({
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  backButton: {
+    marginRight: 12,
+    padding: 4,
   },
   contactImage: {
     width: 40,
@@ -220,18 +244,24 @@ const styles = StyleSheet.create({
   },
   contactName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
+    fontWeight: '900',
+    color: '#0F172A',
   },
   contactStatus: {
     fontSize: 12,
-    color: theme.colors.status.success,
+    color: '#2E7D32',
+    fontWeight: '600',
   },
   headerActions: {
     flexDirection: 'row',
+    alignItems: 'center',
   },
   headerAction: {
     marginLeft: theme.spacing.md,
+  },
+  botToggleButton: {
+    marginRight: theme.spacing.sm,
+    padding: 4,
   },
   messagesContainer: {
     flex: 1,
@@ -270,9 +300,11 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.large,
-    paddingHorizontal: theme.spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+    paddingHorizontal: 16,
     paddingVertical: theme.spacing.sm,
     fontSize: 16,
     color: theme.colors.text.primary,

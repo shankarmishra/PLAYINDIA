@@ -1,67 +1,120 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList, Alert } from 'react-native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { theme } from '../../theme/colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import axios from 'axios';
+import { API_ENDPOINTS } from '../../config/constants';
 
 // Mock data for notifications
+// Mock data for notifications with more detailed info
 const mockNotifications = [
   {
     id: '1',
     title: 'Match Invite',
     message: 'You\'ve been invited to a cricket match on Sunday at 6 PM',
-    time: '2 hours ago',
+    time: '2h ago',
+    date: 'Today',
     type: 'match',
     read: false,
+    color: '#3B82F6',
+    icon: 'trophy-outline'
   },
   {
     id: '2',
     title: 'Booking Confirmation',
     message: 'Your coaching session with Coach Priya is confirmed for tomorrow',
-    time: '5 hours ago',
+    time: '5h ago',
+    date: 'Today',
     type: 'booking',
     read: false,
+    color: '#F59E0B',
+    icon: 'calendar-outline'
   },
   {
     id: '3',
     title: 'Order Shipped',
     message: 'Your cricket bat order has been shipped and will arrive in 2 days',
-    time: '1 day ago',
+    time: 'yesterday',
+    date: 'Yesterday',
     type: 'order',
     read: true,
+    color: '#10B981',
+    icon: 'cart-outline'
   },
   {
     id: '4',
     title: 'Tournament Update',
     message: 'Summer Cricket League registration is now open',
-    time: '2 days ago',
+    time: '2d ago',
+    date: 'Feb 15',
     type: 'tournament',
     read: true,
+    color: '#8B5CF6',
+    icon: 'flag-outline'
   },
   {
     id: '5',
     title: 'Special Offer',
     message: 'Get 20% off on all sports equipment this week',
-    time: '3 days ago',
+    time: '3d ago',
+    date: 'Feb 14',
     type: 'offer',
     read: true,
-  },
-  {
-    id: '6',
-    title: 'New Player Nearby',
-    message: 'A new cricket player has joined near your location',
-    time: '4 days ago',
-    type: 'player',
-    read: true,
+    color: '#EF4444',
+    icon: 'pricetag-outline'
   },
 ];
 
 const NotificationsScreen = () => {
+  const navigation = useNavigation();
   const [notifications, setNotifications] = useState(mockNotifications);
   const [filter, setFilter] = useState('All');
+  const [loading, setLoading] = useState(false);
 
-  const filteredNotifications = filter === 'Unread' 
+  // Fetch notifications from API
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    setLoading(true);
+    try {
+      // Try to fetch from API - use the auth/me endpoint to get user data including notifications
+      const response = await axios.get(API_ENDPOINTS.AUTH.ME, {
+        headers: {
+          'Authorization': `Bearer ${await getAuthToken()}`,
+        },
+      });
+
+      // If API returns notifications in user data, use it
+      if (response.data && response.data.notifications) {
+        setNotifications(response.data.notifications);
+      }
+    } catch (error) {
+      console.log('Using mock notifications (API not available)');
+      // Keep using mock data if API fails
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper to get auth token
+  const getAuthToken = async () => {
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const token = await AsyncStorage.getItem('userToken');
+      return token;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const filteredNotifications = filter === 'Unread'
     ? notifications.filter(n => !n.read)
-    : notifications;
+    : filter === 'All'
+      ? notifications
+      : notifications.filter(n => n.type === filter.toLowerCase());
 
   const notificationTypes = [
     { id: 'All', name: 'All', icon: 'notifications-outline' },
@@ -73,9 +126,42 @@ const NotificationsScreen = () => {
   ];
 
   const markAsRead = (id: string) => {
-    setNotifications(notifications.map(n => 
+    setNotifications(notifications.map(n =>
       n.id === id ? { ...n, read: true } : n
     ));
+  };
+
+  const handleViewAction = (notification: any) => {
+    // Mark as read when viewing
+    markAsRead(notification.id);
+
+    // Navigate based on notification type
+    switch (notification.type) {
+      case 'match':
+      case 'tournament':
+        navigation.dispatch(
+          CommonActions.navigate({ name: 'Tournaments' })
+        );
+        break;
+      case 'booking':
+        navigation.dispatch(
+          CommonActions.navigate({ name: 'MyOrders' })
+        );
+        break;
+      case 'order':
+        navigation.dispatch(
+          CommonActions.navigate({ name: 'MyOrders' })
+        );
+        break;
+      case 'offer':
+        navigation.dispatch(
+          CommonActions.navigate({ name: 'ShopHome' })
+        );
+        break;
+      default:
+        // Stay on current screen
+        break;
+    }
   };
 
   const markAllAsRead = () => {
@@ -83,155 +169,83 @@ const NotificationsScreen = () => {
   };
 
   const renderNotification = ({ item }: any) => (
-    <TouchableOpacity 
+    <TouchableOpacity
+      activeOpacity={0.8}
       style={[
-        styles.notificationItem,
-        { 
-          backgroundColor: item.read 
-            ? theme.colors.background.card 
-            : theme.colors.background.secondary 
-        }
+        styles.notificationCard,
+        !item.read && styles.unreadCard
       ]}
       onPress={() => markAsRead(item.id)}
     >
-      <View style={styles.notificationIconContainer}>
-        <View style={[
-          styles.notificationIcon,
-          { 
-            backgroundColor: 
-              item.type === 'match' ? `${theme.colors.accent.neonGreen}20` :
-              item.type === 'booking' ? `${theme.colors.accent.orange}20` :
-              item.type === 'order' ? `${theme.colors.status.success}20` :
-              item.type === 'tournament' ? `${theme.colors.status.info}20` :
-              item.type === 'offer' ? `${theme.colors.status.warning}20` :
-              `${theme.colors.text.secondary}20`
-          }
-        ]}>
-          <Ionicons 
-            name={
-              item.type === 'match' ? 'trophy-outline' :
-              item.type === 'booking' ? 'calendar-outline' :
-              item.type === 'order' ? 'cart-outline' :
-              item.type === 'tournament' ? 'flag-outline' :
-              item.type === 'offer' ? 'pricetag-outline' :
-              'person-outline'
-            } 
-            size={20} 
-            color={
-              item.type === 'match' ? theme.colors.accent.neonGreen :
-              item.type === 'booking' ? theme.colors.accent.orange :
-              item.type === 'order' ? theme.colors.status.success :
-              item.type === 'tournament' ? theme.colors.status.info :
-              item.type === 'offer' ? theme.colors.status.warning :
-              theme.colors.text.secondary
-            } 
-          />
-        </View>
-        {!item.read && <View style={styles.unreadIndicator} />}
+      <View style={[styles.iconBox, { backgroundColor: `${item.color || '#64748B'}15` }]}>
+        <Ionicons name={item.icon || 'notifications-outline'} size={22} color={item.color || '#64748B'} />
       </View>
-      <View style={styles.notificationContent}>
-        <View style={styles.notificationHeader}>
-          <Text style={[
-            styles.notificationTitle,
-            { 
-              fontWeight: item.read ? 'normal' : 'bold',
-              color: item.read ? theme.colors.text.secondary : theme.colors.text.primary
-            }
-          ]}>
-            {item.title}
-          </Text>
-          <Text style={styles.notificationTime}>{item.time}</Text>
+
+      <View style={styles.content}>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, !item.read && styles.boldText]}>{item.title}</Text>
+          <Text style={styles.timeText}>{item.time}</Text>
         </View>
-        <Text style={[
-          styles.notificationMessage,
-          { 
-            color: item.read ? theme.colors.text.secondary : theme.colors.text.primary
-          }
-        ]}>
-          {item.message}
-        </Text>
-        <View style={styles.notificationActions}>
-          <TouchableOpacity style={styles.actionButton}>
-            <Text style={styles.actionText}>View</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => setNotifications(notifications.filter(n => n.id !== item.id))}
-          >
-            <Text style={styles.actionText}>Dismiss</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.message} numberOfLines={2}>{item.message}</Text>
+
+        {!item.read && (
+          <View style={styles.unreadRow}>
+            <View style={styles.unreadDot} />
+            <Text style={styles.unreadLabel}>New</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color="#0F172A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
-        <TouchableOpacity onPress={markAllAsRead}>
-          <Text style={styles.markAllText}>Mark All Read</Text>
+        <TouchableOpacity onPress={markAllAsRead} style={styles.markReadBtn}>
+          <Text style={styles.markReadText}>Read All</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Filter Tabs */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        style={styles.filterContainer}
-      >
-        {notificationTypes.map((type) => (
-          <TouchableOpacity 
-            key={type.id}
-            style={[
-              styles.filterChip,
-              { 
-                backgroundColor: filter === type.id 
-                  ? theme.colors.accent.neonGreen 
-                  : theme.colors.background.card 
-              }
-            ]}
-            onPress={() => setFilter(type.id)}
-          >
-            <Ionicons 
-              name={type.icon as any} 
-              size={16} 
-              color={filter === type.id ? theme.colors.text.inverted : theme.colors.text.primary} 
-            />
-            <Text style={[
-              styles.filterText,
-              { 
-                color: filter === type.id 
-                  ? theme.colors.text.inverted 
-                  : theme.colors.text.primary 
-              }
-            ]}>
-              {type.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.filterBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterPadding}>
+          {notificationTypes.map((type) => (
+            <TouchableOpacity
+              key={type.id}
+              onPress={() => setFilter(type.id)}
+              style={[
+                styles.chip,
+                filter === type.id && styles.activeChip
+              ]}
+            >
+              <Text style={[
+                styles.chipText,
+                filter === type.id && styles.activeChipText
+              ]}>{type.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
-      {/* Notifications List */}
       <FlatList
         data={filteredNotifications}
         renderItem={renderNotification}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.notificationsContainer}
+        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconBox}>
+              <Ionicons name="notifications-off-outline" size={48} color="#CBD5E0" />
+            </View>
+            <Text style={styles.emptyTitle}>All caught up!</Text>
+            <Text style={styles.emptyDesc}>No new notifications found in this category.</Text>
+          </View>
+        }
       />
-
-      {filteredNotifications.length === 0 && (
-        <View style={styles.emptyState}>
-          <Ionicons name="notifications-off-outline" size={60} color={theme.colors.text.disabled} />
-          <Text style={styles.emptyStateTitle}>No notifications</Text>
-          <Text style={styles.emptyStateSubtitle}>You're all caught up!</Text>
-        </View>
-      )}
     </View>
   );
 };
@@ -239,132 +253,177 @@ const NotificationsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.background.card,
-    ...theme.shadows.small,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  backBtn: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
   },
-  markAllText: {
+  markReadBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  markReadText: {
     fontSize: 14,
-    color: theme.colors.accent.neonGreen,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#3B82F6',
   },
-  filterContainer: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.background.card,
+  filterBar: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
   },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.large,
-    marginRight: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.ui.border,
+  filterPadding: {
+    paddingHorizontal: 16,
   },
-  filterText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: theme.spacing.xs,
-  },
-  notificationsContainer: {
-    padding: theme.spacing.md,
-  },
-  notificationItem: {
-    flexDirection: 'row',
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.medium,
-    marginBottom: theme.spacing.sm,
-    ...theme.shadows.small,
-  },
-  notificationIconContainer: {
-    marginRight: theme.spacing.md,
-    position: 'relative',
-  },
-  notificationIcon: {
-    width: 40,
-    height: 40,
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  activeChip: {
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  activeChipText: {
+    color: '#FFFFFF',
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  notificationCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  unreadCard: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  iconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 16,
   },
-  unreadIndicator: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: theme.colors.status.error,
-  },
-  notificationContent: {
+  content: {
     flex: 1,
   },
-  notificationHeader: {
+  titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.xs,
+    alignItems: 'flex-start',
+    marginBottom: 4,
   },
-  notificationTitle: {
-    fontSize: 16,
+  title: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
     flex: 1,
+    marginRight: 8,
   },
-  notificationTime: {
+  boldText: {
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  timeText: {
     fontSize: 12,
-    color: theme.colors.text.secondary,
-  },
-  notificationMessage: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.sm,
-  },
-  notificationActions: {
-    flexDirection: 'row',
-  },
-  actionButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.medium,
-    borderWidth: 1,
-    borderColor: theme.colors.ui.border,
-    marginRight: theme.spacing.sm,
-  },
-  actionText: {
-    fontSize: 12,
-    color: theme.colors.text.primary,
+    color: '#94A3B8',
     fontWeight: '600',
   },
-  emptyState: {
+  message: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+  unreadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  unreadDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+    marginRight: 6,
+  },
+  unreadLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#EF4444',
+    textTransform: 'uppercase',
+  },
+  emptyContainer: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 80,
+  },
+  emptyIconBox: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: theme.spacing.xl,
+    marginBottom: 20,
   },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginTop: theme.spacing.md,
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 8,
   },
-  emptyStateSubtitle: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
+  emptyDesc: {
+    fontSize: 14,
+    color: '#94A3B8',
     textAlign: 'center',
-    marginTop: theme.spacing.sm,
+    paddingHorizontal: 40,
+    lineHeight: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

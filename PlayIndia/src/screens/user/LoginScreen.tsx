@@ -8,12 +8,12 @@ import {
   Alert,
   SafeAreaView,
   Animated,
+  ScrollView,
+  StatusBar,
+  Image,
+  ImageBackground,
   KeyboardAvoidingView,
   Platform,
-  StatusBar,
-  ImageBackground,
-  Image,
-  Dimensions,
 } from 'react-native';
 import AsyncStorage from '../../utils/AsyncStorageSafe';
 import { CommonActions } from '@react-navigation/native';
@@ -23,9 +23,6 @@ import BrandLogo from '../../components/BrandLogo';
 import Icon from 'react-native-vector-icons/Ionicons';
 import useAuth from '../../hooks/useAuth';
 import LinearGradient from '../../utils/LinearGradientSafe';
-import { theme } from '../../theme/colors';
-
-const { width, height } = Dimensions.get('window');
 
 type Props = StackScreenProps<RootStackParamList, 'Login'>;
 
@@ -41,7 +38,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const slideAnim = useRef(new Animated.Value(40)).current;
 
   useEffect(() => {
-    StatusBar.setBarStyle('light-content');
+    StatusBar.setBarStyle('dark-content');
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -126,156 +123,121 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <ImageBackground
-      source={{
-        uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1920&q=80',
-      }}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      {/* Gradient Overlay */}
-      <LinearGradient
-        colors={['rgba(11, 28, 45, 0.95)', 'rgba(11, 28, 45, 0.92)', 'rgba(11, 28, 45, 0.95)']}
-        style={styles.gradientOverlay}
+    <View style={styles.mainContainer}>
+      <StatusBar barStyle="dark-content" backgroundColor="#E8F5E9" />
+      
+      <KeyboardAvoidingView 
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <SafeAreaView style={styles.container}>
-          <StatusBar barStyle="light-content" />
-          <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.keyboardView}
-          >
-            {/* Top Header Section with Logo */}
-            <Animated.View style={[styles.brandingHeader, { opacity: fadeAnim }]}>
-              <View style={styles.logoContainer}>
-                <View style={styles.logoWrapper}>
-                  <View style={styles.logoGlow} />
-                  <BrandLogo size={70} style={styles.logoStyle} />
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Logo at Top - INSIDE ScrollView */}
+          <View style={styles.logoContainerInside}>
+            <Image
+              source={require('../../assets/TeamupIndia.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+          
+          <Animated.View style={[
+            styles.contentContainer,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+          ]}>
+            {/* Welcome Section */}
+            <View style={styles.welcomeSection}>
+              <Text style={styles.title}>Welcome Back!</Text>
+              <Text style={styles.subtitle}>Sign in to continue</Text>
+            </View>
+            
+            {/* Form Card */}
+            <View style={styles.formCard}>
+              <View style={styles.form}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>EMAIL</Text>
+                  <View style={styles.inputWrapper}>
+                    <Icon name="mail-outline" size={18} color="#4CAF50" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter your email"
+                      placeholderTextColor="#9E9E9E"
+                      value={formData.email}
+                      onChangeText={(text) => setFormData({ ...formData, email: text })}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  </View>
                 </View>
-              </View>
-              <View style={styles.headerTextContainer}>
-                <Text style={styles.appName}>PLAYINDIA</Text>
-                <Text style={styles.tagline}>IND'S PREMIER SPORTS NETWORK</Text>
-              </View>
-            </Animated.View>
 
-            <Animated.View style={[
-              styles.contentContainer,
-              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-            ]}>
-              {/* Welcome Section */}
-              <View style={styles.welcomeSection}>
-                <Text style={styles.title}>Welcome Back! 👋</Text>
-                <Text style={styles.subtitle}>Sign in to continue your sports journey</Text>
-              </View>
-              
-              {/* Form Card */}
-              <View style={styles.formCard}>
-                {/* Form Fields */}
-                <View style={styles.form}>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>EMAIL ADDRESS</Text>
-                    <View style={styles.inputWrapper}>
-                      <View style={styles.iconContainer}>
-                        <Icon name="mail-outline" size={22} color="#FFFFFF" />
-                      </View>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="name@example.com"
-                        placeholderTextColor="#94A3B8"
-                        value={formData.email}
-                        onChangeText={(text) => setFormData({ ...formData, email: text })}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                      />
-                    </View>
+                <View style={styles.inputGroup}>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.label}>PASSWORD</Text>
+                    <TouchableOpacity>
+                      <Text style={styles.forgotText}>Forgot?</Text>
+                    </TouchableOpacity>
                   </View>
-
-                  <View style={styles.inputGroup}>
-                    <View style={styles.labelRow}>
-                      <Text style={styles.label}>PASSWORD</Text>
-                      <TouchableOpacity>
-                        <Text style={styles.forgotText}>Forgot?</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <View style={styles.inputWrapper}>
-                      <View style={styles.iconContainer}>
-                        <Icon name="lock-closed-outline" size={22} color="#FFFFFF" />
-                      </View>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="••••••••"
-                        placeholderTextColor="#94A3B8"
-                        secureTextEntry={!passwordVisible}
-                        value={formData.password}
-                        onChangeText={(text) => setFormData({ ...formData, password: text })}
-                      />
-                      <TouchableOpacity 
-                        onPress={() => setPasswordVisible(!passwordVisible)}
-                        style={styles.eyeIcon}
-                      >
-                        <Icon 
-                          name={passwordVisible ? 'eye-outline' : 'eye-off-outline'} 
-                          size={22} 
-                          color={theme.colors.accent.neonGreen} 
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[styles.primaryButton, isLoading && styles.disabledButton]}
-                    onPress={handleLogin}
-                    disabled={isLoading}
-                    activeOpacity={0.8}
-                  >
-                    <LinearGradient
-                      colors={[theme.colors.accent.neonGreen, '#10B981', theme.colors.accent.neonGreen]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.buttonGradient}
+                  <View style={styles.inputWrapper}>
+                    <Icon name="lock-closed-outline" size={18} color="#4CAF50" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter password"
+                      placeholderTextColor="#9E9E9E"
+                      secureTextEntry={!passwordVisible}
+                      value={formData.password}
+                      onChangeText={(text) => setFormData({ ...formData, password: text })}
+                    />
+                    <TouchableOpacity 
+                      onPress={() => setPasswordVisible(!passwordVisible)}
+                      style={styles.eyeIcon}
                     >
-                      <Text style={styles.buttonText}>
-                        {isLoading ? 'Signing In...' : 'Sign In'}
-                      </Text>
-                      {!isLoading && (
-                        <Icon name="arrow-forward" size={20} color="#FFF" style={styles.buttonIcon} />
-                      )}
-                    </LinearGradient>
-                  </TouchableOpacity>
+                      <Icon 
+                        name={passwordVisible ? 'eye-outline' : 'eye-off-outline'} 
+                        size={18} 
+                        color="#757575" 
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
 
-              {/* Footer */}
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>New here? </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                  <Text style={styles.linkText}>Create Account</Text>
+                <TouchableOpacity
+                  style={[styles.primaryButton, isLoading && styles.disabledButton]}
+                  onPress={handleLogin}
+                  disabled={isLoading}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['#4CAF50', '#43A047', '#4CAF50']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.buttonGradient}
+                  >
+                    <Text style={styles.buttonText}>
+                      {isLoading ? 'Signing In...' : 'Sign In'}
+                    </Text>
+                    {!isLoading && (
+                      <Icon name="arrow-forward" size={18} color="#FFF" style={styles.buttonIcon} />
+                    )}
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
+            </View>
 
-              {/* Decorative Stickers */}
-              <View style={styles.stickersContainer}>
-                <View style={[styles.sticker, styles.sticker1]}>
-                  <Icon name="football" size={32} color={theme.colors.accent.neonGreen} />
-                </View>
-                <View style={[styles.sticker, styles.sticker2]}>
-                  <Icon name="basketball" size={28} color={theme.colors.accent.neonGreen} />
-                </View>
-                <View style={[styles.sticker, styles.sticker3]}>
-                  <Icon name="trophy" size={30} color={theme.colors.status.warning} />
-                </View>
-                <View style={[styles.sticker, styles.sticker4]}>
-                  <Icon name="medal" size={26} color={theme.colors.status.error} />
-                </View>
-                <View style={[styles.sticker, styles.sticker5]}>
-                  <Icon name="fitness" size={24} color={theme.colors.accent.neonGreen} />
-                </View>
-              </View>
-            </Animated.View>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </LinearGradient>
-    </ImageBackground>
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>New here? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                <Text style={styles.linkText}>Create Account</Text>
+              </TouchableOpacity>
+
+            </View>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -283,194 +245,110 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 // Removed unused components
 
 const styles = StyleSheet.create({
-  backgroundImage: {
+  mainContainer: {
     flex: 1,
-    width: width,
-    height: height,
+    backgroundColor: '#E8F5E9',
   },
-  gradientOverlay: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  container: { 
+  keyboardView: {
     flex: 1,
   },
-  keyboardView: { 
-    flex: 1,
-  },
-  brandingHeader: {
-    flexDirection: 'row',
+  logoContainerInside: {
     alignItems: 'center',
-    paddingHorizontal: 24,
     paddingTop: 40,
-    marginBottom: 30,
+    paddingBottom: 20,
   },
-  logoContainer: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+  logoImage: {
+    width: 160,
+    height: 160,
   },
-  logoWrapper: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 80,
-    height: 80,
-  },
-  logoStyle: {
-    zIndex: 2,
-  },
-  logoGlow: {
-    position: 'absolute',
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: `rgba(30, 215, 96, 0.25)`,
-    top: -5,
-    left: -5,
-    shadowColor: theme.colors.accent.neonGreen,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 20,
-    elevation: 10,
-    zIndex: 1,
-  },
-  headerTextContainer: { 
-    marginLeft: 16, 
-    flex: 1,
-  },
-  appName: { 
-    fontSize: 26, 
-    fontWeight: '900', 
-    color: '#FFFFFF', 
-    letterSpacing: 1.2,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowOffset: { width: 0, height: 3 },
-    textShadowRadius: 6,
-  },
-  tagline: { 
-    fontSize: 12, 
-    color: '#E0F2FE', 
-    fontWeight: '700', 
-    letterSpacing: 1,
-    marginTop: 4,
-    opacity: 0.95,
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingBottom: 30,
   },
   contentContainer: { 
     flex: 1, 
-    paddingHorizontal: 24, 
-    paddingTop: 10, 
-    justifyContent: 'center',
   },
   welcomeSection: {
-    marginBottom: 32,
+    marginBottom: 20,
     alignItems: 'center',
   },
   title: { 
-    fontSize: 32, 
-    fontWeight: '900', 
-    color: '#FFFFFF',
-    marginBottom: 8,
+    fontSize: 24, 
+    fontWeight: '800', 
+    color: '#1B5E20',
+    marginBottom: 4,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 3 },
-    textShadowRadius: 8,
-    letterSpacing: 0.5,
   },
   subtitle: { 
-    fontSize: 15, 
-    color: theme.colors.text.inverted, 
+    fontSize: 14, 
+    color: '#558B2F', 
     textAlign: 'center',
-    fontWeight: '600',
-    opacity: 0.85,
-    letterSpacing: 0.3,
+    fontWeight: '500',
   },
   formCard: {
-    backgroundColor: theme.colors.background.card,
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.ui.border,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   form: { 
     width: '100%',
   },
   inputGroup: { 
-    marginBottom: 20,
+    marginBottom: 14,
   },
   labelRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   label: { 
-    fontSize: 12, 
+    fontSize: 11, 
     fontWeight: '700', 
-    color: theme.colors.text.secondary, 
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    color: '#424242', 
+    letterSpacing: 0.5,
   },
   forgotText: { 
-    fontSize: 12, 
-    color: theme.colors.accent.neonGreen, 
-    fontWeight: '700',
+    fontSize: 11, 
+    color: '#4CAF50', 
+    fontWeight: '600',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.primary,
-    borderWidth: 2,
-    borderColor: theme.colors.ui.border,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 60,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 46,
   },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.accent.neonGreen,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    shadowColor: theme.colors.accent.neonGreen,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+  inputIcon: {
+    marginRight: 8,
   },
   input: { 
     flex: 1, 
-    fontSize: 16, 
-    color: theme.colors.text.primary, 
+    fontSize: 14, 
+    color: '#212121', 
     fontWeight: '500',
   },
   eyeIcon: {
     padding: 4,
   },
   primaryButton: {
-    height: 60,
-    borderRadius: 16,
-    marginTop: 10,
+    height: 50,
+    borderRadius: 14,
+    marginTop: 6,
     overflow: 'hidden',
-    shadowColor: theme.colors.accent.neonGreen,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 10,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   buttonGradient: {
     flexDirection: 'row',
@@ -484,79 +362,27 @@ const styles = StyleSheet.create({
   },
   buttonText: { 
     color: '#FFF', 
-    fontSize: 18, 
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontSize: 16, 
+    fontWeight: '700',
   },
   buttonIcon: {
-    marginLeft: 10,
+    marginLeft: 8,
   },
   footer: { 
     flexDirection: 'row', 
     justifyContent: 'center', 
-    marginTop: 24, 
-    paddingBottom: 20,
+    marginTop: 16, 
+    paddingBottom: 24,
   },
   footerText: { 
-    color: theme.colors.text.inverted, 
-    fontSize: 15,
+    color: '#558B2F', 
+    fontSize: 14,
     fontWeight: '500',
-    opacity: 0.9,
   },
   linkText: { 
-    color: theme.colors.accent.neonGreen, 
-    fontWeight: '800', 
-    fontSize: 15,
-    textDecorationLine: 'underline',
-  },
-  stickersContainer: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    top: 0,
-    left: 0,
-    zIndex: -1,
-  },
-  sticker: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: `rgba(30, 215, 96, 0.2)`,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: `rgba(30, 215, 96, 0.4)`,
-    shadowColor: theme.colors.accent.neonGreen,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  sticker1: {
-    top: '15%',
-    right: '10%',
-    transform: [{ rotate: '15deg' }],
-  },
-  sticker2: {
-    top: '25%',
-    left: '8%',
-    transform: [{ rotate: '-20deg' }],
-  },
-  sticker3: {
-    bottom: '25%',
-    right: '12%',
-    transform: [{ rotate: '25deg' }],
-  },
-  sticker4: {
-    bottom: '35%',
-    left: '10%',
-    transform: [{ rotate: '-15deg' }],
-  },
-  sticker5: {
-    top: '50%',
-    right: '5%',
-    transform: [{ rotate: '10deg' }],
+    color: '#2E7D32', 
+    fontWeight: '700', 
+    fontSize: 14,
   },
 });
 

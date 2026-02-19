@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, TextInput, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigation/AppNavigator';
@@ -10,20 +10,8 @@ const LoginWelcome = () => {
     const navigation = useNavigation<NavigationProp>();
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.imageContainer}>
-                <Image
-                    source={require('../../assets/welcome.png')}
-                    style={styles.image}
-                    resizeMode="cover"
-                />
-                <View style={styles.energyOverlay}>
-                    <View style={styles.boltIcon}>
-                        <View style={styles.boltPart1} />
-                        <View style={styles.boltPart2} />
-                    </View>
-                </View>
-            </View>
-
+            <StatusBar barStyle="dark-content" backgroundColor="#E8F5E9" />
+            
             <View style={styles.contentContainer}>
                 <Text style={styles.title}>Welcome to the Game</Text>
                 <Text style={styles.description}>
@@ -41,7 +29,7 @@ const LoginWelcome = () => {
                         <TextInput
                             style={styles.input}
                             placeholder="00000 00000"
-                            placeholderTextColor="#4A5568"
+                            placeholderTextColor="#94A3B8"
                             keyboardType="phone-pad"
                         />
                     </View>
@@ -52,13 +40,6 @@ const LoginWelcome = () => {
                     onPress={() => navigation.navigate('Login')}
                 >
                     <Text style={styles.buttonText}>Send Code →</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.devBypass}
-                    onPress={() => navigation.navigate('Login')}
-                >
-                    <Text style={styles.devText}>Testing Bypass (Login as Guest)</Text>
                 </TouchableOpacity>
 
                 <View style={styles.divider}>
@@ -83,78 +64,24 @@ const LoginWelcome = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F7FAFC',
-    },
-    imageContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    image: {
-        width: '90%',
-        height: '80%',
-        borderRadius: 30,
-    },
-    energyOverlay: {
-        position: 'absolute',
-        width: 80,
-        height: 80,
-        backgroundColor: '#00B8D4',
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#00B8D4',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.3,
-        shadowRadius: 15,
-        elevation: 10,
-    },
-    boltIcon: {
-        width: 30,
-        height: 40,
-    },
-    boltPart1: {
-        width: 0,
-        height: 0,
-        backgroundColor: 'transparent',
-        borderStyle: 'solid',
-        borderLeftWidth: 10,
-        borderRightWidth: 10,
-        borderBottomWidth: 20,
-        borderLeftColor: 'transparent',
-        borderRightColor: 'transparent',
-        borderBottomColor: '#FFFFFF',
-        transform: [{ skewX: '-20deg' }]
-    },
-    boltPart2: {
-        width: 0,
-        height: 0,
-        backgroundColor: 'transparent',
-        borderStyle: 'solid',
-        borderLeftWidth: 10,
-        borderRightWidth: 10,
-        borderTopWidth: 20,
-        borderLeftColor: 'transparent',
-        borderRightColor: 'transparent',
-        borderTopColor: '#FFFFFF',
-        transform: [{ skewX: '-20deg' }],
-        marginTop: -5
+        backgroundColor: '#E8F5E9',
     },
     contentContainer: {
-        flex: 1.5,
+        flex: 1,
         paddingHorizontal: 30,
-        paddingTop: 20,
+        paddingTop: 40,
     },
     title: {
         fontSize: 32,
-        fontWeight: 'bold',
-        color: '#0D1B1E',
+        fontWeight: '900',
+        color: '#1B5E20',
         textAlign: 'center',
         marginBottom: 10,
     },
     description: {
         fontSize: 16,
-        color: '#4A5568',
+        color: '#558B2F',
+        opacity: 0.9,
         textAlign: 'center',
         marginBottom: 30,
     },
@@ -164,7 +91,8 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 12,
         fontWeight: 'bold',
-        color: '#718096',
+        color: '#558B2F',
+        opacity: 0.9,
         marginBottom: 8,
     },
     inputContainer: {
@@ -173,7 +101,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 15,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: '#C8E6C9',
         alignItems: 'center',
         paddingHorizontal: 15,
     },
@@ -181,7 +109,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         borderRightWidth: 1,
-        borderRightColor: '#E2E8F0',
+        borderRightColor: '#C8E6C9',
         paddingRight: 10,
         marginRight: 15,
     },
@@ -192,41 +120,38 @@ const styles = StyleSheet.create({
     },
     countryCode: {
         fontSize: 16,
-        color: '#0D1B1E',
+        color: '#1B5E20',
         marginRight: 5,
     },
     chevron: {
         fontSize: 10,
-        color: '#718096',
+        color: '#558B2F',
+        opacity: 0.6,
     },
     input: {
         flex: 1,
         fontSize: 18,
-        color: '#0D1B1E',
+        color: '#1B5E20',
     },
     button: {
         width: '100%',
         height: 56,
-        backgroundColor: '#00B8D4',
+        backgroundColor: '#4CAF50',
         borderRadius: 28,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 20,
+        shadowColor: '#4CAF50',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 10,
+        elevation: 8,
     },
     buttonText: {
         fontSize: 16,
-        fontWeight: 'bold',
+        fontWeight: '800',
         color: '#FFFFFF',
-    },
-    devBypass: {
-        alignItems: 'center',
-        marginBottom: 20,
-        padding: 10,
-    },
-    devText: {
-        color: '#00B8D4',
-        fontSize: 14,
-        textDecorationLine: 'underline',
+        letterSpacing: 0.5,
     },
     divider: {
         flexDirection: 'row',
@@ -236,19 +161,20 @@ const styles = StyleSheet.create({
     line: {
         flex: 1,
         height: 1,
-        backgroundColor: '#E2E8F0',
+        backgroundColor: '#C8E6C9',
     },
     dividerText: {
         paddingHorizontal: 15,
         fontSize: 12,
-        color: '#718096',
+        color: '#558B2F',
+        opacity: 0.6,
     },
     googleButton: {
         flexDirection: 'row',
         height: 56,
         borderRadius: 28,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: '#C8E6C9',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 30,
@@ -261,17 +187,18 @@ const styles = StyleSheet.create({
     },
     googleText: {
         fontSize: 16,
-        fontWeight: 'bold',
-        color: '#4A5568',
+        fontWeight: '600',
+        color: '#1B5E20',
     },
     footerText: {
         fontSize: 12,
-        color: '#718096',
+        color: '#558B2F',
+        opacity: 0.9,
         textAlign: 'center',
         lineHeight: 18,
     },
     link: {
-        color: '#00B8D4',
+        color: '#4CAF50',
     }
 });
 

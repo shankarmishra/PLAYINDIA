@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme/colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const HelpSupportScreen = () => {
+  const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('FAQs');
 
   const faqs = [
@@ -44,56 +47,41 @@ const HelpSupportScreen = () => {
   ];
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.header}>
-        <TouchableOpacity>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#0F172A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Help & Support</Text>
-        <View style={{ width: 24 }} /> {/* Spacer */}
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        {['FAQs', 'Contact', 'Report'].map((tab) => (
-          <TouchableOpacity 
+      <View style={styles.tabs}>
+        {['FAQs', 'Contact', 'Report'].map(tab => (
+          <TouchableOpacity
             key={tab}
-            style={[
-              styles.tab,
-              { 
-                borderBottomWidth: activeTab === tab ? 2 : 0,
-                borderBottomColor: theme.colors.accent.neonGreen,
-              }
-            ]}
             onPress={() => setActiveTab(tab)}
+            style={[styles.tab, activeTab === tab && styles.activeTab]}
           >
-            <Text style={[
-              styles.tabText,
-              { 
-                color: activeTab === tab 
-                  ? theme.colors.accent.neonGreen 
-                  : theme.colors.text.secondary 
-              }
-            ]}>
-              {tab}
-            </Text>
+            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tab}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {activeTab === 'FAQs' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
+            <Text style={styles.sectionTitle}>Common Questions</Text>
             {faqs.map((faq) => (
-              <View key={faq.id} style={styles.faqItem}>
+              <TouchableOpacity key={faq.id} style={styles.faqCard}>
                 <View style={styles.faqHeader}>
                   <Text style={styles.faqQuestion}>{faq.question}</Text>
-                  <Ionicons name="chevron-down" size={20} color={theme.colors.text.primary} />
+                  <Ionicons name="chevron-down" size={20} color="#94A3B8" />
                 </View>
-                <Text style={styles.faqAnswer}>{faq.answer}</Text>
-              </View>
+                {/* Simplified for now, could add expanded state */}
+                <Text style={styles.faqAnswer} numberOfLines={2}>{faq.answer}</Text>
+              </TouchableOpacity>
             ))}
           </View>
         )}
@@ -101,35 +89,41 @@ const HelpSupportScreen = () => {
         {activeTab === 'Contact' && (
           <View>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Contact Us</Text>
-              <Text style={styles.sectionSubtitle}>Choose how you want to get in touch</Text>
-              
-              <View style={styles.contactOptions}>
-                {supportCategories.map((category) => (
-                  <TouchableOpacity key={category.id} style={styles.contactOption}>
-                    <View style={[styles.contactIcon, { backgroundColor: `${category.color}20` }]}>
-                      <Ionicons name={category.icon as any} size={24} color={category.color} />
+              <Text style={styles.sectionTitle}>Support Categories</Text>
+              <View style={styles.categoryGrid}>
+                {supportCategories.map((cat) => (
+                  <TouchableOpacity key={cat.id} style={styles.categoryCard}>
+                    <View style={[styles.iconBox, { backgroundColor: cat.color + '15' }]}>
+                      <Ionicons name={cat.icon as any} size={24} color={cat.color} />
                     </View>
-                    <Text style={styles.contactTitle}>{category.title}</Text>
+                    <Text style={styles.categoryTitle}>{cat.title}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Quick Support</Text>
-              <View style={styles.quickSupport}>
-                <TouchableOpacity style={styles.supportItem}>
-                  <Ionicons name="call-outline" size={24} color={theme.colors.accent.neonGreen} />
-                  <Text style={styles.supportText}>Call Support</Text>
+              <Text style={styles.sectionTitle}>Get in Touch</Text>
+              <View style={styles.contactList}>
+                <TouchableOpacity style={styles.contactItem}>
+                  <View style={styles.contactIcon}>
+                    <Ionicons name="call" size={22} color="#0F172A" />
+                  </View>
+                  <View style={styles.contactInfo}>
+                    <Text style={styles.contactLabel}>Phone Support</Text>
+                    <Text style={styles.contactValue}>+91 1800-PLAY-IND</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#CBD5E0" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.supportItem}>
-                  <Ionicons name="chatbubbles-outline" size={24} color={theme.colors.accent.neonGreen} />
-                  <Text style={styles.supportText}>Live Chat</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.supportItem}>
-                  <Ionicons name="mail-outline" size={24} color={theme.colors.accent.neonGreen} />
-                  <Text style={styles.supportText}>Email Us</Text>
+                <TouchableOpacity style={styles.contactItem}>
+                  <View style={styles.contactIcon}>
+                    <Ionicons name="chatbubble-ellipses" size={22} color="#0F172A" />
+                  </View>
+                  <View style={styles.contactInfo}>
+                    <Text style={styles.contactLabel}>Live Chat</Text>
+                    <Text style={styles.contactValue}>Average wait: 2 mins</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#CBD5E0" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -139,21 +133,25 @@ const HelpSupportScreen = () => {
         {activeTab === 'Report' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Report an Issue</Text>
-            <Text style={styles.sectionSubtitle}>Help us improve your experience</Text>
-            
             <View style={styles.reportForm}>
-              <TextInput
-                style={styles.input}
-                placeholder="Subject"
-                placeholderTextColor={theme.colors.text.disabled}
-              />
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Describe your issue..."
-                placeholderTextColor={theme.colors.text.disabled}
-                multiline
-                numberOfLines={5}
-              />
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Subject</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="What happened?"
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Details</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Describe your issue in detail..."
+                  placeholderTextColor="#94A3B8"
+                  multiline
+                  numberOfLines={6}
+                />
+              </View>
               <TouchableOpacity style={styles.submitButton}>
                 <Text style={styles.submitButtonText}>Submit Report</Text>
               </TouchableOpacity>
@@ -161,158 +159,224 @@ const HelpSupportScreen = () => {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.background.card,
-    ...theme.shadows.small,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
   },
-  tabsContainer: {
+  tabs: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.background.card,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    borderRadius: theme.borderRadius.large,
-    ...theme.shadows.small,
+    paddingHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 8,
   },
   tab: {
-    flex: 1,
-    paddingVertical: theme.spacing.lg,
-    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginRight: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  activeTab: {
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
   },
   tabText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  activeTabText: {
+    color: '#FFFFFF',
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+    backgroundColor: '#F8FAFC',
   },
   section: {
-    backgroundColor: theme.colors.background.card,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    borderRadius: theme.borderRadius.large,
-    padding: theme.spacing.md,
-    ...theme.shadows.small,
+    marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 16,
+    marginLeft: 4,
   },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.lg,
-  },
-  faqItem: {
-    marginBottom: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.ui.divider,
-    paddingBottom: theme.spacing.md,
+  faqCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   faqHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 8,
   },
   faqQuestion: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
     flex: 1,
+    marginRight: 12,
   },
   faqAnswer: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    lineHeight: 20,
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+    fontWeight: '500',
   },
-  contactOptions: {
+  categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  contactOption: {
+  categoryCard: {
+    backgroundColor: '#FFFFFF',
     width: '48%',
+    borderRadius: 20,
+    padding: 16,
     alignItems: 'center',
-    paddingVertical: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.medium,
-    ...theme.shadows.small,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 1,
   },
-  contactIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  iconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 12,
   },
-  contactTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
+  categoryTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
     textAlign: 'center',
   },
-  quickSupport: {
+  contactList: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  contactItem: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  supportItem: {
     alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
   },
-  supportText: {
+  contactIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactLabel: {
     fontSize: 14,
-    color: theme.colors.text.primary,
-    marginTop: theme.spacing.sm,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  contactValue: {
+    fontSize: 12,
+    color: '#64748B',
     fontWeight: '600',
   },
   reportForm: {
-    marginTop: theme.spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 8,
+    marginLeft: 4,
   },
   input: {
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.medium,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    fontSize: 16,
-    color: theme.colors.text.primary,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    height: 52,
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '500',
     borderWidth: 1,
-    borderColor: theme.colors.ui.border,
+    borderColor: '#E2E8F0',
   },
   textArea: {
     height: 120,
     textAlignVertical: 'top',
+    paddingTop: 16,
   },
   submitButton: {
-    backgroundColor: theme.colors.accent.neonGreen,
-    paddingVertical: theme.spacing.lg,
-    borderRadius: theme.borderRadius.medium,
+    backgroundColor: '#0F172A',
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: theme.spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   submitButtonText: {
-    color: theme.colors.text.inverted,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '700',
   },
 });
 

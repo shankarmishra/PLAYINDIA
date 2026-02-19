@@ -64,6 +64,24 @@ const userSchema = new mongoose.Schema({
       verified: { type: Boolean, default: false },
       otp: String,
       otpExpires: Date
+    },
+    aadhaar: {
+      number: String,
+      verified: { type: Boolean, default: false },
+      verifiedAt: Date,
+      documentFront: String,
+      documentBack: String
+    },
+    pan: {
+      number: String,
+      verified: { type: Boolean, default: false },
+      verifiedAt: Date,
+      document: String
+    },
+    faceMatch: {
+      verified: { type: Boolean, default: false },
+      verifiedAt: Date,
+      selfie: String
     }
   },
   trustScore: {
@@ -92,14 +110,48 @@ const userSchema = new mongoose.Schema({
     favoriteGames: [String],
     skillLevel: {
       type: String,
-      enum: ['beginner', 'intermediate', 'pro']
+      enum: ['beginner', 'intermediate', 'advanced']
     },
+    age: Number,
     ageGroup: String,
     city: String,
     preferredPlayTime: [String], // ['morning', 'evening', 'weekend']
     distancePreference: {
       type: Number,
       default: 5 // km
+    },
+    notificationSettings: {
+      push: { type: Boolean, default: true },
+      email: { type: Boolean, default: true },
+      sms: { type: Boolean, default: false },
+      whatsapp: { type: Boolean, default: false }
+    },
+    privacySettings: {
+      profileVisibility: {
+        type: String,
+        enum: ['public', 'friends', 'private'],
+        default: 'public'
+      },
+      locationSharing: { type: Boolean, default: false },
+      contactSharing: { type: Boolean, default: false }
+    }
+  },
+  profile: {
+    gender: String,
+    dateOfBirth: String, // Can be date or string depending on format
+    city: String,
+    bio: String,
+    experience: String, // Years of experience
+    preferredTime: String, // Morning/Evening/Weekend
+    availableDays: String, // Mon-Fri/Sat-Sun/Any Day
+    emergencyContact: String,
+    preferredRadius: {
+      type: Number,
+      default: 5 // km
+    },
+    locationSharing: {
+      type: Boolean,
+      default: false
     }
   },
   location: {
@@ -133,42 +185,6 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  trustScore: {
-    type: Number,
-    default: 75, // Base trust score
-    min: 0,
-    max: 100
-  },
-  verification: {
-    email: {
-      verified: { type: Boolean, default: false },
-      token: String,
-      expires: Date
-    },
-    mobile: {
-      verified: { type: Boolean, default: false },
-      otp: String,
-      otpExpires: Date
-    },
-    aadhaar: {
-      number: String,
-      verified: { type: Boolean, default: false },
-      verifiedAt: Date,
-      documentFront: String,
-      documentBack: String
-    },
-    pan: {
-      number: String,
-      verified: { type: Boolean, default: false },
-      verifiedAt: Date,
-      document: String
-    },
-    faceMatch: {
-      verified: { type: Boolean, default: false },
-      verifiedAt: Date,
-      selfie: String
-    }
-  },
   security: {
     lastLogin: Date,
     loginCount: { type: Number, default: 0 },
@@ -178,35 +194,6 @@ const userSchema = new mongoose.Schema({
     twoFactorSecret: String,
     deviceFingerprint: String,
     ipAddresses: [String]
-  },
-  preferences: {
-    favoriteGames: [String],
-    skillLevel: {
-      type: String,
-      enum: ['beginner', 'intermediate', 'pro']
-    },
-    ageGroup: String,
-    city: String,
-    preferredPlayTime: [String], // ['morning', 'evening', 'weekend']
-    distancePreference: {
-      type: Number,
-      default: 5 // km
-    },
-    notificationSettings: {
-      push: { type: Boolean, default: true },
-      email: { type: Boolean, default: true },
-      sms: { type: Boolean, default: false },
-      whatsapp: { type: Boolean, default: false }
-    },
-    privacySettings: {
-      profileVisibility: {
-        type: String,
-        enum: ['public', 'friends', 'private'],
-        default: 'public'
-      },
-      locationSharing: { type: Boolean, default: false },
-      contactSharing: { type: Boolean, default: false }
-    }
   },
   social: {
     followers: [{
@@ -297,7 +284,7 @@ const userSchema = new mongoose.Schema({
 userSchema.pre('save', async function(next) {
   // Only hash the password if it has been modified (or is new)
   if (!this.isModified('password')) return next();
-  
+
   // Hash the password with cost of 12
   this.password = await bcrypt.hash(this.password, 12);
   next();

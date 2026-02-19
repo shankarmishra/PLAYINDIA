@@ -20,11 +20,11 @@ const bookingSchema = new mongoose.Schema({
   coachProfileId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Coach',
-    required: true
+    required: false
   },
   type: {
     type: String,
-    enum: ['session', 'training', 'match_analysis', 'fitness', 'tournament', 'consultation'],
+    enum: ['session', 'training', 'match_analysis', 'fitness', 'tournament', 'consultation', 'facility_booking'],
     default: 'session'
   },
   service: {
@@ -86,7 +86,7 @@ const bookingSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: [
-      'pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 
+      'pending', 'confirmed', 'in_progress', 'completed', 'cancelled',
       'no_show', 'rescheduled', 'rejected', 'expired'
     ],
     default: 'pending'
@@ -268,7 +268,7 @@ const bookingSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt timestamp before saving
-bookingSchema.pre('save', function(next) {
+bookingSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });

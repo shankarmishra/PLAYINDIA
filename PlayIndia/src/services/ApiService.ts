@@ -34,7 +34,7 @@ apiClient.interceptors.response.use(
       await AsyncStorage.removeItem('userToken');
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('userType');
-      
+
       // Format error message for better UX
       const errorMessage = error.response?.data?.message || 'Session expired. Please login again.';
       error.message = errorMessage;
@@ -52,7 +52,7 @@ apiClient.interceptors.response.use(
     } else {
       error.message = error.response?.data?.message || error.message || 'An error occurred.';
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -61,184 +61,187 @@ apiClient.interceptors.response.use(
 const ApiService = {
   // Auth API methods
   auth: {
-    login: (email: string, password: string) => 
+    login: (email: string, password: string) =>
       apiClient.post(API_ENDPOINTS.AUTH.LOGIN, { email, password }),
-    
-    register: (userData: any) => 
+
+    register: (userData: any) =>
       apiClient.post(API_ENDPOINTS.AUTH.REGISTER, userData),
-    
-    me: () => 
+
+    me: () =>
       apiClient.get(API_ENDPOINTS.AUTH.ME),
-    
-    profile: () => 
+
+    profile: () =>
       apiClient.get(API_ENDPOINTS.AUTH.PROFILE),
   },
 
   // User API methods
   users: {
-    getProfile: () => 
+    getProfile: () =>
       apiClient.get(API_ENDPOINTS.USERS.PROFILE),
-    
-    getLeaderboard: () => 
+
+    getLeaderboard: () =>
       apiClient.get(API_ENDPOINTS.USERS.LEADERBOARD),
-    
-    getNearby: (params?: any) => 
+
+    getNearby: (params?: any) =>
       apiClient.get(API_ENDPOINTS.USERS.NEARBY, { params }),
-    
-    updateProfile: (profileData: any) => 
+
+    updateProfile: (profileData: any) =>
       apiClient.put(API_ENDPOINTS.USERS.PROFILE, profileData),
+
+    notifyPlayer: (notificationData: any) =>
+      apiClient.post(`${API_BASE_URL}/api/nearby-players/notify`, notificationData),
   },
 
   // Tournament API methods
   tournaments: {
-    getAll: (params?: any) => 
+    getAll: (params?: any) =>
       apiClient.get(API_ENDPOINTS.TOURNAMENTS.BASE, { params }),
-    
-    getMy: () => 
+
+    getMy: () =>
       apiClient.get(API_ENDPOINTS.TOURNAMENTS.MY_TOURNAMENTS),
-    
-    getById: (id: string) => 
+
+    getById: (id: string) =>
       apiClient.get(API_ENDPOINTS.TOURNAMENTS.DETAIL(id)),
-    
-    create: (tournamentData: any) => 
+
+    create: (tournamentData: any) =>
       apiClient.post(API_ENDPOINTS.TOURNAMENTS.BASE, tournamentData),
-    
-    update: (id: string, tournamentData: any) => 
+
+    update: (id: string, tournamentData: any) =>
       apiClient.put(`${API_ENDPOINTS.TOURNAMENTS.DETAIL(id)}`, tournamentData),
-    
-    delete: (id: string) => 
+
+    delete: (id: string) =>
       apiClient.delete(`${API_ENDPOINTS.TOURNAMENTS.DETAIL(id)}`),
   },
 
   // Coaches API methods
   coaches: {
-    getAll: (params?: any) => 
+    getAll: (params?: any) =>
       apiClient.get(API_ENDPOINTS.COACHES.BASE, { params }),
-    
-    getProfile: () => 
+
+    getProfile: () =>
       apiClient.get(API_ENDPOINTS.COACHES.PROFILE),
-    
-    getDashboard: () => 
+
+    getDashboard: () =>
       apiClient.get(`${API_ENDPOINTS.COACHES.BASE}/dashboard`),
-    
-    getAvailability: () => 
+
+    getAvailability: () =>
       apiClient.get(`${API_ENDPOINTS.COACHES.BASE}/availability`),
-    
-    updateAvailability: (availabilityData: any) => 
+
+    updateAvailability: (availabilityData: any) =>
       apiClient.put(`${API_ENDPOINTS.COACHES.BASE}/availability`, availabilityData),
   },
 
   // Teams API methods
   teams: {
-    getAll: (params?: any) => 
+    getAll: (params?: any) =>
       apiClient.get(`${API_BASE_URL}/api/teams`, { params }),
-    
-    getBySportAndLocation: (sport: string, lat: number, lng: number, radius: number) => 
+
+    getBySportAndLocation: (sport: string, lat: number, lng: number, radius: number) =>
       apiClient.get(`${API_BASE_URL}/api/teams/search`, {
         params: { sport, lat, lng, radius }
       }),
-    
-    create: (teamData: any) => 
+
+    create: (teamData: any) =>
       apiClient.post(`${API_BASE_URL}/api/teams`, teamData),
   },
 
   // Venues API methods
   venues: {
-    getAll: (params?: any) => 
+    getAll: (params?: any) =>
       apiClient.get(API_ENDPOINTS.VENUES.LIST, { params }),
-    
-    getById: (id: string) => 
+
+    getById: (id: string) =>
       apiClient.get(API_ENDPOINTS.VENUES.DETAIL(id)),
-    
-    book: (bookingData: any) => 
+
+    book: (bookingData: any) =>
       apiClient.post(API_ENDPOINTS.VENUES.BOOK, bookingData),
   },
 
   // Bookings API methods
   bookings: {
-    getAll: () => 
+    getAll: () =>
       apiClient.get(API_ENDPOINTS.BOOKINGS.BASE),
-    
-    getMyBookings: () => 
+
+    getMyBookings: () =>
       apiClient.get(API_ENDPOINTS.BOOKINGS.MY_BOOKINGS),
-    
-    create: (bookingData: any) => 
+
+    create: (bookingData: any) =>
       apiClient.post(API_ENDPOINTS.BOOKINGS.CREATE, bookingData),
   },
 
   // Admin API methods
   admin: {
-    getUsers: () => 
+    getUsers: () =>
       apiClient.get(API_ENDPOINTS.ADMIN.USERS),
-    
-    approveCoach: (coachId: string) => 
+
+    approveCoach: (coachId: string) =>
       apiClient.patch(API_ENDPOINTS.ADMIN.APPROVE_COACH(coachId)),
-    
-    getDashboardStats: () => 
+
+    getDashboardStats: () =>
       apiClient.get(`${API_ENDPOINTS.ADMIN.BASE}/dashboard`),
-    
+
     // Banner management
-    getBanners: (params?: any) => 
+    getBanners: (params?: any) =>
       apiClient.get(API_ENDPOINTS.ADMIN.BANNERS, { params }),
-    
-    createBanner: (bannerData: any) => 
+
+    createBanner: (bannerData: any) =>
       apiClient.post(API_ENDPOINTS.ADMIN.BANNERS, bannerData),
-    
-    updateBanner: (id: string, bannerData: any) => 
+
+    updateBanner: (id: string, bannerData: any) =>
       apiClient.put(`${API_ENDPOINTS.ADMIN.BANNERS}/${id}`, bannerData),
-    
-    deleteBanner: (id: string) => 
+
+    deleteBanner: (id: string) =>
       apiClient.delete(`${API_ENDPOINTS.ADMIN.BANNERS}/${id}`),
   },
 
   // Banner API methods (public)
   banners: {
-    getAll: (params?: any) => 
+    getAll: (params?: any) =>
       apiClient.get(API_ENDPOINTS.BANNERS.BASE, { params }),
-    
-    getById: (id: string) => 
+
+    getById: (id: string) =>
       apiClient.get(`${API_ENDPOINTS.BANNERS.BASE}/${id}`),
-    
-    trackClick: (id: string) => 
+
+    trackClick: (id: string) =>
       apiClient.post(API_ENDPOINTS.BANNERS.CLICK(id)),
   },
 
   // Stores API methods
   stores: {
-    getDashboard: () => 
+    getDashboard: () =>
       apiClient.get(API_ENDPOINTS.STORES.DASHBOARD),
-    
-    getMyProfile: () => 
+
+    getMyProfile: () =>
       apiClient.get(API_ENDPOINTS.STORES.MY_PROFILE),
-    
-    getProfile: (id: string) => 
+
+    getProfile: (id: string) =>
       apiClient.get(`${API_ENDPOINTS.STORES.BASE}/${id}`),
-    
-    updateProfile: (data: any) => 
+
+    updateProfile: (data: any) =>
       apiClient.put(API_ENDPOINTS.STORES.PROFILE, data),
-    
-    getProducts: (storeId: string, params?: any) => 
+
+    getProducts: (storeId: string, params?: any) =>
       apiClient.get(API_ENDPOINTS.STORES.PRODUCTS(storeId), { params }),
-    
-    addProduct: (storeId: string, data: any) => 
+
+    addProduct: (storeId: string, data: any) =>
       apiClient.post(API_ENDPOINTS.STORES.PRODUCTS(storeId), data),
-    
-    updateProduct: (productId: string, data: any) => 
+
+    updateProduct: (productId: string, data: any) =>
       apiClient.put(API_ENDPOINTS.STORES.PRODUCT(productId), data),
-    
-    deleteProduct: (productId: string) => 
+
+    deleteProduct: (productId: string) =>
       apiClient.delete(API_ENDPOINTS.STORES.PRODUCT(productId)),
   },
-  
+
   // Orders API methods
   orders: {
-    getStoreOrders: (params?: any) => 
+    getStoreOrders: (params?: any) =>
       apiClient.get(API_ENDPOINTS.ORDERS.STORE_ORDERS, { params }),
-    
-    getOrder: (id: string) => 
+
+    getOrder: (id: string) =>
       apiClient.get(API_ENDPOINTS.ORDERS.DETAIL(id)),
-    
-    updateOrderStatus: (id: string, data: any) => 
+
+    updateOrderStatus: (id: string, data: any) =>
       apiClient.put(API_ENDPOINTS.ORDERS.UPDATE_STATUS(id), data),
   },
 
@@ -246,7 +249,7 @@ const ApiService = {
   products: {
     getAll: (params?: any) =>
       apiClient.get(`${API_BASE_URL}/api/products`, { params }),
-    
+
     getProduct: (id: string) =>
       apiClient.get(`${API_BASE_URL}/api/stores/products/${id}`),
   },
@@ -255,49 +258,49 @@ const ApiService = {
   ads: {
     getStoreAds: (params?: any) =>
       apiClient.get(`${API_BASE_URL}/api/stores/ads`, { params }),
-    
+
     getAd: (id: string) =>
       apiClient.get(`${API_BASE_URL}/api/stores/ads/${id}`),
-    
+
     createAd: (data: any) =>
       apiClient.post(`${API_BASE_URL}/api/stores/ads`, data),
-    
+
     updateAd: (id: string, data: any) =>
       apiClient.put(`${API_BASE_URL}/api/stores/ads/${id}`, data),
-    
+
     deleteAd: (id: string) =>
       apiClient.delete(`${API_BASE_URL}/api/stores/ads/${id}`),
-    
+
     submitAd: (id: string, paymentData: any) =>
       apiClient.post(`${API_BASE_URL}/api/stores/ads/${id}/submit`, paymentData),
-    
+
     toggleAd: (id: string) =>
       apiClient.post(`${API_BASE_URL}/api/stores/ads/${id}/toggle`),
-    
+
     getActiveAds: (params?: any) =>
       apiClient.get(`${API_BASE_URL}/api/ads/active`, { params }),
-    
+
     trackClick: (id: string) =>
       apiClient.post(`${API_BASE_URL}/api/ads/${id}/click`),
-    
+
     trackView: (id: string) =>
       apiClient.post(`${API_BASE_URL}/api/ads/${id}/view`),
   },
 
   // Generic methods
-  get: (url: string, params?: any) => 
+  get: (url: string, params?: any) =>
     apiClient.get(url, { params }),
-  
-  post: (url: string, data?: any) => 
+
+  post: (url: string, data?: any) =>
     apiClient.post(url, data),
-  
-  put: (url: string, data?: any) => 
+
+  put: (url: string, data?: any) =>
     apiClient.put(url, data),
-  
-  patch: (url: string, data?: any) => 
+
+  patch: (url: string, data?: any) =>
     apiClient.patch(url, data),
-  
-  delete: (url: string) => 
+
+  delete: (url: string) =>
     apiClient.delete(url),
 };
 

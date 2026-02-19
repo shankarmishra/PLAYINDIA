@@ -10,7 +10,8 @@ const {
   updateUserProfile,
   updateUserRole,
   updateUserStatus,
-  changePassword
+  changePassword,
+  getNearbyPlayers
 } = require('../controllers/user.controller');
 
 // Public routes
@@ -35,7 +36,7 @@ router.get('/leaderboard', async (req, res) => {
         const rank = await User.countDocuments({
           coins: { $gt: user.coins }
         }) + 1;
-        
+
         userRank = {
           rank,
           name: user.name,
@@ -68,6 +69,7 @@ router.get('/leaderboard', async (req, res) => {
 router.get('/profile', authenticate, getUserProfile);
 router.put('/profile', authenticate, updateUserProfile);
 router.put('/change-password', authenticate, changePassword);
+router.get('/nearby', authenticate, getNearbyPlayers);
 
 // Admin routes
 router.get('/', authenticate, authorize('admin'), getUsers);

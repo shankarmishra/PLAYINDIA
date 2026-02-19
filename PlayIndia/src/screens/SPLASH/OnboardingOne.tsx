@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigation/AppNavigator';
@@ -10,14 +10,8 @@ const OnboardingOne = () => {
     const navigation = useNavigation<NavigationProp>();
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.imageContainer}>
-                <Image
-                    source={require('../../assets/onboarding1.png')}
-                    style={styles.image}
-                    resizeMode="cover"
-                />
-            </View>
-
+            <StatusBar barStyle="dark-content" backgroundColor="#E8F5E9" />
+            
             <View style={styles.contentContainer}>
                 <Text style={styles.title}>
                     Find nearby players{'\n'}
@@ -55,18 +49,7 @@ const OnboardingOne = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F7FAFC',
-    },
-    imageContainer: {
-        flex: 1.2,
-        borderBottomLeftRadius: 40,
-        borderBottomRightRadius: 40,
-        overflow: 'hidden',
-        backgroundColor: '#E2E8F0',
-    },
-    image: {
-        width: '100%',
-        height: '100%',
+        backgroundColor: '#E8F5E9',
     },
     contentContainer: {
         flex: 1,
@@ -76,17 +59,18 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 28,
-        fontWeight: 'bold',
-        color: '#0D1B1E',
+        fontWeight: '900',
+        color: '#1B5E20',
         textAlign: 'center',
         marginBottom: 15,
     },
     highlight: {
-        color: '#00B8D4',
+        color: '#4CAF50',
     },
     description: {
         fontSize: 14,
-        color: '#4A5568',
+        color: '#558B2F',
+        opacity: 0.9,
         textAlign: 'center',
         lineHeight: 22,
         marginBottom: 30,
@@ -99,38 +83,40 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: '#CBD5E0',
+        backgroundColor: 'rgba(76, 175, 80, 0.3)',
         marginHorizontal: 4,
     },
     activeDot: {
         width: 24,
-        backgroundColor: '#00B8D4',
+        backgroundColor: '#4CAF50',
     },
     button: {
         width: '100%',
         height: 56,
-        backgroundColor: '#00B8D4',
+        backgroundColor: '#4CAF50',
         borderRadius: 28,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 20,
-        shadowColor: '#00B8D4',
+        shadowColor: '#4CAF50',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 5,
+        shadowOpacity: 0.4,
+        shadowRadius: 10,
+        elevation: 8,
     },
     buttonText: {
         fontSize: 16,
-        fontWeight: 'bold',
+        fontWeight: '800',
         color: '#FFFFFF',
+        letterSpacing: 0.5,
     },
     skipButton: {
         padding: 10,
     },
     skipText: {
         fontSize: 14,
-        color: '#718096',
+        color: '#558B2F',
+        opacity: 0.6,
     },
 });
 

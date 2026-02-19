@@ -6,13 +6,14 @@ import AsyncStorage from '../utils/AsyncStorageSafe';
 // Screens
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/user/LoginScreen';
-import RegisterScreen from '../screens/RegisterScreen';
+import RegisterScreen from '../screens/user/RegisterScreen';
 import UserTabNavigator from './UserNav'; // User dashboard
 import CoachNav from './CoachNav'; // Coach dashboard
 import StoreNav from './StoreNav'; // Store dashboard
 import StoreApprovalTrackingScreen from '../screens/store/StoreApprovalTrackingScreen';
 import DeliveryNav from './DeliveryNav'; // Delivery dashboard
 import AdminNav from './AdminNav'; // Admin dashboard
+import LocationPermissionScreen from '../screens/user/LocationPermissionScreen';
 
 // Onboarding screens
 import OnboardingOne from '../screens/SPLASH/OnboardingOne';
@@ -29,6 +30,7 @@ export type RootStackParamList = {
   LoginWelcome: undefined;
   Login: undefined;
   Register: undefined;
+  LocationPermission: undefined;
   UserMain: undefined;
   CoachMain: undefined;
   StoreMain: undefined;
@@ -53,22 +55,30 @@ const AppNavigator = () => {
         const userType = await AsyncStorage.getItem('userType');
         
         if (token && userType) {
-          switch (userType) {
-            case 'coach':
-              setInitialRoute('CoachMain');
-              break;
-            case 'store':
-            case 'seller':
-              setInitialRoute('StoreMain');
-              break;
-            case 'delivery':
-              setInitialRoute('DeliveryMain');
-              break;
-            case 'admin':
-              setInitialRoute('AdminMain');
-              break;
-            default:
-              setInitialRoute('UserMain');
+          // Check if location permission was already shown
+          const locationShown = await AsyncStorage.getItem('locationPermissionShown');
+          
+          if (!locationShown && userType === 'user') {
+            // First time user - show location permission screen
+            setInitialRoute('LocationPermission');
+          } else {
+            switch (userType) {
+              case 'coach':
+                setInitialRoute('CoachMain');
+                break;
+              case 'store':
+              case 'seller':
+                setInitialRoute('StoreMain');
+                break;
+              case 'delivery':
+                setInitialRoute('DeliveryMain');
+                break;
+              case 'admin':
+                setInitialRoute('AdminMain');
+                break;
+              default:
+                setInitialRoute('UserMain');
+            }
           }
         } else {
           setInitialRoute('Splash');
@@ -99,6 +109,7 @@ const AppNavigator = () => {
         <Stack.Screen name="LoginWelcome" component={LoginWelcome} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
         <Stack.Screen name="UserMain" component={UserTabNavigator} />
         <Stack.Screen name="CoachMain" component={CoachNav} />
         <Stack.Screen name="StoreMain" component={StoreNav} />

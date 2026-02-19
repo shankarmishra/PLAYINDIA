@@ -161,7 +161,7 @@ const BookingScreen = () => {
         <BrandLogo size={45} style={styles.logoStyle} />
         <View style={styles.header}>
           <View style={styles.headerTitleContainer}>
-            <Icon name="game-controller" size={24} color="#00B8D4" />
+            <Icon name="game-controller" size={24} color="#2E7D32" />
             <Text style={styles.headerTitle}>Find Players</Text>
           </View>
           <Text style={styles.headerSubtitle}>Seek teammates in your area</Text>
@@ -178,7 +178,7 @@ const BookingScreen = () => {
         ]}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionLabelContainer}>
-              <Icon name="grid" size={16} color="#00B8D4" />
+              <Icon name="grid" size={16} color="#2E7D32" />
               <Text style={styles.sectionLabel}>MATCH DETAILS</Text>
             </View>
             {selectedGame && (
@@ -283,7 +283,7 @@ const BookingScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#E8F5E9',
   },
   brandingHeader: {
     flexDirection: 'row',
@@ -302,8 +302,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#0D1B1E',
+    fontWeight: '900',
+    color: '#0F172A',
   },
   headerTitleContainer: {
     flexDirection: 'row',
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#718096',
+    color: '#2E7D32',
     marginTop: 5,
   },
   scrollContent: {
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     padding: 25,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#C8E6C9',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.08,
@@ -344,11 +344,11 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#00B8D4',
+    color: '#1B5E20',
     letterSpacing: 1.5,
   },
   selectedBadge: {
-    backgroundColor: '#E6FBFF',
+    backgroundColor: '#E8F5E9',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   selectedBadgeText: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#00B8D4',
+    color: '#2E7D32',
   },
   inputGroup: {
     marginBottom: 20,
@@ -364,19 +364,19 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#718096',
+    color: '#4A5568',
     marginBottom: 8,
     letterSpacing: 1,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 48,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#C8E6C9',
     marginBottom: 12,
   },
   searchIcon: {
@@ -396,14 +396,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#F8FAFC',
     marginRight: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#C8E6C9',
   },
   gameChipActive: {
-    backgroundColor: '#E6FBFF',
-    borderColor: '#00B8D4',
+    backgroundColor: '#E8F5E9',
+    borderColor: '#2E7D32',
   },
   gameChipText: {
     fontSize: 13,
@@ -411,18 +411,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   gameChipTextActive: {
-    color: '#00B8D4',
+    color: '#1B5E20',
     fontWeight: 'bold',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#F8FAFC',
     borderRadius: 14,
     height: 54,
     paddingHorizontal: 15,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#C8E6C9',
   },
   inputEmoji: {
     fontSize: 18,
@@ -434,13 +434,13 @@ const styles = StyleSheet.create({
   },
   findButton: {
     flexDirection: 'row',
-    backgroundColor: '#00B8D4',
+    backgroundColor: '#2E7D32',
     height: 58,
     borderRadius: 29,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 15,
-    shadowColor: '#00B8D4',
+    shadowColor: '#2E7D32',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   noticeBox: {
     flexDirection: 'row',
     marginTop: 30,
-    backgroundColor: '#0D1B1E',
+    backgroundColor: '#1B5E20',
     borderRadius: 25,
     padding: 25,
     shadowColor: '#000',
@@ -481,12 +481,12 @@ const styles = StyleSheet.create({
   noticeTitle: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: '#00B8D4',
+    color: '#FFFFFF',
     marginBottom: 10,
   },
   noticeText: {
     fontSize: 14,
-    color: '#A0AEC0',
+    color: '#E8F5E9',
     lineHeight: 22,
   },
 });

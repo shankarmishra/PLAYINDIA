@@ -1,0 +1,63 @@
+/**
+ * Sample React Native App
+ * https://github.com/facebook/react-native
+ *
+ * @format
+ */
+
+import React, { useState } from 'react';
+import { StatusBar, View, StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+// Import your existing screens
+import SplashScreen from './src/screens/SplashScreen';
+import LoginScreen from './src/screens/user/LoginScreen';
+import RegisterScreen from './src/screens/user/RegisterScreen';
+import UserHomeDashboard from './src/screens/user/UserHomeDashboard';
+import TournamentScreen from './src/screens/user/TournamentScreen';
+import ProfileScreen from './src/screens/user/ProfileScreen';
+import { createSimpleNavigation } from './src/navigation/SimpleNavigation';
+
+const App = () => {
+  const [currentScreen, setCurrentScreen] = useState('Splash');
+  
+  // Create navigation object
+  const navigation = createSimpleNavigation(setCurrentScreen);
+
+  const renderCurrentScreen = () => {
+    switch (currentScreen) {
+      case 'Splash':
+        return <SplashScreen navigation={navigation} />;
+      case 'Login':
+        return <LoginScreen navigation={navigation} />;
+      case 'Register':
+        return <RegisterScreen navigation={navigation} />;
+      case 'UserMain':
+        return <UserHomeDashboard navigation={navigation} />;
+      case 'Tournaments':
+        return <TournamentScreen navigation={navigation} />;
+      case 'Profile':
+        return <ProfileScreen navigation={navigation} />;
+      default:
+        return <SplashScreen navigation={navigation} />;
+    }
+  };
+
+  return (
+    <SafeAreaProvider>
+      <View style={styles.container}>
+        <StatusBar />
+        {renderCurrentScreen()}
+      </View>
+    </SafeAreaProvider>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+});
+
+export default App;

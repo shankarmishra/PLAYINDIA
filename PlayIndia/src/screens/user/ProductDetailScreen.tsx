@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
-  Image, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Image,
   FlatList,
   StatusBar,
   Alert,
@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { UserTabParamList } from '../../navigation/UserNav';
+import { UserTabParamList } from '../../navigation/types';
 import { useCart } from '../../contexts/CartContext';
 
 type NavigationProp = StackNavigationProp<UserTabParamList>;
@@ -60,7 +60,7 @@ const ProductDetailScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<ProductDetailRouteProp>();
   const { addToCart } = useCart();
-  
+
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState('M');
@@ -120,13 +120,13 @@ const ProductDetailScreen = () => {
   };
 
   const renderImage = ({ item, index }: any) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[
-        styles.imageItem, 
-        { 
-          borderColor: selectedImageIndex === index 
-            ? '#1ED760' 
-            : '#E2E8F0' 
+        styles.imageItem,
+        {
+          borderColor: selectedImageIndex === index
+            ? '#2E7D32'
+            : '#C8E6C9'
         }
       ]}
       onPress={() => setSelectedImageIndex(index)}
@@ -144,11 +144,11 @@ const ProductDetailScreen = () => {
           <Text style={styles.reviewUserName}>{item.userName}</Text>
           <View style={styles.reviewRating}>
             {[...Array(5)].map((_, i) => (
-              <Ionicons 
-                key={i} 
-                name={i < item.rating ? "star" : "star-outline"} 
-                size={14} 
-                color={i < item.rating ? "#F59E0B" : "#CBD5E0"} 
+              <Ionicons
+                key={i}
+                name={i < item.rating ? "star" : "star-outline"}
+                size={14}
+                color={i < item.rating ? "#F59E0B" : "#CBD5E0"}
               />
             ))}
           </View>
@@ -161,18 +161,18 @@ const ProductDetailScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
+      <StatusBar barStyle="dark-content" backgroundColor="#E8F5E9" />
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#1B5E20" />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setIsFavorite(!isFavorite)} activeOpacity={0.7}>
-          <Ionicons 
-            name={isFavorite ? "heart" : "heart-outline"} 
-            size={24} 
-            color={isFavorite ? "#EF4444" : "#1F2937"} 
+          <Ionicons
+            name={isFavorite ? "heart" : "heart-outline"}
+            size={24}
+            color={isFavorite ? "#EF4444" : "#1F2937"}
           />
         </TouchableOpacity>
         <TouchableOpacity activeOpacity={0.7}>
@@ -183,9 +183,9 @@ const ProductDetailScreen = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Product Images */}
         <View style={styles.imageContainer}>
-          <ScrollView 
-            horizontal 
-            pagingEnabled 
+          <ScrollView
+            horizontal
+            pagingEnabled
             showsHorizontalScrollIndicator={false}
             onScroll={(e) => {
               const screenWidth = Dimensions.get('window').width;
@@ -195,10 +195,10 @@ const ProductDetailScreen = () => {
             scrollEventThrottle={16}
           >
             {mockProductImages.map((image, index) => (
-              <Image 
-                key={index} 
-                source={{ uri: image }} 
-                style={styles.mainImage} 
+              <Image
+                key={index}
+                source={{ uri: image }}
+                style={styles.mainImage}
                 resizeMode="cover"
               />
             ))}
@@ -229,7 +229,7 @@ const ProductDetailScreen = () => {
         {/* Product Info */}
         <View style={styles.content}>
           <Text style={styles.productName}>{product.name}</Text>
-          
+
           <View style={styles.priceContainer}>
             <Text style={styles.currentPrice}>₹{product.price.toLocaleString()}</Text>
             <Text style={styles.originalPrice}>₹{product.originalPrice?.toLocaleString()}</Text>
@@ -241,11 +241,11 @@ const ProductDetailScreen = () => {
           <View style={styles.ratingContainer}>
             <View style={styles.ratingStars}>
               {[...Array(5)].map((_, i) => (
-                <Ionicons 
-                  key={i} 
-                  name={i < Math.floor(product.rating) ? "star" : "star-outline"} 
-                  size={16} 
-                  color={i < Math.floor(product.rating) ? "#F59E0B" : "#CBD5E0"} 
+                <Ionicons
+                  key={i}
+                  name={i < Math.floor(product.rating) ? "star" : "star-outline"}
+                  size={16}
+                  color={i < Math.floor(product.rating) ? "#F59E0B" : "#CBD5E0"}
                 />
               ))}
             </View>
@@ -256,15 +256,15 @@ const ProductDetailScreen = () => {
           <Text style={styles.sectionTitle}>Size</Text>
           <View style={styles.sizeContainer}>
             {product.sizes.map((size) => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 key={size}
                 style={[
                   styles.sizeOption,
-                  { 
-                    backgroundColor: selectedSize === size 
-                      ? '#1ED760' 
-                      : '#F8FAFC',
-                    borderColor: selectedSize === size ? '#1ED760' : '#E2E8F0',
+                  {
+                    backgroundColor: selectedSize === size
+                      ? '#2E7D32'
+                      : '#FFFFFF',
+                    borderColor: selectedSize === size ? '#2E7D32' : '#C8E6C9',
                   }
                 ]}
                 onPress={() => setSelectedSize(size)}
@@ -272,10 +272,10 @@ const ProductDetailScreen = () => {
               >
                 <Text style={[
                   styles.sizeText,
-                  { 
-                    color: selectedSize === size 
-                      ? '#FFFFFF' 
-                      : '#1F2937' 
+                  {
+                    color: selectedSize === size
+                      ? '#FFFFFF'
+                      : '#1F2937'
                   }
                 ]}>
                   {size}
@@ -287,7 +287,7 @@ const ProductDetailScreen = () => {
           {/* Quantity */}
           <Text style={styles.sectionTitle}>Quantity</Text>
           <View style={styles.quantityContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.quantityButton}
               onPress={() => setQuantity(Math.max(1, quantity - 1))}
               activeOpacity={0.7}
@@ -295,7 +295,7 @@ const ProductDetailScreen = () => {
               <Ionicons name="remove" size={20} color="#1F2937" />
             </TouchableOpacity>
             <Text style={styles.quantityText}>{quantity}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.quantityButton}
               onPress={() => setQuantity(quantity + 1)}
               activeOpacity={0.7}
@@ -313,7 +313,7 @@ const ProductDetailScreen = () => {
           <View style={styles.featuresContainer}>
             {product.features.map((feature, index) => (
               <View key={index} style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                <Ionicons name="checkmark-circle" size={16} color="#2E7D32" />
                 <Text style={styles.featureText}>{feature}</Text>
               </View>
             ))}
@@ -333,15 +333,15 @@ const ProductDetailScreen = () => {
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.cartButton}
           onPress={handleAddToCart}
           activeOpacity={0.8}
         >
-          <Ionicons name="cart-outline" size={24} color="#1F2937" />
+          <Ionicons name="cart-outline" size={24} color="#2E7D32" />
           <Text style={styles.cartButtonText}>Add to Cart</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.buyButton}
           onPress={handleBuyNow}
           activeOpacity={0.8}
@@ -356,60 +356,68 @@ const ProductDetailScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E8F5E9',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 12,
-    height: 60,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#E8F5E9',
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#C8E6C9',
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: '#C8E6C9',
   },
   imageContainer: {
     position: 'relative',
     width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: 'hidden',
   },
   mainImage: {
     width: Dimensions.get('window').width,
-    height: 300,
-    backgroundColor: '#F8FAFC',
+    height: 350,
+    backgroundColor: '#FFFFFF',
   },
   imagePagination: {
     position: 'absolute',
-    bottom: 16,
+    bottom: 20,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
   },
   paginationDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(46, 125, 50, 0.2)',
   },
   paginationDotActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2E7D32',
     width: 20,
   },
   thumbnailsContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     gap: 12,
   },
   imageItem: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 12,
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    marginRight: 10,
     borderWidth: 2,
     overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
   },
   thumbnailImage: {
     width: '100%',
@@ -417,13 +425,13 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+    backgroundColor: '#E8F5E9',
   },
   productName: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '900',
     color: '#0F172A',
     marginBottom: 12,
-    letterSpacing: -0.5,
   },
   priceContainer: {
     flexDirection: 'row',
@@ -433,9 +441,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   currentPrice: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1ED760',
+    fontSize: 30,
+    fontWeight: 'bold',
+    color: '#2E7D32',
   },
   originalPrice: {
     fontSize: 18,
@@ -443,20 +451,24 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   discountBadge: {
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 8,
+    backgroundColor: '#C8E6C9',
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   discountText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#EF4444',
+    fontWeight: 'bold',
+    color: '#1B5E20',
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 24,
+    backgroundColor: '#FFFFFF',
+    padding: 10,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
   },
   ratingStars: {
     flexDirection: 'row',
@@ -465,13 +477,13 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 14,
-    color: '#64748B',
+    color: '#4A5568',
     fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: 'bold',
+    color: '#1B5E20',
     marginTop: 24,
     marginBottom: 12,
   },
@@ -484,14 +496,15 @@ const styles = StyleSheet.create({
   sizeOption: {
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1.5,
     minWidth: 60,
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   sizeText: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: 'bold',
   },
   quantityContainer: {
     flexDirection: 'row',
@@ -502,28 +515,31 @@ const styles = StyleSheet.create({
   quantityButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderWidth: 1.5,
+    borderColor: '#C8E6C9',
   },
   quantityText: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: 'bold',
+    color: '#1B5E20',
     minWidth: 30,
     textAlign: 'center',
   },
   description: {
     fontSize: 15,
-    color: '#64748B',
+    color: '#4A5568',
     lineHeight: 24,
     marginBottom: 8,
   },
   featuresContainer: {
     marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 16,
   },
   featureItem: {
     flexDirection: 'row',
@@ -536,10 +552,15 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   reviewCard: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   reviewHeader: {
     flexDirection: 'row',
@@ -557,8 +578,8 @@ const styles = StyleSheet.create({
   },
   reviewUserName: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: 'bold',
+    color: '#1B5E20',
     marginBottom: 4,
   },
   reviewRating: {
@@ -576,10 +597,10 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E8F5E9',
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: '#C8E6C9',
     gap: 12,
   },
   cartButton: {
@@ -587,27 +608,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#C8E6C9',
   },
   cartButtonText: {
-    color: '#1F2937',
-    fontWeight: '700',
+    color: '#2E7D32',
+    fontWeight: 'bold',
     fontSize: 16,
   },
   buyButton: {
     flex: 1,
-    backgroundColor: '#1ED760',
+    backgroundColor: '#2E7D32',
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
   buyButtonText: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: 'bold',
     fontSize: 16,
   },
 });

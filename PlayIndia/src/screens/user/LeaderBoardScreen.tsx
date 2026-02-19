@@ -58,7 +58,7 @@ const LeaderBoardScreen = () => {
             { id: '4', name: 'Sneha Reddy', coins: 1100, topDays: 3 },
             { id: '5', name: 'Vikram Singh', coins: 980, topDays: 2 },
           ];
-          
+
           setUsers(dummyUsers);
           setUserRank({ rank: 12, name: 'You', coins: 650, topDays: 0 });
           setIsLoading(false);
@@ -79,7 +79,7 @@ const LeaderBoardScreen = () => {
         if (error.message && !error.message.includes('Network')) {
           console.log('Leaderboard API error:', error.message);
         }
-        
+
         // Set dummy data if API fails
         const dummyUsers: User[] = [
           { id: '1', name: 'Rajesh Kumar', coins: 1500, topDays: 15 },
@@ -88,7 +88,7 @@ const LeaderBoardScreen = () => {
           { id: '4', name: 'Sneha Reddy', coins: 1100, topDays: 3 },
           { id: '5', name: 'Vikram Singh', coins: 980, topDays: 2 },
         ];
-        
+
         setUsers(dummyUsers);
         setUserRank({ rank: 12, name: 'You', coins: 650, topDays: 0 });
       } finally {
@@ -106,7 +106,7 @@ const LeaderBoardScreen = () => {
       if (index === 2) return <Icon name="medal" size={32} color="#CD7F32" />;
       return null;
     };
-    
+
     return (
       <Animated.View style={[
         styles.row,
@@ -151,24 +151,25 @@ const LeaderBoardScreen = () => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#00B8D4" />
+        <ActivityIndicator size="large" color="#2E7D32" />
       </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#E8F5E9" />
       <Animated.View style={[styles.brandingHeader, { opacity: fadeAnim }]}>
         <BrandLogo size={45} style={styles.logoStyle} />
         <View style={styles.headerTitleContainer}>
           <Icon name="trophy" size={28} color="#FFB800" />
           <View style={{ marginLeft: 10 }}>
             <Text style={styles.title}>Leaderboard</Text>
-            <Text style={styles.tagline}>PLAYINDIA CHAMPIONS</Text>
+            <Text style={styles.taglineSmaller}>TEAMUPINDIA CHAMPIONS</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.filterButton}>
-          <Icon name="stats-chart" size={22} color="#00B8D4" />
+          <Icon name="stats-chart" size={22} color="#2E7D32" />
         </TouchableOpacity>
       </Animated.View>
 
@@ -190,7 +191,7 @@ const LeaderBoardScreen = () => {
             ]}>
               <View style={styles.userRankHeader}>
                 <View style={styles.yourRankContainer}>
-                  <Icon name="target" size={20} color="#00B8D4" />
+                  <Icon name="target" size={20} color="#E8F5E9" />
                   <Text style={styles.userRankTitle}>YOUR RANK</Text>
                 </View>
                 <View style={styles.rankBadge}>
@@ -239,7 +240,7 @@ export default LeaderBoardScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#E8F5E9',
   },
   brandingHeader: {
     flexDirection: 'row',
@@ -252,20 +253,17 @@ const styles = StyleSheet.create({
   filterButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderWidth: 1.5,
+    borderColor: '#C8E6C9',
+    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
-    elevation: 2,
-  },
-  filterIcon: {
-    fontSize: 18,
   },
   logoStyle: {
     padding: 0,
@@ -277,24 +275,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#0D1B1E',
+    fontWeight: '900',
+    color: '#0F172A',
   },
-  tagline: {
-    fontSize: 12,
-    color: '#718096',
-    fontWeight: '600',
+  taglineSmaller: {
+    fontSize: 10,
+    color: '#2E7D32',
+    fontWeight: '700',
     textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
-  },
-  emptyEmoji: {
-    fontSize: 64,
-    marginBottom: 20,
   },
   emptyText: {
     fontSize: 18,
@@ -304,29 +299,13 @@ const styles = StyleSheet.create({
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#A0AEC0',
+    color: '#94A3B8',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F7FAFC',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 15,
-    paddingHorizontal: 15,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 12,
-    marginBottom: 15,
-  },
-  headerText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#4A5568',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    backgroundColor: '#E8F5E9',
   },
   row: {
     flexDirection: 'row',
@@ -334,27 +313,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingVertical: 16,
     paddingHorizontal: 18,
-    borderRadius: 18,
+    borderRadius: 20,
     marginBottom: 12,
-    marginHorizontal: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    marginHorizontal: 16,
+    borderWidth: 1.5,
+    borderColor: '#C8E6C9',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
   topPlayerRow: {
-    backgroundColor: '#F7FAFC',
-    borderColor: '#00B8D4',
-    borderWidth: 1.5,
+    backgroundColor: '#F0FDF4',
+    borderColor: '#2E7D32',
+    borderWidth: 2,
   },
   firstPlace: {
-    backgroundColor: '#E6FBFF',
-    borderWidth: 2,
-    borderColor: '#00B8D4',
-    shadowColor: '#00B8D4',
+    backgroundColor: '#E8F5E9',
+    borderColor: '#1B5E20',
+    elevation: 6,
+    shadowColor: '#1B5E20',
     shadowOpacity: 0.2,
     shadowRadius: 12,
   },
@@ -365,13 +344,10 @@ const styles = StyleSheet.create({
   medalContainer: {
     marginRight: 8,
   },
-  medalEmoji: {
-    fontSize: 28,
-  },
   rank: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: '#718096',
+    color: '#4A5568',
   },
   playerInfo: {
     flex: 1,
@@ -379,8 +355,8 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 17,
-    color: '#0D1B1E',
-    fontWeight: '600',
+    color: '#0D2D10',
+    fontWeight: 'bold',
     marginBottom: 4,
   },
   statsRow: {
@@ -394,43 +370,41 @@ const styles = StyleSheet.create({
   },
   coinsSmall: {
     fontSize: 12,
-    color: '#718096',
-    marginRight: 12,
+    color: '#4A5568',
   },
   topDaysSmall: {
     fontSize: 12,
-    color: '#FF6B6B',
-    fontWeight: '600',
+    color: '#C62828',
+    fontWeight: '700',
   },
   topDaysContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
   },
   coinsBadge: {
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#F8FAFC',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
   },
   topCoinsBadge: {
-    backgroundColor: '#E6FBFF',
+    backgroundColor: '#C8E6C9',
   },
   coins: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4A5568',
+    color: '#1B5E20',
   },
   topRank: {
-    color: '#00B8D4',
+    color: '#1B5E20',
     fontSize: 19,
   },
   topName: {
-    color: '#00B8D4',
+    color: '#1B5E20',
     fontSize: 18,
   },
   topCoins: {
-    color: '#00B8D4',
+    color: '#1B5E20',
     fontSize: 17,
   },
   leaderboardTitle: {
@@ -439,21 +413,21 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   leaderboardTitleText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
-    color: '#0D1B1E',
+    color: '#1B5E20',
   },
   listContent: {
     paddingBottom: 20,
   },
   userRankContainer: {
-    backgroundColor: '#0D1B1E',
-    marginHorizontal: 20,
-    padding: 25,
-    marginBottom: 25,
+    backgroundColor: '#1B5E20',
+    marginHorizontal: 16,
+    padding: 24,
+    marginBottom: 24,
     marginTop: 15,
     borderRadius: 25,
-    shadowColor: '#00B8D4',
+    shadowColor: '#1B5E20',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
@@ -472,36 +446,34 @@ const styles = StyleSheet.create({
   userRankTitle: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#00B8D4',
+    color: '#E8F5E9',
     letterSpacing: 1.5,
+    marginLeft: 8,
   },
   rankBadge: {
-    backgroundColor: '#00B8D4',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 20,
   },
   rankBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: '#1B5E20',
+    fontSize: 18,
     fontWeight: 'bold',
   },
   userRankStats: {
-    gap: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   userStatItem: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  userStatIcon: {
-    fontSize: 20,
-    marginRight: 12,
-    width: 28,
-  },
   userStatValue: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: 'bold',
     color: '#FFFFFF',
+    marginLeft: 8,
   },
 });
 

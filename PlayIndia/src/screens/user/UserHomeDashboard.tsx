@@ -23,9 +23,11 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import QuickActionCard from '../../components/QuickActionCard';
 import StatCard from '../../components/StatCard';
 import ActivityItem from '../../components/ActivityItem';
+import { HomeHeader, WelcomeCard, HomeSearchBar, TrendingSports, FitnessStats } from '../../components/home';
 import useAuth from '../../hooks/useAuth';
 import ApiService from '../../services/ApiService';
-import { UserTabParamList } from '../../navigation/UserNav';
+import { UserTabParamList } from '../../navigation/types';
+import { useLocation } from '../../context/LocationContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -77,6 +79,15 @@ interface Tournament {
 const UserHomeDashboard = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user, refreshUser } = useAuth();
+  const {
+    currentAddress,
+    currentLocation,
+    locationLoading,
+    refreshLocation,
+    isInitialized,
+    permissionGranted
+  } = useLocation();
+
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,8 +98,7 @@ const UserHomeDashboard = () => {
     streak: 0,
   });
   const [activities, setActivities] = useState<RecentActivity[]>([]);
-  const [location, setLocation] = useState<string>('Loading...');
-  
+
   // Dummy banner data (fallback)
   const dummyBanners: Banner[] = [
     {
@@ -110,15 +120,39 @@ const UserHomeDashboard = () => {
       image: 'https://images.unsplash.com/photo-1519819239661-77e2010e75c4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
     },
   ];
-  
+
   const [banners, setBanners] = useState<Banner[]>(dummyBanners);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const bannerScrollRef = useRef<FlatList>(null);
 
+  // Helper function to get location display text
+  const getLocationDisplayText = () => {
+    if (!isInitialized) {
+      return 'Initializing...';
+    }
+
+    if (locationLoading) {
+      return 'Getting location...';
+    }
+
+    if (!permissionGranted) {
+      return 'Tap to enable location';
+    }
+
+    if (currentAddress && currentAddress !== 'Current Location') {
+      return currentAddress;
+    }
+
+    if (currentLocation) {
+      return `Lat: ${currentLocation.latitude.toFixed(4)}, Lng: ${currentLocation.longitude.toFixed(4)}`;
+    }
+
+    return 'Location not available';
+  };
+
   useEffect(() => {
     loadDashboardData();
-    loadUserLocation();
     loadBanners();
   }, []);
 
@@ -132,8 +166,6 @@ const UserHomeDashboard = () => {
   const loadBanners = async () => {
     try {
       const response = await ApiService.banners.getAll({ status: 'active' });
-      console.log('Banners API response:', response.data);
-      
       if (response.data && response.data.success && response.data.data && Array.isArray(response.data.data)) {
         if (response.data.data.length > 0) {
           const formattedBanners = response.data.data.map((banner: any) => ({
@@ -143,19 +175,15 @@ const UserHomeDashboard = () => {
             image: banner.image || '',
             link: banner.link || undefined,
           }));
-          console.log('Setting banners:', formattedBanners);
           setBanners(formattedBanners);
         } else {
-          console.log('No banners returned from API, using dummy banners');
           setBanners(dummyBanners);
         }
       } else {
-        console.log('Invalid API response format, using dummy banners');
         setBanners(dummyBanners);
       }
     } catch (error: any) {
       console.error('Banners API error:', error);
-      // Use dummy banners on error
       setBanners(dummyBanners);
     }
   };
@@ -181,99 +209,42 @@ const UserHomeDashboard = () => {
     }
   }, [banners.length]);
 
-  const loadUserLocation = async () => {
+  const handleLocationPress = async () => {
     try {
-      if (user?.location?.city) {
-        setLocation(user.location.city);
-      } else if (user?.preferences?.city) {
-        setLocation(user.preferences.city);
-      } else {
-        setLocation('New Delhi');
+      if (locationLoading) {
+        return; // Prevent multiple simultaneous calls
+      }
+
+      await refreshLocation();
+
+      // Auto-navigate to LiveMap screen when location is found
+      if (currentLocation || permissionGranted) {
+        setTimeout(() => {
+          navigation.navigate('LiveMap', {
+            searchRequest: { radius: 5 }
+          });
+        }, 1000); // Small delay to ensure location is processed
       }
     } catch (error) {
-      console.error('Error loading location:', error);
-      setLocation('New Delhi');
+      console.error('Location refresh error:', error);
+      Alert.alert(
+        'Location Error',
+        'Unable to get your location. Please check your permissions and GPS settings.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
   const loadTournaments = async () => {
     try {
       const response = await ApiService.tournaments.getAll({ status: 'upcoming', limit: 6 });
-      if (response.data.success && response.data.data && response.data.data.length > 0) {
+      if (response.data && response.data.success && response.data.data) {
         setTournaments(response.data.data);
       } else {
-        // Use dummy data if API returns empty
-        setTournaments([
-          {
-            _id: '1',
-            name: 'Summer Cricket League',
-            category: 'Cricket',
-            dates: { tournamentStart: '2024-06-15', tournamentEnd: '2024-06-20' },
-            entryFee: 500,
-            maxTeams: 16,
-            registeredTeams: 8,
-            location: { city: 'Delhi', address: 'Delhi Cricket Stadium' },
-          },
-          {
-            _id: '2',
-            name: 'National Badminton Championship',
-            category: 'Badminton',
-            dates: { tournamentStart: '2024-07-20', tournamentEnd: '2024-07-25' },
-            entryFee: 1200,
-            maxTeams: 32,
-            registeredTeams: 29,
-            location: { city: 'Mumbai', address: 'National Sports Complex' },
-          },
-          {
-            _id: '3',
-            name: 'Premier Football Cup',
-            category: 'Football',
-            dates: { tournamentStart: '2024-08-10', tournamentEnd: '2024-08-15' },
-            entryFee: 800,
-            maxTeams: 24,
-            registeredTeams: 18,
-            location: { city: 'Bangalore', address: 'City Football Ground' },
-          },
-        ]);
+        setTournaments([]);
       }
-      } catch (error: any) {
-        // Silently use dummy data on network error (expected when backend is down)
-        if (error.message && !error.message.includes('Network error')) {
-          console.log('Tournament API error:', error.message);
-        }
-        // Use dummy data if API fails
-      setTournaments([
-        {
-          _id: '1',
-          name: 'Summer Cricket League',
-          category: 'Cricket',
-          dates: { tournamentStart: '2024-06-15', tournamentEnd: '2024-06-20' },
-          entryFee: 500,
-          maxTeams: 16,
-          registeredTeams: 8,
-          location: { city: 'Delhi', address: 'Delhi Cricket Stadium' },
-        },
-        {
-          _id: '2',
-          name: 'National Badminton Championship',
-          category: 'Badminton',
-          dates: { tournamentStart: '2024-07-20', tournamentEnd: '2024-07-25' },
-          entryFee: 1200,
-          maxTeams: 32,
-          registeredTeams: 29,
-          location: { city: 'Mumbai', address: 'National Sports Complex' },
-        },
-        {
-          _id: '3',
-          name: 'Premier Football Cup',
-          category: 'Football',
-          dates: { tournamentStart: '2024-08-10', tournamentEnd: '2024-08-15' },
-          entryFee: 800,
-          maxTeams: 24,
-          registeredTeams: 18,
-          location: { city: 'Bangalore', address: 'City Football Ground' },
-        },
-      ]);
+    } catch (error: any) {
+      setTournaments([]);
     }
   };
 
@@ -283,7 +254,7 @@ const UserHomeDashboard = () => {
 
       // Load tournaments (with fallback to dummy data)
       await loadTournaments();
-      
+
       // Fetch user profile to get updated stats
       if (user) {
         try {
@@ -292,7 +263,7 @@ const UserHomeDashboard = () => {
           console.error('Error refreshing user:', error);
         }
       }
-      
+
       // Fetch bookings/stats with dummy data fallback
       try {
         const bookingsResponse = await ApiService.bookings.getMyBookings();
@@ -300,7 +271,7 @@ const UserHomeDashboard = () => {
           const bookings = bookingsResponse.data.bookings || [];
           const completedBookings = bookings.filter((b: any) => b.status === 'completed');
           const totalBookings = bookings.length;
-          
+
           setStats({
             matchesPlayed: completedBookings.length,
             winRate: totalBookings > 0 ? Math.round((completedBookings.length / totalBookings) * 100) : 0,
@@ -310,9 +281,6 @@ const UserHomeDashboard = () => {
         }
       } catch (error: any) {
         // Silently use dummy data on network error
-        if (error.message && !error.message.includes('Network error')) {
-          console.log('Bookings API error:', error.message);
-        }
         // Set dummy stats
         setStats({
           matchesPlayed: 12,
@@ -321,11 +289,11 @@ const UserHomeDashboard = () => {
           streak: 5,
         });
       }
-      
+
       // Fetch recent activities with dummy data fallback
       try {
         const activitiesData: RecentActivity[] = [];
-        
+
         // Get recent bookings
         const bookingsResponse = await ApiService.bookings.getMyBookings();
         if (bookingsResponse.data.success) {
@@ -342,7 +310,7 @@ const UserHomeDashboard = () => {
             });
           });
         }
-        
+
         // Get recent achievements
         if (user?.achievements && user.achievements.length > 0) {
           const recentAchievements = user.achievements
@@ -359,7 +327,7 @@ const UserHomeDashboard = () => {
             }));
           activitiesData.push(...recentAchievements);
         }
-        
+
         // Use dummy activities if no real data
         if (activitiesData.length === 0) {
           activitiesData.push(
@@ -392,13 +360,10 @@ const UserHomeDashboard = () => {
             }
           );
         }
-        
+
         setActivities(activitiesData.slice(0, 3));
       } catch (error: any) {
         // Silently use dummy data on network error
-        if (error.message && !error.message.includes('Network error')) {
-          console.log('Activities API error:', error.message);
-        }
         // Set dummy activities
         setActivities([
           {
@@ -461,7 +426,6 @@ const UserHomeDashboard = () => {
     try {
       await Promise.all([
         loadDashboardData(),
-        loadUserLocation(),
         loadBanners(),
         refreshUser(),
       ]);
@@ -543,24 +507,24 @@ const UserHomeDashboard = () => {
   ];
 
   const fitnessStats = [
-    { 
-      title: 'Matches Played', 
-      value: stats.matchesPlayed.toString(), 
+    {
+      title: 'Matches Played',
+      value: stats.matchesPlayed.toString(),
       change: stats.matchesPlayed > 0 ? `+${Math.floor(stats.matchesPlayed * 0.1)} this week` : 'Start playing!',
     },
-    { 
-      title: 'Win Rate', 
-      value: `${stats.winRate}%`, 
+    {
+      title: 'Win Rate',
+      value: `${stats.winRate}%`,
       change: stats.winRate > 0 ? `+${Math.floor(stats.winRate * 0.05)}%` : 'No matches yet',
     },
-    { 
-      title: 'Calories Burned', 
-      value: stats.caloriesBurned.toLocaleString(), 
+    {
+      title: 'Calories Burned',
+      value: stats.caloriesBurned.toLocaleString(),
       change: stats.caloriesBurned > 0 ? `+${Math.floor(stats.caloriesBurned * 0.1)} today` : 'Start your journey!',
     },
-    { 
-      title: 'Streak', 
-      value: `${stats.streak} days`, 
+    {
+      title: 'Streak',
+      value: `${stats.streak} days`,
       change: stats.streak > 0 ? 'Keep it up!' : 'Start your streak!',
     },
   ];
@@ -588,12 +552,12 @@ const UserHomeDashboard = () => {
       activeOpacity={0.9}
       onPress={() => handleBannerPress(item)}
     >
-      <Image 
-        source={{ uri: item.image }} 
+      <Image
+        source={{ uri: item.image }}
         style={styles.bannerImage}
         resizeMode="cover"
         onError={() => {
-          console.log('Banner image failed to load:', item.image);
+          // Banner image failed to load
         }}
       />
       <View style={styles.bannerOverlay} />
@@ -616,9 +580,9 @@ const UserHomeDashboard = () => {
     const slotsLeft = (item.maxTeams || 0) - (item.registeredTeams || 0);
     const startDate = item.dates?.tournamentStart
       ? new Date(item.dates.tournamentStart).toLocaleDateString('en-IN', {
-          month: 'short',
-          day: 'numeric',
-        })
+        month: 'short',
+        day: 'numeric',
+      })
       : 'TBA';
 
     return (
@@ -668,27 +632,13 @@ const UserHomeDashboard = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      {/* Header with location and notification */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.locationContainer} activeOpacity={0.7}>
-            <Ionicons name="location" size={18} color="#0891B2" />
-            <Text style={styles.locationText}>{location}</Text>
-            <Ionicons name="chevron-down" size={14} color="#64748B" />
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.headerRight}>
-          <TouchableOpacity 
-            style={styles.notificationContainer}
-            onPress={() => navigation.navigate('Notifications')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="notifications-outline" size={22} color="#1F2937" />
-            <View style={styles.notificationBadge} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Header with location and notification - FIXED */}
+      <HomeHeader
+        location={getLocationDisplayText()}
+        locationLoading={locationLoading}
+        onLocationPress={handleLocationPress}
+        onNotificationPress={() => navigation.navigate('Notifications')}
+      />
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -696,7 +646,7 @@ const UserHomeDashboard = () => {
           <Text style={styles.loadingText}>Loading dashboard...</Text>
         </View>
       ) : (
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}
@@ -729,73 +679,19 @@ const UserHomeDashboard = () => {
           )}
 
           {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <View style={styles.searchBar}>
-              <Ionicons name="search-outline" size={20} color="#64748B" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search tournaments, players, coaches..."
-                placeholderTextColor="#94A3B8"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={20} color="#94A3B8" />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
+          <HomeSearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
 
           {/* Welcome Card */}
-          <View style={styles.welcomeCard}>
-            <View style={styles.welcomeContent}>
-              <Text style={styles.welcomeText}>
-                {new Date().getHours() < 12
-                  ? 'Good Morning'
-                  : new Date().getHours() < 18
-                  ? 'Good Afternoon'
-                  : 'Good Evening'}{' '}
-                👋
-              </Text>
-              <Text style={styles.userName}>{user?.name || 'Player'}</Text>
-              <Text style={styles.welcomeSubtitle}>
-                {user?.preferences?.favoriteGames && user.preferences.favoriteGames.length > 0
-                  ? `Ready to play ${user.preferences.favoriteGames[0]} today?`
-                  : 'Ready to play some sports today?'}
-              </Text>
-            </View>
-            <View style={styles.welcomeIconContainer}>
-              <Ionicons name="fitness" size={48} color="#1ED760" />
-            </View>
-          </View>
+          <WelcomeCard
+            userName={user?.name}
+            favoriteGames={user?.preferences?.favoriteGames}
+          />
 
-        {/* Trending Sports */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Trending Sports</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAllText}>See All</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.trendingSportsContainer}
-        >
-          {trendingSports.map((sport) => (
-            <TouchableOpacity
-              key={sport.id}
-              style={[styles.trendingSportCard, { borderLeftColor: sport.color }]}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.trendingSportIcon, { backgroundColor: `${sport.color}20` }]}>
-                <Ionicons name={sport.icon as any} size={28} color={sport.color} />
-              </View>
-              <Text style={styles.trendingSportName}>{sport.name}</Text>
-              <Text style={styles.trendingSportPlayers}>{sport.players} players</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+          {/* Trending Sports */}
+          <TrendingSports sports={trendingSports} />
 
           {/* Tournaments Section */}
           {tournaments.length > 0 && (
@@ -819,129 +715,115 @@ const UserHomeDashboard = () => {
             </>
           )}
 
-        {/* Fitness Stats */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Fitness Summary</Text>
-        </View>
-        <View style={styles.statsContainer}>
-          {fitnessStats.map((stat, index) => (
-              <StatCard key={index} title={stat.title} value={stat.value} change={stat.change} />
-          ))}
-        </View>
+          {/* Fitness Stats */}
+          <FitnessStats stats={fitnessStats} />
 
-        {/* Featured Coaches */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Featured Coaches</Text>
-          <TouchableOpacity onPress={() => {
-            const parent = navigation.getParent();
-            if (parent) {
-              parent.navigate('HomeTab', { screen: 'FindCoach' });
-            } else {
-              navigation.navigate('FindCoach');
-            }
-          }}>
-            <Text style={styles.seeAllText}>See All</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.coachesContainer}
-        >
-          {featuredCoaches.map((coach) => (
-            <TouchableOpacity
-              key={coach.id}
-              style={styles.coachCard}
-              activeOpacity={0.8}
-              onPress={() => navigation.navigate('CoachProfile', { coachId: coach.id })}
-            >
-              <Image source={{ uri: coach.avatar }} style={styles.coachAvatar} />
-              <Text style={styles.coachName}>{coach.name}</Text>
-              <Text style={styles.coachSport}>{coach.sport}</Text>
-              <View style={styles.coachRating}>
-                <Ionicons name="star" size={14} color="#F59E0B" />
-                <Text style={styles.coachRatingText}>{coach.rating}</Text>
-                <Text style={styles.coachExperience}>• {coach.experience}</Text>
-              </View>
-              <Text style={styles.coachPrice}>{coach.price}</Text>
+          {/* Featured Coaches */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Featured Coaches</Text>
+            <TouchableOpacity>
+              <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Popular Venues */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Popular Venues</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAllText}>See All</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.venuesContainer}
-        >
-          {popularVenues.map((venue) => (
-            <TouchableOpacity
-              key={venue.id}
-              style={styles.venueCard}
-              activeOpacity={0.8}
-            >
-              <Image source={{ uri: venue.image }} style={styles.venueImage} />
-              <View style={styles.venueInfo}>
-                <Text style={styles.venueName}>{venue.name}</Text>
-                <Text style={styles.venueSport}>{venue.sport}</Text>
-                <View style={styles.venueMeta}>
-                  <Ionicons name="location" size={12} color="#64748B" />
-                  <Text style={styles.venueDistance}>{venue.distance}</Text>
-                  <Text style={styles.venueDivider}>•</Text>
-                  <Ionicons name="star" size={12} color="#F59E0B" />
-                  <Text style={styles.venueRating}>{venue.rating}</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.coachesContainer}
+          >
+            {featuredCoaches.map((coach) => (
+              <TouchableOpacity
+                key={coach.id}
+                style={styles.coachCard}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('CoachProfile', { coachId: coach.id })}
+              >
+                <Image source={{ uri: coach.avatar }} style={styles.coachAvatar} />
+                <Text style={styles.coachName}>{coach.name}</Text>
+                <Text style={styles.coachSport}>{coach.sport}</Text>
+                <View style={styles.coachRating}>
+                  <Ionicons name="star" size={14} color="#F59E0B" />
+                  <Text style={styles.coachRatingText}>{coach.rating}</Text>
+                  <Text style={styles.coachExperience}>• {coach.experience}</Text>
                 </View>
-                <Text style={styles.venuePrice}>{venue.price}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+                <Text style={styles.coachPrice}>{coach.price}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
-        {/* Recent Activity */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAllText}>View All</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.activityCard}>
-          {activities.length > 0 ? (
-            activities.map((activity) => (
-              <ActivityItem 
-                key={activity.id}
-                icon={activity.icon} 
-                title={activity.title} 
-                subtitle={activity.subtitle} 
-                time={activity.time} 
-                statusColor={activity.statusColor} 
-              />
-            ))
-          ) : (
-            <View style={styles.emptyActivityContainer}>
-              <Ionicons name="time-outline" size={48} color="#9CA3AF" />
-              <Text style={styles.emptyActivityText}>No recent activity</Text>
+          {/* Popular Venues */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Popular Venues</Text>
+            <TouchableOpacity>
+              <Text style={styles.seeAllText}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.venuesContainer}
+          >
+            {popularVenues.map((venue) => (
+              <TouchableOpacity
+                key={venue.id}
+                style={styles.venueCard}
+                activeOpacity={0.8}
+              >
+                <Image source={{ uri: venue.image }} style={styles.venueImage} />
+                <View style={styles.venueInfo}>
+                  <Text style={styles.venueName}>{venue.name}</Text>
+                  <Text style={styles.venueSport}>{venue.sport}</Text>
+                  <View style={styles.venueMeta}>
+                    <Ionicons name="location" size={12} color="#64748B" />
+                    <Text style={styles.venueDistance}>{venue.distance}</Text>
+                    <Text style={styles.venueDivider}>•</Text>
+                    <Ionicons name="star" size={12} color="#F59E0B" />
+                    <Text style={styles.venueRating}>{venue.rating}</Text>
+                  </View>
+                  <Text style={styles.venuePrice}>{venue.price}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Recent Activity */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <TouchableOpacity>
+              <Text style={styles.seeAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.activityCard}>
+            {activities.length > 0 ? (
+              activities.map((activity) => (
+                <ActivityItem
+                  key={activity.id}
+                  icon={activity.icon}
+                  title={activity.title}
+                  subtitle={activity.subtitle}
+                  time={activity.time}
+                  statusColor={activity.statusColor}
+                />
+              ))
+            ) : (
+              <View style={styles.emptyActivityContainer}>
+                <Ionicons name="time-outline" size={48} color="#9CA3AF" />
+                <Text style={styles.emptyActivityText}>No recent activity</Text>
                 <Text style={styles.emptyActivitySubtext}>
                   Start playing to see your activities here!
                 </Text>
-            </View>
-          )}
-        </View>
+              </View>
+            )}
+          </View>
         </ScrollView>
       )}
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button - Find Players */}
       {!loading && (
-        <TouchableOpacity 
-          style={styles.fab} 
-          onPress={() => navigation.navigate('FindCoach')}
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => navigation.navigate('FindPlayers')}
         >
-          <Ionicons name="add" size={24} color="#FFFFFF" />
+          <Ionicons name="search" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       )}
     </SafeAreaView>
@@ -951,7 +833,7 @@ const UserHomeDashboard = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#E8F5E9',
   },
   scrollContent: {
     paddingBottom: 100,
@@ -964,9 +846,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 12,
     height: 60,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#E8F5E9',
     elevation: 0,
     shadowOpacity: 0,
   },
@@ -980,7 +860,7 @@ const styles = StyleSheet.create({
   locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F9FF',
+    backgroundColor: '#C8E6C9',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
@@ -989,7 +869,7 @@ const styles = StyleSheet.create({
   locationText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#1B5E20',
     marginHorizontal: 6,
   },
   notificationContainer: {
@@ -1101,23 +981,20 @@ const styles = StyleSheet.create({
   },
   welcomeCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 24,
+    padding: 24,
     marginHorizontal: 20,
     marginBottom: 24,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#0891B2',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
     shadowRadius: 12,
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#E0F2FE',
+    borderColor: '#C8E6C9',
   },
   welcomeContent: {
     flex: 1,
@@ -1164,8 +1041,8 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#0891B2',
+    fontWeight: '700',
+    color: '#2E7D32',
   },
   quickActionsContainer: {
     flexDirection: 'row',
@@ -1258,10 +1135,10 @@ const styles = StyleSheet.create({
   tournamentFee: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0891B2',
+    color: '#2E7D32',
   },
   tournamentButton: {
-    backgroundColor: '#0891B2',
+    backgroundColor: '#2E7D32',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -1300,7 +1177,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#1ED760',
+    backgroundColor: '#2E7D32',
     justifyContent: 'center',
     alignItems: 'center',
     bottom: 16,
@@ -1435,7 +1312,7 @@ const styles = StyleSheet.create({
   coachPrice: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1ED760',
+    color: '#2E7D32',
   },
   venuesContainer: {
     paddingHorizontal: 20,
@@ -1499,7 +1376,7 @@ const styles = StyleSheet.create({
   venuePrice: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0891B2',
+    color: '#2E7D32',
   },
 });
 

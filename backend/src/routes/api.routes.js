@@ -15,15 +15,8 @@ const notificationController = require('../controllers/notification.controller')
 const supportController = require('../controllers/support.controller');
 const achievementController = require('../controllers/achievement.controller');
 const playpointController = require('../controllers/playpoint.controller');
-const bannerController = require('../controllers/banner.controller');
-const adController = require('../controllers/ad.controller');
 
 const router = express.Router();
-
-// Debug route to verify routing works
-router.get('/stores/test', (req, res) => {
-  res.json({ success: true, message: 'Store routes are working' });
-});
 
 // User routes
 router.route('/users/nearby')
@@ -61,27 +54,17 @@ router.route('/coaches/:id/availability/:date')
   .get(protect, coachController.getCoachAvailability);
 
 // Store routes
-// IMPORTANT: Define specific routes BEFORE parameterized routes
-// Express matches routes in order, so /stores/dashboard must come before /stores/:id
-
-// Dashboard route - MUST be before /stores/:id to prevent route conflict
-router.get('/stores/dashboard', protect, authorize('seller', 'store'), storeController.getStoreDashboard);
-
-// Profile route - specific route before parameterized
-router.route('/stores/profile')
-  .get(protect, storeController.getMyStoreProfile)
-  .put(protect, authorize('seller', 'store'), storeController.updateStoreProfile);
-
-// List all stores
 router.route('/stores')
   .get(protect, storeController.getStores);
 
-// Get all products (for users)
-router.get('/products', storeController.getAllProducts);
+router.route('/stores/profile')
+  .get(protect, storeController.getMyStoreProfile);
 
-// Parameterized routes - MUST come after specific routes
 router.route('/stores/:id')
   .get(protect, storeController.getStoreProfile);
+
+router.route('/stores/dashboard')
+  .get(protect, authorize('seller', 'store'), storeController.getStoreDashboard);
 
 router.route('/stores/:id/products')
   .get(protect, storeController.getStoreProducts)
@@ -90,30 +73,6 @@ router.route('/stores/:id/products')
 router.route('/stores/products/:id')
   .put(protect, authorize('seller', 'store'), storeController.updateProduct)
   .delete(protect, authorize('seller', 'store'), storeController.deleteProduct);
-
-// Ad routes - Store/Seller
-router.route('/stores/ads')
-  .get(protect, authorize('seller', 'store'), adController.getStoreAds)
-  .post(protect, authorize('seller', 'store'), adController.createAd);
-
-router.route('/stores/ads/:id')
-  .get(protect, authorize('seller', 'store'), adController.getAd)
-  .put(protect, authorize('seller', 'store'), adController.updateAd)
-  .delete(protect, authorize('seller', 'store'), adController.deleteAd);
-
-router.post('/stores/ads/:id/submit', protect, authorize('seller', 'store'), adController.submitAd);
-router.post('/stores/ads/:id/toggle', protect, authorize('seller', 'store'), adController.toggleAdStatus);
-
-// Ad routes - Public (for users)
-router.get('/ads/active', adController.getActiveAds);
-router.post('/ads/:id/click', adController.trackClick);
-router.post('/ads/:id/view', adController.trackView);
-
-// Ad routes - Admin
-router.get('/admin/ads', protect, authorize('admin'), adController.getAllAds);
-router.post('/admin/ads/:id/approve', protect, authorize('admin'), adController.approveAd);
-router.post('/admin/ads/:id/reject', protect, authorize('admin'), adController.rejectAd);
-router.post('/admin/ads/pricing', protect, authorize('admin'), adController.updatePricing);
 
 // Delivery routes
 router.route('/delivery/available')
@@ -159,15 +118,13 @@ router.route('/bookings/:id/complete')
   .put(protect, bookingController.completeBooking);
 
 // Order routes
-// IMPORTANT: Define specific routes BEFORE parameterized routes
 router.route('/orders')
   .post(protect, orderController.createOrder)
   .get(protect, orderController.getUserOrders);
 
-// Store orders route - MUST be before /orders/:id to prevent route conflict
-router.get('/orders/store', protect, authorize('seller', 'store'), orderController.getStoreOrders);
+router.route('/orders/store')
+  .get(protect, authorize('seller', 'store'), orderController.getStoreOrders);
 
-// Parameterized routes - MUST come after specific routes
 router.route('/orders/:id')
   .get(protect, orderController.getOrder)
   .put(protect, orderController.updateOrderStatus);
@@ -355,49 +312,5 @@ router.route('/playpoints/bookings')
 
 router.route('/playpoints/:id/bookings')
   .get(protect, playpointController.getPlayPointBookings);
-
-// Banner routes
-// Public routes - get active banners
-router.route('/banners')
-  .get(bannerController.getBanners);
-
-router.route('/banners/:id')
-  .get(bannerController.getBanner);
-
-router.route('/banners/:id/click')
-  .post(bannerController.trackBannerClick);
-
-// Admin routes - manage banners
-router.route('/admin/banners')
-  .get(protect, authorize('admin'), bannerController.getAllBanners)
-  .post(protect, authorize('admin'), bannerController.createBanner);
-
-router.route('/admin/banners/:id')
-  .put(protect, authorize('admin'), bannerController.updateBanner)
-  .delete(protect, authorize('admin'), bannerController.deleteBanner);
-
-// Admin Shop Analytics routes
-const adminShopController = require('../controllers/adminShop.controller');
-router.route('/admin/shop/analytics')
-  .get(protect, authorize('admin'), adminShopController.getShopAnalytics);
-
-router.route('/admin/shop/stores/:storeId')
-  .get(protect, authorize('admin'), adminShopController.getStoreDetails);
-
-router.route('/admin/shop/products/:productId')
-  .get(protect, authorize('admin'), adminShopController.getProductDetails);
-
-// Admin Store Approval routes
-router.route('/admin/stores/pending')
-  .get(protect, authorize('admin'), storeController.getPendingStores);
-
-router.route('/admin/stores/:id/details')
-  .get(protect, authorize('admin'), storeController.getStoreDetailsForAdmin);
-
-router.route('/admin/stores/:id/approve')
-  .put(protect, authorize('admin'), storeController.approveStore);
-
-router.route('/admin/stores/:id/reject')
-  .put(protect, authorize('admin'), storeController.rejectStore);
 
 module.exports = router;

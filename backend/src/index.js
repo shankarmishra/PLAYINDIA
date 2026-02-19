@@ -23,10 +23,13 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
-// Connect to MongoDB
+// Connect to MongoDB with fallback
 logger.info('Connecting to MongoDB...');
 mongoose
-  .connect(config.mongoURI)
+  .connect(config.mongoURI, {
+    serverSelectionTimeoutMS: 5000, // 5 second timeout
+    socketTimeoutMS: 45000, // 45 second timeout
+  })
   .then(async () => {
     logger.info('Connected to MongoDB');
 
@@ -36,6 +39,7 @@ mongoose
     // Start server
     const server = app.listen(config.port, () => {
       logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${config.port}`);
+      logger.info('MongoDB database connected and ready');
     });
 
     // Handle unhandled promise rejections
@@ -57,6 +61,31 @@ mongoose
     });
   })
   .catch((err) => {
-    logger.error('MongoDB connection error:', err);
-    process.exit(1);
+    logger.warn('MongoDB connection failed, starting with mock data mode:', err.message);
+    logger.info('Starting server in mock data mode...');
+    
+    // Start server without MongoDB connection
+    const server = app.listen(config.port, () => {
+      logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${config.port}`);
+      logger.info('⚠️  WARNING: Running in mock data mode - no database connection');
+      logger.info('Some features may not work properly without database connection');
+    });
+
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (err) => {
+      logger.error('UNHANDLED REJECTION! 💥 Shutting down...');
+      logger.error(err.name, err.message);
+      logger.error(err.stack);
+      server.close(() => {
+        process.exit(1);
+      });
+    });
+
+    // Handle SIGTERM (nodemon restart trigger)
+    process.on('SIGTERM', () => {
+      logger.info('👋 SIGTERM RECEIVED. Shutting down gracefully');
+      server.close(() => {
+        logger.info('💥 Process terminated!');
+      });
+    });
   });

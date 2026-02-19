@@ -23,7 +23,7 @@ import { API_BASE_URL } from '../../config/constants';
 import GeolocationSafe from '../../utils/GeolocationSafe';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { UserTabParamList } from '../../navigation/UserNav';
+import { UserTabParamList } from '../../navigation/types';
 import useAuth from '../../hooks/useAuth';
 
 type NavigationProp = StackNavigationProp<UserTabParamList>;
@@ -117,7 +117,8 @@ const NearbyPlayersMap = () => {
   const [locationPermission, setLocationPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [updatingLocation, setUpdatingLocation] = useState(false);
-  const locationUpdateInterval = useRef<NodeJS.Timeout | null>(null);
+  const [userAddress, setUserAddress] = useState<string>('');
+  const locationUpdateInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [filters, setFilters] = useState({
     game: '',
@@ -127,11 +128,21 @@ const NearbyPlayersMap = () => {
     selectedTime: '',
   });
 
-  // Request location permission
+  // Request location permission - check if already granted
   const requestLocationPermission = async (): Promise<boolean> => {
     if (Platform.OS === 'android') {
       try {
-        const granted = await PermissionsAndroid.request(
+        // Check if permission is already granted
+        const granted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        );
+
+        if (granted) {
+          return true;
+        }
+
+        // Request permission if not already granted
+        const result = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           {
             title: 'Location Permission',
@@ -141,7 +152,7 @@ const NearbyPlayersMap = () => {
             buttonPositive: 'OK',
           }
         );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
+        return result === PermissionsAndroid.RESULTS.GRANTED;
       } catch (err) {
         console.warn(err);
         return false;
@@ -165,6 +176,10 @@ const NearbyPlayersMap = () => {
       async (position: any) => {
         const { latitude, longitude } = position.coords;
         setUserLocation({ lat: latitude, lng: longitude });
+
+        // Get address from coordinates
+        const address = await getAddressFromCoords(latitude, longitude);
+        setUserAddress(address);
 
         // Update location on backend
         try {
@@ -192,6 +207,25 @@ const NearbyPlayersMap = () => {
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
     );
+  };
+
+  // Get address from coordinates
+  const getAddressFromCoords = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyCYcfLYKpRtW-bQiVL1K85ZQTlag0bPwHM`
+      );
+      const data = await response.json();
+      if (data.results && data.results[0]) {
+        const address = data.results[0].formatted_address;
+        const parts = address.split(', ');
+        return parts[0] || address;
+      }
+      return '';
+    } catch (error) {
+      console.log('Geocoding error:', error);
+      return '';
+    }
   };
 
   // Auto-update location every 5 minutes
@@ -302,19 +336,19 @@ const NearbyPlayersMap = () => {
       <View style={styles.playerHeader}>
         <Image source={{ uri: item.avatar }} style={styles.playerAvatar} />
         <View style={styles.playerInfo}>
-          <Text style={styles.playerName}>{item.name}</Text>
+          <Text style={styles.playerName} numberOfLines={1}>{item.name}</Text>
           <View style={styles.playerMeta}>
             <Ionicons name="trophy-outline" size={14} color={theme.colors.text.secondary} />
-            <Text style={styles.playerSport}>{item.sport}</Text>
+            <Text style={styles.playerSport} numberOfLines={1}>{item.sport}</Text>
             <Text style={styles.playerDivider}>•</Text>
-            <Text style={styles.playerSkill}>{item.skillLevel}</Text>
+            <Text style={styles.playerSkill} numberOfLines={1}>{item.skillLevel}</Text>
           </View>
           <View style={styles.playerMeta}>
             <Ionicons name="location" size={14} color={theme.colors.accent.neonGreen} />
-            <Text style={styles.playerDistance}>{item.distance}</Text>
+            <Text style={styles.playerDistance} numberOfLines={1}>{item.distance}</Text>
             <Text style={styles.playerDivider}>•</Text>
             <Ionicons name="star" size={14} color={theme.colors.accent.orange} />
-            <Text style={styles.playerRating}>{item.rating}</Text>
+            <Text style={styles.playerRating} numberOfLines={1}>{item.rating}</Text>
           </View>
         </View>
         <View
@@ -349,19 +383,33 @@ const NearbyPlayersMap = () => {
                     : theme.colors.status.warning,
               },
             ]}
+            numberOfLines={1}
           >
             {item.availability}
           </Text>
         </View>
       </View>
-      <TouchableOpacity
-        style={styles.requestButton}
-        onPress={() => handleSendRequest(item.id)}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
-        <Text style={styles.requestButtonText}>Request to Play</Text>
-      </TouchableOpacity>
+      <View style={styles.playerActions}>
+        <TouchableOpacity
+          style={styles.requestButton}
+          onPress={() => handleSendRequest(item.id)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.requestButtonText}>Request</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.messageButton}
+          onPress={() => {
+            setSelectedPlayer(null);
+            navigation.navigate('Chat', { userId: item.id });
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="chatbubble-outline" size={18} color={theme.colors.accent.neonGreen} />
+          <Text style={styles.messageButtonText}>Message</Text>
+        </TouchableOpacity>
+      </View>
     </TouchableOpacity>
   );
 
@@ -374,7 +422,7 @@ const NearbyPlayersMap = () => {
         <View style={styles.locationContainer}>
           <Ionicons name="location" size={20} color={theme.colors.accent.neonGreen} />
           <Text style={styles.locationText}>
-            {userLocation ? `${radius}km radius` : 'Getting location...'}
+            {userAddress || (userLocation ? `${radius}km radius` : 'Getting location...')}
           </Text>
           {updatingLocation && <ActivityIndicator size="small" color={theme.colors.accent.neonGreen} style={{ marginLeft: 8 }} />}
         </View>
@@ -403,7 +451,7 @@ const NearbyPlayersMap = () => {
         contentContainerStyle={styles.filterChipsContent}
       >
         <TouchableOpacity
-          style={[styles.filterChip, filters.game && styles.filterChipActive]}
+          style={[styles.filterChip, filters.game ? styles.filterChipActive : undefined]}
           onPress={() => setShowFilters(true)}
         >
           <Ionicons
@@ -414,7 +462,7 @@ const NearbyPlayersMap = () => {
           <Text
             style={[
               styles.filterChipText,
-              filters.game && styles.filterChipTextActive,
+              filters.game ? styles.filterChipTextActive : undefined,
             ]}
           >
             {filters.game || 'Game'}
@@ -422,7 +470,7 @@ const NearbyPlayersMap = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.filterChip, filters.skillLevel && styles.filterChipActive]}
+          style={[styles.filterChip, filters.skillLevel ? styles.filterChipActive : undefined]}
           onPress={() => {
             const currentIndex = SKILL_LEVELS.indexOf(filters.skillLevel);
             const nextIndex = (currentIndex + 1) % (SKILL_LEVELS.length + 1);
@@ -440,7 +488,7 @@ const NearbyPlayersMap = () => {
           <Text
             style={[
               styles.filterChipText,
-              filters.skillLevel && styles.filterChipTextActive,
+              filters.skillLevel ? styles.filterChipTextActive : undefined,
             ]}
           >
             {filters.skillLevel || 'Skill'}
@@ -448,7 +496,7 @@ const NearbyPlayersMap = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.filterChip, filters.selectedTime && styles.filterChipActive]}
+          style={[styles.filterChip, filters.selectedTime ? styles.filterChipActive : undefined]}
           onPress={() => setShowTimePicker(true)}
         >
           <Ionicons
@@ -459,7 +507,7 @@ const NearbyPlayersMap = () => {
           <Text
             style={[
               styles.filterChipText,
-              filters.selectedTime && styles.filterChipTextActive,
+              filters.selectedTime ? styles.filterChipTextActive : undefined,
             ]}
           >
             {filters.selectedTime || 'Time'}
@@ -702,6 +750,16 @@ const NearbyPlayersMap = () => {
           </View>
         </View>
       </Modal>
+
+      {/* FAB Button for Find Players Form */}
+      <TouchableOpacity
+        style={styles.fabButton}
+        onPress={() => navigation.navigate('FindPlayersForm')}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="search" size={24} color="#FFFFFF" />
+        <Text style={styles.fabButtonText}>Find Players</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -883,6 +941,28 @@ const styles = StyleSheet.create({
   },
   requestButtonText: {
     color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  playerActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  messageButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0FDF4',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.accent.neonGreen,
+  },
+  messageButtonText: {
+    color: theme.colors.accent.neonGreen,
     fontSize: 15,
     fontWeight: '700',
     marginLeft: 8,
@@ -1112,6 +1192,29 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     borderWidth: 1,
     borderColor: theme.colors.ui.border,
+  },
+  fabButton: {
+    position: 'absolute',
+    bottom: 24,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.accent.neonGreen,
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  fabButtonText: {
+    color: theme.colors.text.inverted,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 

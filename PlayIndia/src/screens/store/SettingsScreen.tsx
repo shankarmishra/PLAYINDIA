@@ -90,7 +90,7 @@ const SettingsScreen = () => {
               navigation.dispatch(
                 CommonActions.reset({
                   index: 0,
-                  routes: [{ name: 'LoginWelcome' }],
+                  routes: [{ name: 'Login' }],
                 }),
               );
             } catch (error) {

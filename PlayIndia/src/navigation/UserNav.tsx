@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { UserTabParamList } from './types';
 
 import UserHomeDashboard from '../screens/user/UserHomeDashboard';
 import TournamentScreen from '../screens/user/TournamentScreen';
@@ -16,34 +17,23 @@ import CheckoutScreen from '../screens/user/CheckoutScreen';
 import OrderTrackingScreen from '../screens/user/OrderTrackingScreen';
 import MyOrdersScreen from '../screens/user/MyOrdersScreen';
 import WalletScreen from '../screens/user/WalletScreen';
-import SettingsScreen from '../screens/user/SettingsScreen';
+import UserSettingsScreen from '../screens/user/SettingsScreen';
 import HelpSupportScreen from '../screens/user/HelpSupportScreen';
 import NotificationsScreen from '../screens/user/NotificationsScreen';
 import ChatScreen from '../screens/user/ChatScreen';
 import LeaderBoardScreen from '../screens/user/LeaderBoardScreen';
+import FindPlayersFormScreen from '../screens/user/FindPlayersFormScreen';
+import LiveSearchMapScreen from '../screens/user/LiveSearchMapScreen';
+import LiveMapScreen from '../screens/user/LiveMapScreen';
+import EditProfileScreen from '../screens/user/EditProfileScreen';
+import MyBookingsScreen from '../screens/user/MyBookingsScreen';
 
-export type UserTabParamList = {
-  HomeTab: undefined;
-  Home: undefined;
-  Tournaments: undefined;
-  TournamentDetail: { tournamentId: string };
-  FindNearbyPlayers: undefined;
-  ShopHome: undefined;
-  Profile: undefined;
-  CoachProfile: { coachId?: string };
-  ProductDetail: { productId?: string };
-  Cart: undefined;
-  Checkout: { addressId?: string; paymentMethod?: string };
-  OrderTracking: { orderId?: string };
-  MyOrders: undefined;
-  Wallet: undefined;
-  Settings: undefined;
-  HelpSupport: undefined;
-  Notifications: undefined;
-  Chat: { userId?: string };
-  NearbyPlayers: undefined; // Still accessible from stack, not as tab
-  PlayersRank: undefined; // Still accessible from stack, not as tab
-};
+// Missing settings screens
+import SecurityScreen from '../screens/user/SecurityScreen';
+import AboutScreen from '../screens/user/AboutScreen';
+import TermsScreen from '../screens/user/TermsScreen';
+import PrivacyPolicyScreen from '../screens/user/PrivacyPolicyScreen';
+
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator<UserTabParamList>();
@@ -61,8 +51,8 @@ const TabNavigator = () => {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Tournaments') {
             iconName = focused ? 'trophy' : 'trophy-outline';
-          } else if (route.name === 'FindNearbyPlayers') {
-            iconName = focused ? 'location' : 'location-outline';
+          } else if (route.name === 'FindPlayers') {
+            iconName = focused ? 'search' : 'search-outline';
           } else if (route.name === 'ShopHome') {
             iconName = focused ? 'bag' : 'bag-outline';
           } else if (route.name === 'Profile') {
@@ -73,51 +63,54 @@ const TabNavigator = () => {
 
           return <Icon name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#1ED760',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: '#2E7D32',
+        tabBarInactiveTintColor: '#94A3B8',
         tabBarStyle: {
-          height: 60,
-          paddingBottom: 8,
+          height: 70,
+          paddingBottom: 12,
           paddingTop: 8,
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
-          borderTopColor: '#E2E8F0',
-          elevation: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
+          borderTopColor: '#E8F5E9',
+          elevation: 20,
+          shadowColor: '#2E7D32',
+          shadowOffset: { width: 0, height: -10 },
+          shadowOpacity: 0.12,
+          shadowRadius: 15,
+          position: 'absolute',
+          borderTopLeftRadius: 25,
+          borderTopRightRadius: 25,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600',
+          fontWeight: '700',
         },
       })}
     >
-      <Tab.Screen 
-        name="Home" 
+      <Tab.Screen
+        name="Home"
         component={UserHomeDashboard}
         options={{ tabBarLabel: 'Home' }}
       />
-      <Tab.Screen 
-        name="Tournaments" 
+      <Tab.Screen
+        name="Tournaments"
         component={TournamentScreen}
-        options={{ tabBarLabel: 'Tournaments' }}
+        options={{ tabBarLabel: 'Events' }}
       />
-      <Tab.Screen 
-        name="FindNearbyPlayers" 
-        component={NearbyPlayersMap}
-        options={{ tabBarLabel: 'Find Players' }}
+      <Tab.Screen
+        name="FindPlayers"
+        component={FindPlayersFormScreen}
+        options={{ tabBarLabel: 'Search' }}
       />
-      <Tab.Screen 
-        name="ShopHome" 
+      <Tab.Screen
+        name="ShopHome"
         component={ShopHomeScreen}
         options={{ tabBarLabel: 'Shop' }}
       />
-      <Tab.Screen 
-        name="Profile" 
+      <Tab.Screen
+        name="Profile"
         component={ProfileScreen}
-        options={{ tabBarLabel: 'Profile' }}
+        options={{ tabBarLabel: 'Me' }}
       />
     </Tab.Navigator>
   );
@@ -134,6 +127,9 @@ const UserNav = () => {
       <Stack.Screen name="HomeTab" component={TabNavigator} />
       <Stack.Screen name="TournamentDetail" component={TournamentDetailScreen} />
       <Stack.Screen name="NearbyPlayers" component={NearbyPlayersMap} />
+      <Stack.Screen name="FindPlayersForm" component={FindPlayersFormScreen} />
+      <Stack.Screen name="LiveSearchMap" component={LiveSearchMapScreen} />
+      <Stack.Screen name="LiveMap" component={LiveMapScreen} />
       <Stack.Screen name="CoachProfile" component={CoachProfileScreen} />
       <Stack.Screen name="PlayersRank" component={LeaderBoardScreen} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
@@ -142,13 +138,18 @@ const UserNav = () => {
       <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
       <Stack.Screen name="MyOrders" component={MyOrdersScreen} />
       <Stack.Screen name="Wallet" component={WalletScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Settings" component={UserSettingsScreen} />
+      <Stack.Screen name="Security" component={SecurityScreen} />
+      <Stack.Screen name="About" component={AboutScreen} />
+      <Stack.Screen name="Terms" component={TermsScreen} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="Bookings" component={MyBookingsScreen} />
     </Stack.Navigator>
   );
 };
 
 export default UserNav;
-

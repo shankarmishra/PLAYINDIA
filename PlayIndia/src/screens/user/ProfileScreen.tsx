@@ -1,36 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList, StatusBar, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList, StatusBar, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { theme } from '../../theme/colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import useAuth from '../../hooks/useAuth';
-import { UserTabParamList } from '../../navigation/UserNav';
+import { UserTabParamList } from '../../navigation/types';
+import ApiService from '../../services/ApiService';
+import FitnessDashboard from '../../components/FitnessDashboard';
+import { useFitness } from '../../contexts/FitnessContext';
+import PersonalInfo from '../../components/profile/PersonalInfo';
 
 type NavigationProp = StackNavigationProp<UserTabParamList>;
-
-// Mock data for achievements and stats
-const mockAchievements = [
-  { id: '1', name: 'First Win', description: 'Win your first match', icon: 'trophy', earned: true },
-  { id: '2', name: 'Social Butterfly', description: 'Connect with 10 players', icon: 'people', earned: true },
-  { id: '3', name: 'Champion', description: 'Win 10 matches', icon: 'medal', earned: false },
-  { id: '4', name: 'Fitness Enthusiast', description: 'Complete 30 workout sessions', icon: 'fitness', earned: true },
-  { id: '5', name: 'Bookworm', description: 'Book 5 coaching sessions', icon: 'book', earned: false },
-];
-
-const mockStats = [
-  { label: 'Matches Played', value: '24' },
-  { label: 'Wins', value: '18' },
-  { label: 'Win Rate', value: '75%' },
-  { label: 'Calories Burned', value: '12,450' },
-];
 
 const ProfileScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user, refreshUser, logout, loading: authLoading } = useAuth();
+  const { fitnessData, loading: fitnessLoading } = useFitness();
   const [activeTab, setActiveTab] = useState('Profile');
   const [loading, setLoading] = useState(true);
+  const [editingAge, setEditingAge] = useState(false);
+  const [tempAge, setTempAge] = useState<string>(((user?.preferences as any)?.age?.toString()) || '');
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -47,41 +38,69 @@ const ProfileScreen = () => {
     loadProfile();
   }, []);
 
+  // Update user age
+  const updateAge = async () => {
+    try {
+      const ageValue = parseInt(tempAge);
+      if (isNaN(ageValue) || ageValue < 13 || ageValue > 100) {
+        Alert.alert('Invalid Age', 'Please enter a valid age between 13 and 100');
+        return;
+      }
+
+      const profileData = {
+        preferences: {
+          ...(user?.preferences || {}),
+          age: ageValue
+        }
+      };
+
+      const response = await ApiService.users.updateProfile(profileData);
+
+      if (response.data.success) {
+        Alert.alert('Success', 'Age updated successfully');
+        setEditingAge(false);
+        await refreshUser();
+      } else {
+        Alert.alert('Error', response.data.message || 'Failed to update age');
+      }
+    } catch (error: any) {
+      console.error('Update age error:', error);
+      Alert.alert('Error', error.message || 'Failed to update age');
+    }
+  };
+
   // Get user data with fallbacks
   const userName = user?.name || 'Player';
   const userEmail = user?.email || 'No email';
   const userPhone = user?.mobile || 'No phone';
   const userCity = user?.location?.city || user?.preferences?.city || 'Not set';
   const userSports = user?.preferences?.favoriteGames || [];
-  const userSkillLevel = user?.preferences?.skillLevel || 'Not set';
-  const userJoinDate = user?.createdAt 
-    ? new Date(user.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+  const userJoinDate = (user as any)?.createdAt
+    ? new Date((user as any).createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
     : 'Recently';
-  const userRating = user?.trustScore ? (user.trustScore / 20).toFixed(1) : '4.5';
-  
-  // Calculate stats from user data
+  const userRating = (user as any)?.trustScore ? ((user as any).trustScore / 20).toFixed(1) : '4.5';
+
+  const rawAge = (user?.preferences as any)?.age;
+  const userAge = (rawAge !== undefined && rawAge !== null && rawAge !== '')
+    ? `${rawAge} years`
+    : (user?.preferences?.ageGroup || 'Not set');
+
   const userStats = [
-    { 
-      label: 'Matches Played', 
-      value: user?.roleData?.matchesPlayed?.toString() || '0' 
-    },
-    { 
-      label: 'Wins', 
-      value: user?.roleData?.wins?.toString() || '0' 
-    },
-    { 
-      label: 'Win Rate', 
-      value: user?.roleData?.winRate ? `${user.roleData.winRate}%` : '0%' 
-    },
-    { 
-      label: 'Calories Burned', 
-      value: user?.roleData?.caloriesBurned?.toLocaleString() || '0' 
-    },
+    { label: 'Matches Played', value: user?.roleData?.matchesPlayed?.toString() || '0' },
+    { label: 'Wins', value: user?.roleData?.wins?.toString() || '0' },
+    { label: 'Win Rate', value: user?.roleData?.winRate ? `${user.roleData.winRate}%` : '0%' },
+    { label: (user?.preferences as any)?.age ? 'Age' : 'Age Group', value: userAge }
   ];
 
-  // Get achievements from user data
+  const fitnessStats = fitnessData ? [
+    { label: 'Steps', value: fitnessData.steps.toLocaleString() },
+    { label: 'Calories', value: fitnessData.calories.toString() },
+    { label: 'Workout', value: `${fitnessData.workoutMinutes} min` },
+    { label: 'Heart Rate', value: `${fitnessData.heartRateAvg} BPM` }
+  ] : [];
+
   const userAchievements = user?.achievements?.filter(a => a.unlocked).map(a => ({
-    id: a.achievementId?._id || a.achievementId?._id || 'unknown',
+    id: a.achievementId?._id || 'unknown',
     name: a.achievementId?.name || 'Achievement',
     description: a.achievementId?.description || 'Great job!',
     icon: a.achievementId?.icon || 'trophy',
@@ -93,44 +112,35 @@ const ProfileScreen = () => {
     { id: '2', title: 'My Bookings', icon: 'calendar-outline', screen: 'Bookings' },
     { id: '3', title: 'My Orders', icon: 'receipt-outline', screen: 'MyOrders' },
     { id: '4', title: 'Wallet', icon: 'wallet-outline', screen: 'Wallet' },
-    { id: '5', title: 'Achievements', icon: 'trophy-outline', screen: 'Achievements' },
-    { id: '6', title: 'Settings', icon: 'settings-outline', screen: 'Settings' },
-    { id: '7', title: 'Help & Support', icon: 'help-circle-outline', screen: 'Support' },
-    { id: '8', title: 'Logout', icon: 'log-out-outline', screen: 'Logout' },
+    { id: '7', title: 'Settings', icon: 'settings-outline', screen: 'Settings' },
+    { id: '8', title: 'Help & Support', icon: 'help-circle-outline', screen: 'HelpSupport' },
+    { id: '9', title: 'Logout', icon: 'log-out-outline', screen: 'Logout' },
   ];
 
   const renderAchievement = ({ item }: any) => (
     <View style={[
       styles.achievementCard,
-      { 
+      {
         opacity: item.earned ? 1 : 0.5,
-        backgroundColor: item.earned 
-          ? theme.colors.background.card 
-          : theme.colors.background.tertiary 
+        backgroundColor: item.earned
+          ? theme.colors.background.card
+          : theme.colors.background.tertiary
       }
     ]}>
-      <Ionicons 
-        name={item.icon as any} 
-        size={32} 
-        color={item.earned ? theme.colors.accent.neonGreen : theme.colors.text.disabled} 
+      <Ionicons
+        name={item.icon as any}
+        size={32}
+        color={item.earned ? theme.colors.accent.neonGreen : theme.colors.text.disabled}
       />
       <Text style={[
         styles.achievementName,
-        { 
-          color: item.earned 
-            ? theme.colors.text.primary 
-            : theme.colors.text.disabled 
-        }
+        { color: item.earned ? theme.colors.text.primary : theme.colors.text.disabled }
       ]}>
         {item.name}
       </Text>
       <Text style={[
         styles.achievementDescription,
-        { 
-          color: item.earned 
-            ? theme.colors.text.secondary 
-            : theme.colors.text.disabled 
-        }
+        { color: item.earned ? theme.colors.text.secondary : theme.colors.text.disabled }
       ]}>
         {item.description}
       </Text>
@@ -149,61 +159,43 @@ const ProfileScreen = () => {
     );
   }
 
-  if (!user) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background.card} />
-        <View style={styles.loadingContainer}>
-          <Ionicons name="person-outline" size={48} color={theme.colors.text.disabled} />
-          <Text style={styles.loadingText}>No user data available</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background.card} />
+      <StatusBar barStyle="dark-content" backgroundColor="#E8F5E9" />
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerPlaceholder} />
         <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.headerButton}
-          onPress={() => {
-            // Navigate to settings if needed
-          }}
+          onPress={() => navigation.navigate('Settings' as any)}
         >
           <Ionicons name="settings-outline" size={22} color={theme.colors.text.primary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile Header with gradient effect */}
+        {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.profileImageContainer}>
-          <Image 
-            source={{ 
-              uri: user?.roleData?.profileImage || 
-                   'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=1ED760&color=fff&size=200'
-            }} 
-            style={styles.profileImage} 
-            onError={(error) => {
-              // If image fails, it will use the generated avatar URL from UI Avatars
-              console.log('Profile image failed to load, using generated avatar');
-            }}
-          />
+            <Image
+              source={{
+                uri: user?.profileImage ||
+                  'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=1ED760&color=fff&size=200'
+              }}
+              style={styles.profileImage}
+            />
             {user?.verification?.email?.verified && (
-            <View style={styles.profileImageBadge}>
-              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-            </View>
+              <View style={styles.profileImageBadge}>
+                <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+              </View>
             )}
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{userName}</Text>
             <View style={styles.profileLocationContainer}>
               <Ionicons name="location" size={14} color={theme.colors.text.secondary} />
-            <Text style={styles.profileLocation}>{userCity}</Text>
+              <Text style={styles.profileLocation}>{userCity}</Text>
             </View>
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={16} color={theme.colors.accent.orange} />
@@ -213,62 +205,51 @@ const ProfileScreen = () => {
               </Text>
             </View>
           </View>
-          <TouchableOpacity 
-            style={styles.editButton} 
-            activeOpacity={0.7}
-            onPress={() => {
-              // Navigate to edit profile
-            }}
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => navigation.navigate('EditProfile' as any)}
           >
-            <Ionicons name="create-outline" size={18} color={theme.colors.text.inverted} />
+            <Ionicons name="create-outline" size={18} color="#0F172A" />
           </TouchableOpacity>
         </View>
 
         {/* Stats Row */}
         <View style={styles.statsContainer}>
-          {userStats.map((stat, index) => (
-            <View key={index} style={styles.statItem}>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
+          {(activeTab === 'Profile' ? userStats : fitnessStats).slice(0, 4).map((stat, index) => (
+            <View key={index} style={styles.statItemContainer}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{stat.value}</Text>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </View>
             </View>
           ))}
         </View>
 
         {/* Sports Chips */}
         {userSports.length > 0 && (
-        <View style={styles.sportsContainer}>
+          <View style={styles.sportsContainer}>
             <Text style={styles.sportsLabel}>Favorite Sports</Text>
-          <View style={styles.sportsChips}>
+            <View style={styles.sportsChips}>
               {userSports.map((sport, index) => (
-              <View key={index} style={styles.sportChip}>
-                <Text style={styles.sportChipText}>{sport}</Text>
-              </View>
-            ))}
+                <View key={index} style={styles.sportChip}>
+                  <Text style={styles.sportChipText}>{sport}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
         )}
 
         {/* Navigation Tabs */}
         <View style={styles.tabsContainer}>
           {['Profile', 'Achievements', 'Fitness'].map((tab) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={tab}
-              style={[
-                styles.tab,
-                { 
-                  borderBottomWidth: activeTab === tab ? 2 : 0,
-                  borderBottomColor: theme.colors.accent.neonGreen,
-                }
-              ]}
+              style={[styles.tab, activeTab === tab && styles.tabActive]}
               onPress={() => setActiveTab(tab)}
             >
               <Text style={[
                 styles.tabText,
-                { 
-                  color: activeTab === tab 
-                    ? theme.colors.accent.neonGreen 
-                    : theme.colors.text.secondary 
-                }
+                { color: activeTab === tab ? theme.colors.accent.neonGreen : theme.colors.text.secondary }
               ]}>
                 {tab}
               </Text>
@@ -279,104 +260,75 @@ const ProfileScreen = () => {
         {/* Content based on active tab */}
         {activeTab === 'Profile' && (
           <View>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Personal Information</Text>
-              <View style={styles.infoItem}>
-                <Ionicons name="person-outline" size={20} color={theme.colors.text.secondary} />
-                <Text style={styles.infoLabel}>Name</Text>
-                <Text style={styles.infoValue}>{userName}</Text>
-              </View>
-              <View style={styles.infoItem}>
-                <Ionicons name="mail-outline" size={20} color={theme.colors.text.secondary} />
-                <Text style={styles.infoLabel}>Email</Text>
-                <Text style={styles.infoValue}>{userEmail}</Text>
-                {user?.verification?.email?.verified && (
-                  <Ionicons name="checkmark-circle" size={16} color={theme.colors.status.success} style={{ marginLeft: 8 }} />
-                )}
-              </View>
-              <View style={styles.infoItem}>
-                <Ionicons name="call-outline" size={20} color={theme.colors.text.secondary} />
-                <Text style={styles.infoLabel}>Phone</Text>
-                <Text style={styles.infoValue}>{userPhone}</Text>
-                {user?.verification?.mobile?.verified && (
-                  <Ionicons name="checkmark-circle" size={16} color={theme.colors.status.success} style={{ marginLeft: 8 }} />
-                )}
-              </View>
-              <View style={styles.infoItem}>
-                <Ionicons name="location-outline" size={20} color={theme.colors.text.secondary} />
-                <Text style={styles.infoLabel}>Location</Text>
-                <Text style={styles.infoValue}>{userCity}</Text>
-              </View>
-              <View style={styles.infoItem}>
-                <Ionicons name="trophy-outline" size={20} color={theme.colors.text.secondary} />
-                <Text style={styles.infoLabel}>Skill Level</Text>
-                <Text style={styles.infoValue}>{userSkillLevel}</Text>
-              </View>
-              <View style={styles.infoItem}>
-                <Ionicons name="calendar-outline" size={20} color={theme.colors.text.secondary} />
-                <Text style={styles.infoLabel}>Member Since</Text>
-                <Text style={styles.infoValue}>{userJoinDate}</Text>
-              </View>
-            </View>
+            <PersonalInfo
+              name={userName}
+              email={userEmail}
+              phone={userPhone}
+              city={userCity}
+              age={userAge}
+              isEmailVerified={user?.verification?.email?.verified}
+              isPhoneVerified={user?.verification?.mobile?.verified}
+              onEditAge={() => {
+                setEditingAge(true);
+                setTempAge(((user?.preferences as any)?.age?.toString()) || '');
+              }}
+            />
 
+            {/* Age Editor */}
+            {editingAge && (
+              <View style={[styles.section, { borderLeftWidth: 4, borderLeftColor: theme.colors.accent.neonGreen }]}>
+                <Text style={styles.sectionTitle}>Update Age</Text>
+                <View style={styles.editAgeRow}>
+                  <TextInput
+                    style={styles.ageInput}
+                    value={tempAge}
+                    onChangeText={setTempAge}
+                    keyboardType="numeric"
+                    placeholder="Enter age"
+                    autoFocus
+                  />
+                  <View style={styles.editAgeButtons}>
+                    <TouchableOpacity onPress={() => setEditingAge(false)} style={styles.cancelBtn}>
+                      <Ionicons name="close" size={24} color={theme.colors.text.secondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={updateAge} style={styles.saveBtn}>
+                      <Ionicons name="checkmark" size={24} color={theme.colors.accent.neonGreen} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Account & Settings */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Account Settings</Text>
-              <FlatList
-                data={profileOptions}
-                renderItem={({ item }) => (
-                  <TouchableOpacity 
-                    style={styles.optionItem}
-                    onPress={() => {
-                      if (item.screen === 'MyOrders') {
-                        navigation.navigate('MyOrders');
-                      } else if (item.screen === 'Wallet') {
-                        navigation.navigate('Wallet');
-                      } else if (item.screen === 'Settings') {
-                        navigation.navigate('Settings');
-                      } else if (item.screen === 'Support') {
-                        navigation.navigate('HelpSupport');
-                      } else if (item.screen === 'Logout') {
-                        // Handle logout
-                        Alert.alert(
-                          'Logout',
-                          'Are you sure you want to logout?',
-                          [
-                            {
-                              text: 'Cancel',
-                              style: 'cancel',
-                            },
-                            {
-                              text: 'Logout',
-                              style: 'destructive',
-                              onPress: async () => {
-                                try {
-                                  await logout();
-                                  // Navigate to login screen
-                                  navigation.dispatch(
-                                    CommonActions.reset({
-                                      index: 0,
-                                      routes: [{ name: 'LoginWelcome' }],
-                                    }),
-                                  );
-                                } catch (error) {
-                                  Alert.alert('Error', 'Failed to logout. Please try again.');
-                                }
-                              },
-                            },
-                          ],
-                        );
-                      }
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name={item.icon as any} size={20} color={theme.colors.text.secondary} />
-                    <Text style={styles.optionText}>{item.title}</Text>
-                    <Ionicons name="chevron-forward" size={20} color={theme.colors.text.disabled} />
-                  </TouchableOpacity>
-                )}
-                keyExtractor={(item) => item.id}
-                scrollEnabled={false}
-              />
+              <Text style={styles.sectionTitle}>Account & Settings</Text>
+              {profileOptions.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.optionItem}
+                  onPress={() => {
+                    if (item.screen === 'Logout') {
+                      Alert.alert('Logout', 'Are you sure?', [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Logout', style: 'destructive', onPress: async () => {
+                            await logout();
+                            navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] }));
+                          }
+                        }
+                      ]);
+                    } else {
+                      navigation.navigate(item.screen as any);
+                    }
+                  }}
+                >
+                  <View style={styles.optionIconContainer}>
+                    <Ionicons name={item.icon as any} size={18} color={theme.colors.accent.neonGreen} />
+                  </View>
+                  <Text style={styles.optionText}>{item.title}</Text>
+                  <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         )}
@@ -385,61 +337,28 @@ const ProfileScreen = () => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Achievements</Text>
             {userAchievements.length > 0 ? (
-            <FlatList
+              <FlatList
                 data={userAchievements}
-              renderItem={renderAchievement}
-              keyExtractor={(item) => item.id}
-              numColumns={2}
-              showsVerticalScrollIndicator={false}
-              scrollEnabled={false}
-            />
+                renderItem={renderAchievement}
+                keyExtractor={(item) => item.id}
+                numColumns={2}
+                scrollEnabled={false}
+              />
             ) : (
               <View style={styles.emptyContainer}>
                 <Ionicons name="trophy-outline" size={48} color={theme.colors.text.disabled} />
                 <Text style={styles.emptyText}>No achievements yet</Text>
-                <Text style={styles.emptySubtext}>Start playing to earn achievements!</Text>
               </View>
             )}
           </View>
         )}
 
         {activeTab === 'Fitness' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Fitness Stats</Text>
-            <View style={styles.fitnessChart}>
-              <Text style={styles.chartTitle}>Weekly Activity</Text>
-              <View style={styles.chartContainer}>
-                {/* Mock chart representation */}
-                <View style={styles.chartBar}>
-                  <View style={[styles.bar, { height: '80%' }]} />
-                  <Text style={styles.barLabel}>Mon</Text>
-                </View>
-                <View style={styles.chartBar}>
-                  <View style={[styles.bar, { height: '60%' }]} />
-                  <Text style={styles.barLabel}>Tue</Text>
-                </View>
-                <View style={styles.chartBar}>
-                  <View style={[styles.bar, { height: '100%' }]} />
-                  <Text style={styles.barLabel}>Wed</Text>
-                </View>
-                <View style={styles.chartBar}>
-                  <View style={[styles.bar, { height: '40%' }]} />
-                  <Text style={styles.barLabel}>Thu</Text>
-                </View>
-                <View style={styles.chartBar}>
-                  <View style={[styles.bar, { height: '70%' }]} />
-                  <Text style={styles.barLabel}>Fri</Text>
-                </View>
-                <View style={styles.chartBar}>
-                  <View style={[styles.bar, { height: '90%' }]} />
-                  <Text style={styles.barLabel}>Sat</Text>
-                </View>
-                <View style={styles.chartBar}>
-                  <View style={[styles.bar, { height: '30%' }]} />
-                  <Text style={styles.barLabel}>Sun</Text>
-                </View>
-              </View>
+          <View style={styles.fitnessSection}>
+            <View style={styles.fitnessHeader}>
+              <Text style={styles.fitnessTitle}>Fitness Dashboard</Text>
             </View>
+            <FitnessDashboard />
           </View>
         )}
       </ScrollView>
@@ -450,320 +369,172 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: '#E8F5E9',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 12,
     height: 60,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E8F5E9',
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    elevation: 0,
-    shadowOpacity: 0,
+    borderBottomColor: '#C8E6C9',
   },
-  headerPlaceholder: {
-    width: 40,
-  },
+  headerPlaceholder: { width: 40 },
   headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F8FAFC',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#C8E6C9',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
-    color: theme.colors.text.primary,
+    color: '#0F172A',
     letterSpacing: -0.5,
   },
   profileHeader: {
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 16,
+    borderRadius: 20,
+    marginHorizontal: 16,
+    marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 24,
-    backgroundColor: theme.colors.background.card,
-    marginBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    elevation: 3,
   },
-  profileImageContainer: {
-    position: 'relative',
-    marginRight: theme.spacing.md,
-  },
+  profileImageContainer: { marginRight: 16 },
   profileImage: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     borderWidth: 3,
-    borderColor: '#E0F2FE',
+    borderColor: '#4CAF50',
+    backgroundColor: '#F0FDF4',
   },
   profileImageBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#10B981',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#4CAF50',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#FFFFFF',
   },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-  },
-  profileLocationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    marginBottom: 8,
-  },
-  profileLocation: {
-    fontSize: 15,
-    color: theme.colors.text.secondary,
-    marginLeft: 4,
-    fontWeight: '500',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  ratingCount: {
-    fontSize: 13,
-    color: theme.colors.text.secondary,
-    marginLeft: 6,
-  },
-  ratingText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginLeft: theme.spacing.xs,
-  },
-  editButton: {
-    backgroundColor: theme.colors.accent.neonGreen,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: theme.colors.accent.neonGreen,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
+  profileInfo: { flex: 1 },
+  profileName: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
+  profileLocationContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  profileLocation: { fontSize: 13, color: '#64748B', marginLeft: 4, fontWeight: '500' },
+  ratingContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  ratingCount: { fontSize: 12, color: '#64748B', marginLeft: 6 },
+  ratingText: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginLeft: 4 },
+  editButton: { padding: 10, backgroundColor: '#F1F5F9', borderRadius: 12 },
   statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 20,
-    backgroundColor: theme.colors.background.card,
-    marginHorizontal: 20,
-    marginBottom: theme.spacing.md,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    justifyContent: 'space-between',
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+    elevation: 2,
   },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.accent.neonGreen,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: theme.colors.text.secondary,
-    marginTop: theme.spacing.xs,
-    textAlign: 'center',
-  },
-  sportsContainer: {
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-  },
-  sportsLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
-  },
-  sportsChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
+  statItemContainer: { flex: 1 },
+  statItem: { alignItems: 'center', padding: 4 },
+  statValue: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  statLabel: { fontSize: 10, color: '#64748B', marginTop: 2, fontWeight: '600', textTransform: 'uppercase' },
+  sportsContainer: { paddingHorizontal: 20, marginBottom: 24 },
+  sportsLabel: { fontSize: 18, fontWeight: '700', color: '#1B5E20', marginBottom: 12 },
+  sportsChips: { flexDirection: 'row', flexWrap: 'wrap' },
   sportChip: {
-    backgroundColor: theme.colors.background.card,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.large,
-    marginRight: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-    ...theme.shadows.small,
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
   },
-  sportChipText: {
-    fontSize: 14,
-    color: theme.colors.text.primary,
-    fontWeight: '600',
-  },
+  sportChipText: { fontSize: 13, color: '#2E7D32', fontWeight: '600' },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.background.card,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    borderRadius: theme.borderRadius.large,
-    ...theme.shadows.small,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginBottom: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0F2FE',
   },
-  tab: {
-    flex: 1,
-    paddingVertical: theme.spacing.md,
-    alignItems: 'center',
-  },
-  tabText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  tab: { flex: 1, paddingVertical: 16, alignItems: 'center' },
+  tabText: { fontSize: 16, fontWeight: '800' },
+  tabActive: { backgroundColor: '#F0FDF4', borderBottomWidth: 2, borderBottomColor: '#1ED760' },
   section: {
-    backgroundColor: theme.colors.background.card,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    borderRadius: theme.borderRadius.large,
-    padding: theme.spacing.md,
-    ...theme.shadows.small,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+    padding: 16,
+    elevation: 2,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.ui.divider,
-  },
-  infoLabel: {
-    flex: 1,
-    fontSize: 16,
-    color: theme.colors.text.primary,
-    marginLeft: theme.spacing.md,
-  },
-  infoValue: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-  },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1B5E20', marginBottom: 16 },
   optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.ui.divider,
+    borderBottomColor: '#F0FDF4',
   },
-  optionText: {
-    flex: 1,
-    fontSize: 16,
-    color: theme.colors.text.primary,
-    marginLeft: theme.spacing.md,
-  },
-  achievementCard: {
-    flex: 0.45,
-    backgroundColor: theme.colors.background.card,
-    borderRadius: theme.borderRadius.large,
-    padding: theme.spacing.md,
-    alignItems: 'center',
-    margin: theme.spacing.sm,
-    ...theme.shadows.small,
-  },
-  achievementName: {
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginVertical: theme.spacing.sm,
-  },
-  achievementDescription: {
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  fitnessChart: {
-    alignItems: 'center',
-  },
-  chartTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
-  },
-  chartContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    height: 150,
-  },
-  chartBar: {
-    alignItems: 'center',
-    width: 30,
-  },
-  bar: {
-    width: 20,
-    backgroundColor: theme.colors.accent.neonGreen,
-    borderRadius: 10,
-  },
-  barLabel: {
-    fontSize: 12,
-    color: theme.colors.text.secondary,
-    marginTop: theme.spacing.xs,
-  },
-  loadingContainer: {
-    flex: 1,
+  optionIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#F0FDF4',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 40,
+    marginRight: 12,
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-  },
-  emptyContainer: {
+  optionText: { flex: 1, fontSize: 14, color: '#1E293B', fontWeight: '500' },
+  achievementCard: {
+    flex: 0.45,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
-    paddingVertical: 32,
+    margin: 8,
+    elevation: 3,
   },
-  emptyText: {
-    marginTop: 12,
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
+  achievementName: { fontSize: 15, fontWeight: '700', textAlign: 'center', marginVertical: 10, color: '#1B5E20' },
+  achievementDescription: { fontSize: 12, textAlign: 'center', color: '#558B2F' },
+  fitnessSection: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 14,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+    elevation: 2,
   },
-  emptySubtext: {
-    marginTop: 4,
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-  },
+  fitnessHeader: { padding: 18, alignItems: 'center' },
+  fitnessTitle: { fontSize: 20, fontWeight: '700', color: '#1B5E20' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 },
+  loadingText: { marginTop: 12, fontSize: 14, color: '#558B2F' },
+  emptyContainer: { alignItems: 'center', paddingVertical: 32 },
+  emptyText: { marginTop: 12, fontSize: 16, fontWeight: '700', color: '#1B5E20' },
+  editAgeRow: { flexDirection: 'row', alignItems: 'center' },
+  ageInput: { flex: 1, height: 40, borderWidth: 1, borderColor: '#C8E6C9', borderRadius: 8, paddingHorizontal: 12, marginRight: 8 },
+  editAgeButtons: { flexDirection: 'row' },
+  cancelBtn: { padding: 4, marginRight: 8 },
+  saveBtn: { padding: 4 },
+  scrollContent: { paddingBottom: 40 },
 });
 
 export default ProfileScreen;
