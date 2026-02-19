@@ -15,7 +15,7 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   async (config) => {
     const token = await AsyncStorage.getItem('userToken');
-    if (token) {
+    if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -88,8 +88,11 @@ const ApiService = {
     updateProfile: (profileData: any) =>
       apiClient.put(API_ENDPOINTS.USERS.PROFILE, profileData),
 
+    changePassword: (passwordData: any) =>
+      apiClient.put(API_ENDPOINTS.USERS.CHANGE_PASSWORD, passwordData),
+
     notifyPlayer: (notificationData: any) =>
-      apiClient.post(`${API_BASE_URL}/api/nearby-players/notify`, notificationData),
+      apiClient.post(API_ENDPOINTS.NEARBY_PLAYERS.NOTIFY, notificationData),
   },
 
   // Tournament API methods
@@ -97,8 +100,8 @@ const ApiService = {
     getAll: (params?: any) =>
       apiClient.get(API_ENDPOINTS.TOURNAMENTS.BASE, { params }),
 
-    getMy: () =>
-      apiClient.get(API_ENDPOINTS.TOURNAMENTS.MY_TOURNAMENTS),
+    search: (params?: any) =>
+      apiClient.get(API_ENDPOINTS.TOURNAMENTS.SEARCH, { params }),
 
     getById: (id: string) =>
       apiClient.get(API_ENDPOINTS.TOURNAMENTS.DETAIL(id)),
@@ -107,10 +110,13 @@ const ApiService = {
       apiClient.post(API_ENDPOINTS.TOURNAMENTS.BASE, tournamentData),
 
     update: (id: string, tournamentData: any) =>
-      apiClient.put(`${API_ENDPOINTS.TOURNAMENTS.DETAIL(id)}`, tournamentData),
+      apiClient.put(API_ENDPOINTS.TOURNAMENTS.DETAIL(id), tournamentData),
 
     delete: (id: string) =>
-      apiClient.delete(`${API_ENDPOINTS.TOURNAMENTS.DETAIL(id)}`),
+      apiClient.delete(API_ENDPOINTS.TOURNAMENTS.DETAIL(id)),
+
+    register: (id: string, teamData: any) =>
+      apiClient.post(API_ENDPOINTS.TOURNAMENTS.REGISTER(id), teamData),
   },
 
   // Coaches API methods
@@ -121,14 +127,20 @@ const ApiService = {
     getProfile: () =>
       apiClient.get(API_ENDPOINTS.COACHES.PROFILE),
 
-    getDashboard: () =>
-      apiClient.get(`${API_ENDPOINTS.COACHES.BASE}/dashboard`),
+    getById: (id: string) =>
+      apiClient.get(`${API_ENDPOINTS.COACHES.BASE}/${id}`),
 
-    getAvailability: () =>
-      apiClient.get(`${API_ENDPOINTS.COACHES.BASE}/availability`),
+    getReviews: (id: string) =>
+      apiClient.get(API_ENDPOINTS.COACHES.REVIEWS(id)),
 
-    updateAvailability: (availabilityData: any) =>
-      apiClient.put(`${API_ENDPOINTS.COACHES.BASE}/availability`, availabilityData),
+    addReview: (id: string, reviewData: any) =>
+      apiClient.post(API_ENDPOINTS.COACHES.REVIEWS(id), reviewData),
+
+    getSchedule: (id: string) =>
+      apiClient.get(API_ENDPOINTS.COACHES.SCHEDULE(id)),
+
+    updateSchedule: (id: string, scheduleData: any) =>
+      apiClient.put(API_ENDPOINTS.COACHES.SCHEDULE(id), scheduleData),
   },
 
   // Teams API methods
@@ -136,13 +148,14 @@ const ApiService = {
     getAll: (params?: any) =>
       apiClient.get(`${API_BASE_URL}/api/teams`, { params }),
 
-    getBySportAndLocation: (sport: string, lat: number, lng: number, radius: number) =>
-      apiClient.get(`${API_BASE_URL}/api/teams/search`, {
-        params: { sport, lat, lng, radius }
-      }),
+    getById: (id: string) =>
+      apiClient.get(`${API_BASE_URL}/api/teams/${id}`),
 
     create: (teamData: any) =>
       apiClient.post(`${API_BASE_URL}/api/teams`, teamData),
+
+    addPlayer: (teamId: string, playerData: any) =>
+      apiClient.post(`${API_BASE_URL}/api/teams/${teamId}/players`, playerData),
   },
 
   // Venues API methods
@@ -153,20 +166,122 @@ const ApiService = {
     getById: (id: string) =>
       apiClient.get(API_ENDPOINTS.VENUES.DETAIL(id)),
 
+    getAvailability: (id: string) =>
+      apiClient.get(API_ENDPOINTS.VENUES.AVAILABILITY(id)),
+
     book: (bookingData: any) =>
       apiClient.post(API_ENDPOINTS.VENUES.BOOK, bookingData),
+
+    getMyVenues: () =>
+      apiClient.get(API_ENDPOINTS.VENUES.MY_VENUES),
+
+    getMyBookings: () =>
+      apiClient.get(API_ENDPOINTS.VENUES.MY_BOOKINGS),
   },
 
   // Bookings API methods
   bookings: {
-    getAll: () =>
-      apiClient.get(API_ENDPOINTS.BOOKINGS.BASE),
-
-    getMyBookings: () =>
-      apiClient.get(API_ENDPOINTS.BOOKINGS.MY_BOOKINGS),
-
     create: (bookingData: any) =>
-      apiClient.post(API_ENDPOINTS.BOOKINGS.CREATE, bookingData),
+      apiClient.post(API_ENDPOINTS.BOOKINGS.BASE, bookingData),
+
+    getUserBookings: () =>
+      apiClient.get(API_ENDPOINTS.BOOKINGS.USER_BOOKINGS),
+
+    getCoachBookings: () =>
+      apiClient.get(API_ENDPOINTS.BOOKINGS.COACH_BOOKINGS),
+
+    getById: (id: string) =>
+      apiClient.get(`${API_ENDPOINTS.BOOKINGS.BASE}/${id}`),
+
+    updateStatus: (id: string, statusData: any) =>
+      apiClient.put(API_ENDPOINTS.BOOKINGS.STATUS(id), statusData),
+
+    rate: (id: string, ratingData: any) =>
+      apiClient.post(API_ENDPOINTS.BOOKINGS.RATE(id), ratingData),
+  },
+
+  // Wallet API methods
+  wallet: {
+    getBalance: () =>
+      apiClient.get(API_ENDPOINTS.WALLET.BALANCE),
+
+    getTransactions: () =>
+      apiClient.get(API_ENDPOINTS.WALLET.TRANSACTIONS),
+
+    addMoney: (amount: number) =>
+      apiClient.post(API_ENDPOINTS.WALLET.ADD, { amount }),
+
+    transfer: (transferData: any) =>
+      apiClient.post(API_ENDPOINTS.WALLET.TRANSFER, transferData),
+  },
+
+  // Notification API methods
+  notifications: {
+    getAll: (params?: any) =>
+      apiClient.get(API_ENDPOINTS.NOTIFICATIONS.BASE, { params }),
+
+    getCount: () =>
+      apiClient.get(API_ENDPOINTS.NOTIFICATIONS.COUNT),
+
+    markAsRead: (id: string) =>
+      apiClient.put(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/${id}`),
+
+    markAllAsRead: () =>
+      apiClient.put(API_ENDPOINTS.NOTIFICATIONS.READ_ALL),
+
+    delete: (id: string) =>
+      apiClient.delete(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/${id}`),
+
+    getSettings: () =>
+      apiClient.get(API_ENDPOINTS.NOTIFICATIONS.SETTINGS),
+
+    updateSettings: (settings: any) =>
+      apiClient.put(API_ENDPOINTS.NOTIFICATIONS.SETTINGS, settings),
+  },
+
+  // Stores API methods
+  stores: {
+    getAll: (params?: any) =>
+      apiClient.get(API_ENDPOINTS.STORES.BASE, { params }),
+
+    getDashboard: () =>
+      apiClient.get(API_ENDPOINTS.STORES.DASHBOARD),
+
+    getMyProfile: () =>
+      apiClient.get(API_ENDPOINTS.STORES.MY_PROFILE),
+
+    getProfile: (id: string) =>
+      apiClient.get(`${API_ENDPOINTS.STORES.BASE}/${id}`),
+
+    getProducts: (storeId: string, params?: any) =>
+      apiClient.get(API_ENDPOINTS.STORES.PRODUCTS(storeId), { params }),
+
+    addProduct: (storeId: string, data: any) =>
+      apiClient.post(API_ENDPOINTS.STORES.PRODUCTS(storeId), data),
+
+    updateProduct: (productId: string, data: any) =>
+      apiClient.put(API_ENDPOINTS.STORES.PRODUCT(productId), data),
+
+    deleteProduct: (productId: string) =>
+      apiClient.delete(API_ENDPOINTS.STORES.PRODUCT(productId)),
+  },
+
+  // Orders API methods
+  orders: {
+    create: (orderData: any) =>
+      apiClient.post(API_ENDPOINTS.ORDERS.BASE, orderData),
+
+    getMyOrders: () =>
+      apiClient.get(API_ENDPOINTS.ORDERS.MY_ORDERS),
+
+    getStoreOrders: (params?: any) =>
+      apiClient.get(API_ENDPOINTS.ORDERS.STORE_ORDERS, { params }),
+
+    getById: (id: string) =>
+      apiClient.get(API_ENDPOINTS.ORDERS.DETAIL(id)),
+
+    updateStatus: (id: string, statusData: any) =>
+      apiClient.put(API_ENDPOINTS.ORDERS.UPDATE_STATUS(id), statusData),
   },
 
   // Admin API methods
@@ -204,45 +319,6 @@ const ApiService = {
 
     trackClick: (id: string) =>
       apiClient.post(API_ENDPOINTS.BANNERS.CLICK(id)),
-  },
-
-  // Stores API methods
-  stores: {
-    getDashboard: () =>
-      apiClient.get(API_ENDPOINTS.STORES.DASHBOARD),
-
-    getMyProfile: () =>
-      apiClient.get(API_ENDPOINTS.STORES.MY_PROFILE),
-
-    getProfile: (id: string) =>
-      apiClient.get(`${API_ENDPOINTS.STORES.BASE}/${id}`),
-
-    updateProfile: (data: any) =>
-      apiClient.put(API_ENDPOINTS.STORES.PROFILE, data),
-
-    getProducts: (storeId: string, params?: any) =>
-      apiClient.get(API_ENDPOINTS.STORES.PRODUCTS(storeId), { params }),
-
-    addProduct: (storeId: string, data: any) =>
-      apiClient.post(API_ENDPOINTS.STORES.PRODUCTS(storeId), data),
-
-    updateProduct: (productId: string, data: any) =>
-      apiClient.put(API_ENDPOINTS.STORES.PRODUCT(productId), data),
-
-    deleteProduct: (productId: string) =>
-      apiClient.delete(API_ENDPOINTS.STORES.PRODUCT(productId)),
-  },
-
-  // Orders API methods
-  orders: {
-    getStoreOrders: (params?: any) =>
-      apiClient.get(API_ENDPOINTS.ORDERS.STORE_ORDERS, { params }),
-
-    getOrder: (id: string) =>
-      apiClient.get(API_ENDPOINTS.ORDERS.DETAIL(id)),
-
-    updateOrderStatus: (id: string, data: any) =>
-      apiClient.put(API_ENDPOINTS.ORDERS.UPDATE_STATUS(id), data),
   },
 
   // Products API methods (for users)
@@ -285,6 +361,24 @@ const ApiService = {
 
     trackView: (id: string) =>
       apiClient.post(`${API_BASE_URL}/api/ads/${id}/view`),
+  },
+
+  // Location/Address API methods
+  locations: {
+    getAddressFromCoords: (lat: number, lng: number) =>
+      apiClient.get(API_ENDPOINTS.LOCATIONS.FROM_COORDINATES, { params: { lat, lng } }),
+
+    getCoordsFromAddress: (address: string) =>
+      apiClient.get(API_ENDPOINTS.LOCATIONS.TO_COORDINATES, { params: { address } }),
+
+    updateLocation: (locationData: any) =>
+      apiClient.put(API_ENDPOINTS.LOCATIONS.UPDATE, locationData),
+
+    getNearbyUsers: (params?: any) =>
+      apiClient.get(API_ENDPOINTS.LOCATIONS.NEARBY_USERS, { params }),
+
+    getNearbyCoaches: (params?: any) =>
+      apiClient.get(API_ENDPOINTS.LOCATIONS.NEARBY_COACHES, { params }),
   },
 
   // Generic methods

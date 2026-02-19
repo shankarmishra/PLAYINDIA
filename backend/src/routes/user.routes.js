@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, authorize } = require('../middleware/auth.middleware');
+const { authenticate, authenticateOptional, authorize } = require('../middleware/auth.middleware');
 const User = require('../models/user.model');
 const logger = require('../utils/logger');
 
@@ -18,9 +18,9 @@ const {
 /**
  * Get leaderboard
  * @route GET /api/users/leaderboard
- * @access Public
+ * @access Public (Optional Auth)
  */
-router.get('/leaderboard', async (req, res) => {
+router.get('/leaderboard', authenticateOptional, async (req, res) => {
   try {
     // Get top users by coins/points
     const topUsers = await User.find()

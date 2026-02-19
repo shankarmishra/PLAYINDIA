@@ -11,6 +11,7 @@ interface User {
   role: 'user' | 'coach' | 'seller' | 'delivery' | 'admin';
   status: 'pending' | 'active' | 'inactive' | 'suspended' | 'rejected';
   profileComplete: boolean;
+  profileImage?: string;
   trustScore: number;
   level: 'rookie' | 'pro' | 'elite' | 'legend';
   experiencePoints: number;
@@ -132,15 +133,15 @@ const useAuth = () => {
     const checkAuth = async () => {
       try {
         setLoading(true);
-        
+
         // Get token from AsyncStorage
         const storedToken = await AsyncStorage.getItem('userToken');
         const storedUser = await AsyncStorage.getItem('user');
-        
+
         if (storedToken && storedUser) {
           setToken(storedToken);
           setUser(JSON.parse(storedUser));
-          
+
           // Note: ApiService handles auth headers via interceptors
         }
       } catch (error) {
@@ -156,21 +157,21 @@ const useAuth = () => {
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
-      
+
       const response = await ApiService.auth.login(email, password);
-      
+
       if (response.data.success) {
         const { token, user } = response.data;
-        
+
         // Store token and user in AsyncStorage
         await AsyncStorage.setItem('userToken', token);
         await AsyncStorage.setItem('user', JSON.stringify(user));
-        
+
         // Token is handled by ApiService interceptor
-        
+
         setUser(user);
         setToken(token);
-        
+
         return response.data;
       } else {
         throw new Error(response.data.message || 'Login failed');
@@ -186,9 +187,9 @@ const useAuth = () => {
   const register = async (name: string, email: string, password: string, mobile: string, role: string = 'user', additionalData?: any) => {
     try {
       setLoading(true);
-      
+
       const registerData: any = { name, email, password, mobile, role };
-      
+
       // Add all additional data fields
       if (additionalData) {
         Object.keys(additionalData).forEach(key => {
@@ -197,23 +198,23 @@ const useAuth = () => {
           }
         });
       }
-      
+
       console.log('Sending registration data:', registerData);
       const response = await ApiService.auth.register(registerData);
-      
+
       if (response.data.success) {
         const { token, user } = response.data;
-        
+
         // Store token and user in AsyncStorage
         await AsyncStorage.setItem('userToken', token);
         await AsyncStorage.setItem('user', JSON.stringify(user));
         await AsyncStorage.setItem('userType', user.role || 'user');
-        
+
         // Token is handled by ApiService interceptor
-        
+
         setUser(user);
         setToken(token);
-        
+
         return response.data;
       } else {
         throw new Error(response.data.message || 'Registration failed');
@@ -229,14 +230,14 @@ const useAuth = () => {
   const logout = async () => {
     try {
       setLoading(true);
-      
+
       // Clear all auth data from AsyncStorage
       await AsyncStorage.removeItem('userToken');
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('userType');
-      
+
       // AuthService handles token removal via interceptors
-      
+
       setUser(null);
       setToken(null);
     } catch (error) {
@@ -250,9 +251,9 @@ const useAuth = () => {
   const refreshUser = async () => {
     try {
       if (!token) return;
-      
+
       const response = await ApiService.auth.me();
-      
+
       if (response.data.success) {
         const user = response.data.user;
         await AsyncStorage.setItem('user', JSON.stringify(user));

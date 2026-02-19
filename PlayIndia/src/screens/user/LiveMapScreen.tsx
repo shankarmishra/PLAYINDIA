@@ -144,6 +144,19 @@ const LiveMapScreen = () => {
   const fetchNearbyPlayers = async (lat: number, lng: number) => {
     const radius = searchRequest?.radius || 5;
 
+    // First update our own location to be visible to others
+    try {
+      await ApiService.users.updateProfile({
+        location: {
+          type: 'Point',
+          coordinates: [lng, lat],
+          address: currentAddress || 'Current Location'
+        }
+      });
+    } catch (error: any) {
+      console.log('Location sync error:', error.message);
+    }
+
     // Call API to get nearby players
     try {
       const response = await ApiService.users.getNearby({
@@ -586,7 +599,18 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  headerSubtitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  headerAddress: {
+    fontSize: 12,
+    color: '#E8F5E9',
+    marginLeft: 4,
   },
   filterButton: {
     width: 40,

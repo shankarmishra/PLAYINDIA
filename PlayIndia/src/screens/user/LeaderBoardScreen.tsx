@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert, ActivityIndicator, Animated, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Alert, ActivityIndicator, Animated, TouchableOpacity, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/Ionicons';

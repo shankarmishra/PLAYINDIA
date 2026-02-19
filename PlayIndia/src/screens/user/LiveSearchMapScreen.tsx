@@ -128,6 +128,19 @@ const LiveSearchMapScreen = () => {
   }, [searchState]);
 
   const fetchNearbyPlayers = async (lat: number, lng: number) => {
+    // Sync location to backend
+    try {
+      await ApiService.users.updateProfile({
+        location: {
+          type: 'Point',
+          coordinates: [lng, lat],
+          address: userAddress || 'Current Location'
+        }
+      });
+    } catch (error: any) {
+      console.log('Location sync error:', error.message);
+    }
+
     try {
       const response = await ApiService.users.getNearby({
         lat,

@@ -59,14 +59,18 @@ const checkRedisHealth = async () => {
   }
 };
 
-/**
- * Measure MongoDB operation latency
- * @returns {Promise<number>} Latency in milliseconds
- */
 const measureMongoLatency = async () => {
-  const startTime = Date.now();
-  await mongoose.connection.db.admin().ping();
-  return Date.now() - startTime;
+  try {
+    if (!mongoose.connection.db) {
+      return 0;
+    }
+    const startTime = Date.now();
+    await mongoose.connection.db.admin().ping();
+    return Date.now() - startTime;
+  } catch (error) {
+    logger.error('Error measuring MongoDB latency:', error);
+    return 0;
+  }
 };
 
 /**
@@ -75,7 +79,7 @@ const measureMongoLatency = async () => {
  */
 const getHealthMetrics = async () => {
   const mongoHealth = await checkMongoHealth();
-  
+
   // Make Redis check non-blocking - don't wait for it
   let redisHealth;
   try {

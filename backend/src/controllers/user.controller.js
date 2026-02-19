@@ -18,8 +18,20 @@ exports.getNearbyPlayers = async (req, res, next) => {
     const { lat, lng, distance = 5, game, skill, availability, date, time } = req.query;
     const userId = req.user.id;
 
+    // Robust type conversion
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+    const maxDistance = parseFloat(distance);
+
+    if (isNaN(latitude) || isNaN(longitude)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide valid latitude and longitude'
+      });
+    }
+
     // Convert distance to radians for MongoDB geospatial queries
-    const radiusInRadians = distance / 6378.1; // Earth's radius in km
+    const radiusInRadians = maxDistance / 6378.1; // Earth's radius in km
 
     // Build query
     const query = {
@@ -29,7 +41,7 @@ exports.getNearbyPlayers = async (req, res, next) => {
       'location.coordinates': {
         $geoWithin: {
           $centerSphere: [
-            [parseFloat(lng), parseFloat(lat)],
+            [longitude, latitude],
             radiusInRadians
           ]
         }
@@ -42,7 +54,7 @@ exports.getNearbyPlayers = async (req, res, next) => {
     }
 
     if (skill) {
-      query['preferences.skillLevel'] = skill;
+      query['preferences.skillLevel'] = skill.toLowerCase();
     }
 
     if (availability === 'true') {
@@ -57,21 +69,29 @@ exports.getNearbyPlayers = async (req, res, next) => {
     const usersWithScores = users.map(user => {
       let score = 0;
 
+      // Safety check for location
+      if (!user.location || !user.location.coordinates || user.location.coordinates.length < 2) {
+        return null;
+      }
+
       // Distance factor (closer is better)
       const userLat = user.location.coordinates[1];
       const userLng = user.location.coordinates[0];
-      const dist = calculateDistance(lat, lng, userLat, userLng);
+      const dist = calculateDistance(latitude, longitude, userLat, userLng);
       score += Math.max(0, 100 - (dist * 10)); // Up to 100 points for distance
 
       // Game compatibility
-      if (game && user.preferences.favoriteGames.includes(game)) {
-        score += 30;
+      if (game && user.preferences?.favoriteGames && Array.isArray(user.preferences.favoriteGames)) {
+        if (user.preferences.favoriteGames.includes(game)) {
+          score += 30;
+        }
       }
 
       // Time compatibility
-      if (time && user.preferences.preferredPlayTime &&
-        user.preferences.preferredPlayTime.some(t => t.toLowerCase() === time.toLowerCase())) {
-        score += 40;
+      if (time && user.preferences?.preferredPlayTime && Array.isArray(user.preferences.preferredPlayTime)) {
+        if (user.preferences.preferredPlayTime.some(t => t.toLowerCase() === time.toLowerCase())) {
+          score += 40;
+        }
       }
 
       // Trust score factor
@@ -79,10 +99,10 @@ exports.getNearbyPlayers = async (req, res, next) => {
 
       return {
         ...user.toObject(),
-        distance: dist, // Now properly returning the distance
+        distance: parseFloat(dist.toFixed(2)), // Now properly returning the distance
         matchScore: Math.min(score, 100)
       };
-    });
+    }).filter(u => u !== null);
 
     // Sort by match score
     usersWithScores.sort((a, b) => b.matchScore - a.matchScore);
@@ -350,7 +370,7 @@ exports.getUserProfile = exports.getUserProfile;
 
 exports.updateUserProfile = async (req, res, next) => {
   try {
-    const allowedUpdates = ['name', 'email', 'mobile', 'location', 'preferences'];
+    const allowedUpdates = ['name', 'email', 'mobile', 'location', 'preferences', 'profile'];
     const updates = Object.keys(req.body);
     const isValidOperation = updates.every(update => allowedUpdates.includes(update));
 
@@ -361,8 +381,8 @@ exports.updateUserProfile = async (req, res, next) => {
       });
     }
 
-    // Use a more robust update for nested objects if preferences are provided
-    let updateData = req.body;
+    // Use a more robust update for nested objects if preferences or profile are provided
+    let updateData = { ...req.body };
     let query = { _id: req.user.id };
     let options = { new: true, runValidators: true };
 
@@ -373,6 +393,15 @@ exports.updateUserProfile = async (req, res, next) => {
         updateData[`preferences.${key}`] = prefs[key];
       });
       delete updateData.preferences;
+    }
+
+    if (req.body.profile) {
+      // Flatten profile to avoid overwriting the whole object
+      const prof = req.body.profile;
+      Object.keys(prof).forEach(key => {
+        updateData[`profile.${key}`] = prof[key];
+      });
+      delete updateData.profile;
     }
 
     const user = await User.findOneAndUpdate(

@@ -12,16 +12,16 @@ const app = express();
 
 // Initialize Sentry (only if DSN is provided)
 if (process.env.SENTRY_DSN && process.env.SENTRY_DSN !== 'your_sentry_dsn') {
-Sentry.init({
-  dsn: process.env.SENTRY_DSN,
-  integrations: [
-    new Sentry.Integrations.Http({ tracing: true }),
-    new Sentry.Integrations.Express({ app }),
-    // new ProfilingIntegration(), // Disabled due to module issues
-  ],
-  tracesSampleRate: 1.0,
-  // profilesSampleRate: 1.0, // Disabled
-});
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    integrations: [
+      new Sentry.Integrations.Http({ tracing: true }),
+      new Sentry.Integrations.Express({ app }),
+      // new ProfilingIntegration(), // Disabled due to module issues
+    ],
+    tracesSampleRate: 1.0,
+    // profilesSampleRate: 1.0, // Disabled
+  });
 }
 
 // Import routes
@@ -35,7 +35,16 @@ const orderRoutes = require('./routes/order.routes');
 const deliveryRoutes = require('./routes/delivery.routes');
 const bookingRoutes = require('./routes/booking.routes');
 const nearbyPlayersRoutes = require('./routes/nearby-players.routes');
-const apiRoutes = require('./routes/api.routes');
+const bannerRoutes = require('./routes/banner.routes');
+const adRoutes = require('./routes/ad.routes');
+const venueRoutes = require('./routes/venue.routes');
+const storeRoutes = require('./routes/store.routes');
+const walletRoutes = require('./routes/wallet.routes');
+const reviewRoutes = require('./routes/review.routes');
+const notificationRoutes = require('./routes/notification.routes');
+const matchRoutes = require('./routes/match.routes');
+const supportRoutes = require('./routes/support.routes');
+const achievementRoutes = require('./routes/achievement.routes');
 const documentVerificationRoutes = require('./routes/document.verification.routes');
 const vehicleVerificationRoutes = require('./routes/vehicle.verification.routes');
 const bankVerificationRoutes = require('./routes/bank.verification.routes');
@@ -47,8 +56,8 @@ const errorHandler = require('./middleware/error');
 
 // Sentry request handler must be the first middleware (only if Sentry is initialized)
 if (process.env.SENTRY_DSN && process.env.SENTRY_DSN !== 'your_sentry_dsn') {
-app.use(Sentry.Handlers.requestHandler());
-app.use(Sentry.Handlers.tracingHandler());
+  app.use(Sentry.Handlers.requestHandler());
+  app.use(Sentry.Handlers.tracingHandler());
 }
 
 // Security middleware
@@ -80,7 +89,16 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/nearby-players', nearbyPlayersRoutes);
-app.use('/api', apiRoutes);
+app.use('/api/banners', bannerRoutes);
+app.use('/api/ads', adRoutes);
+app.use('/api/venues', venueRoutes);
+app.use('/api/stores', storeRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/matches', matchRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/achievements', achievementRoutes);
 app.use('/api/verification', documentVerificationRoutes);
 app.use('/api/vehicle-verification', vehicleVerificationRoutes);
 app.use('/api/bank-verification', bankVerificationRoutes);
@@ -114,7 +132,7 @@ app.use((req, res) => {
 
 // Error handling middleware
 if (process.env.SENTRY_DSN && process.env.SENTRY_DSN !== 'your_sentry_dsn') {
-app.use(Sentry.Handlers.errorHandler());
+  app.use(Sentry.Handlers.errorHandler());
 }
 app.use(errorHandler);
 

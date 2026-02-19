@@ -10,22 +10,33 @@ mongoose.connect(process.env.MONGODB_URI)
     process.exit(1);
   });
 
-// Define User Schema (simplified)
+// Define User Schema (matching real model)
 const userSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  password: String,
-  phone: String,
-  role: { type: String, default: 'player' },
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  mobile: { type: String, unique: true },
+  role: { type: String, enum: ['user', 'partner', 'admin'], default: 'user' },
+  status: { type: String, enum: ['active', 'inactive', 'pending'], default: 'active' },
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      index: '2dsphere'
+    },
+    address: String,
+    city: String
+  },
+  preferences: {
+    favoriteGames: [String],
+    skillLevel: String
+  },
   coins: { type: Number, default: 0 },
   topDays: { type: Number, default: 0 },
-  age: Number,
-  gender: String,
-  sport: String,
-  skillLevel: String,
-  favoriteGames: [String],
-  achievements: [String],
-  isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -61,91 +72,109 @@ const sampleUsers = [
     name: 'Rajesh Kumar',
     email: 'rajesh@playindia.com',
     password: 'password123',
-    phone: '+91 9876543210',
-    role: 'player',
+    mobile: '9876543210',
+    role: 'user',
+    status: 'active',
     coins: 1500,
     topDays: 15,
-    age: 25,
-    gender: 'Male',
-    sport: 'Cricket',
-    skillLevel: 'Advanced',
-    favoriteGames: ['Cricket', 'Football'],
-    achievements: ['Tournament Champion 2025', 'Top Scorer']
+    location: {
+      type: 'Point',
+      coordinates: [72.8789, 19.0751] // Longitude, Latitude
+    },
+    preferences: {
+      favoriteGames: ['Cricket', 'Football'],
+      skillLevel: 'advanced'
+    }
   },
   {
     name: 'Priya Sharma',
     email: 'priya@playindia.com',
     password: 'password123',
-    phone: '+91 9876543211',
-    role: 'player',
+    mobile: '9876543211',
+    role: 'user',
+    status: 'active',
     coins: 1350,
     topDays: 8,
-    age: 23,
-    gender: 'Female',
-    sport: 'Badminton',
-    skillLevel: 'Intermediate',
-    favoriteGames: ['Badminton', 'Tennis'],
-    achievements: ['Regional Champion']
+    location: {
+      type: 'Point',
+      coordinates: [72.8760, 19.0770]
+    },
+    preferences: {
+      favoriteGames: ['Badminton', 'Tennis'],
+      skillLevel: 'intermediate'
+    }
   },
   {
     name: 'Amit Patel',
     email: 'amit@playindia.com',
     password: 'password123',
-    phone: '+91 9876543212',
-    role: 'player',
+    mobile: '9876543212',
+    role: 'user',
+    status: 'active',
     coins: 1200,
     topDays: 5,
-    age: 28,
-    gender: 'Male',
-    sport: 'Football',
-    skillLevel: 'Advanced',
-    favoriteGames: ['Football', 'Hockey'],
-    achievements: ['Best Defender 2025']
+    location: {
+      type: 'Point',
+      coordinates: [72.8805, 19.0745]
+    },
+    preferences: {
+      favoriteGames: ['Football', 'Hockey'],
+      skillLevel: 'advanced'
+    }
   },
   {
     name: 'Sneha Reddy',
     email: 'sneha@playindia.com',
     password: 'password123',
-    phone: '+91 9876543213',
-    role: 'player',
+    mobile: '9876543213',
+    role: 'user',
+    status: 'active',
     coins: 1100,
     topDays: 3,
-    age: 22,
-    gender: 'Female',
-    sport: 'Tennis',
-    skillLevel: 'Intermediate',
-    favoriteGames: ['Tennis', 'Badminton'],
-    achievements: ['State Level Winner']
+    location: {
+      type: 'Point',
+      coordinates: [72.8720, 19.0790]
+    },
+    preferences: {
+      favoriteGames: ['Tennis', 'Badminton'],
+      skillLevel: 'intermediate'
+    }
   },
   {
     name: 'Vikram Singh',
     email: 'vikram@playindia.com',
     password: 'password123',
-    phone: '+91 9876543214',
-    role: 'player',
+    mobile: '9876543214',
+    role: 'user',
+    status: 'active',
     coins: 980,
     topDays: 2,
-    age: 26,
-    gender: 'Male',
-    sport: 'Basketball',
-    skillLevel: 'Beginner',
-    favoriteGames: ['Basketball', 'Volleyball'],
-    achievements: ['Rising Star']
+    location: {
+      type: 'Point',
+      coordinates: [72.8825, 19.0735]
+    },
+    preferences: {
+      favoriteGames: ['Basketball', 'Volleyball'],
+      skillLevel: 'beginner'
+    }
   },
   {
     name: 'Test User',
     email: 'test@playindia.com',
     password: 'password123',
-    phone: '+91 9999999999',
-    role: 'player',
+    mobile: '9999999999',
+    role: 'user',
+    status: 'active',
     coins: 650,
     topDays: 0,
-    age: 24,
-    gender: 'Male',
-    sport: 'Cricket',
-    skillLevel: 'Intermediate',
-    favoriteGames: ['Cricket', 'Football', 'Badminton'],
-    achievements: ['First Tournament Win', 'Top 10 Player']
+    location: {
+      type: 'Point',
+      coordinates: [72.8777, 19.0760]
+    },
+    preferences: {
+      favoriteGames: ['Cricket', 'Football', 'Badminton'],
+      skillLevel: 'intermediate'
+    }
   }
 ];
 
@@ -248,10 +277,10 @@ async function seedDatabase() {
         return { ...user, password: hashedPassword };
       })
     );
-    
+
     const createdUsers = await User.insertMany(usersToInsert);
     console.log(`✅ Created ${createdUsers.length} users`);
-    
+
     // Display user credentials
     console.log('\n📝 User Credentials:');
     sampleUsers.forEach(user => {
@@ -264,7 +293,7 @@ async function seedDatabase() {
       ...tournament,
       organizer: createdUsers[index % createdUsers.length]._id
     }));
-    
+
     const createdTournaments = await Tournament.insertMany(tournamentsToInsert);
     console.log(`✅ Created ${createdTournaments.length} tournaments\n`);
 
@@ -273,12 +302,12 @@ async function seedDatabase() {
     console.log(`   ✅ Users: ${createdUsers.length}`);
     console.log(`   ✅ Tournaments: ${createdTournaments.length}`);
     console.log(`   ✅ Total Documents: ${createdUsers.length + createdTournaments.length}`);
-    
+
     console.log('\n🎉 Database seeded successfully!');
     console.log('\n💡 Test Login Credentials:');
     console.log('   Email: test@playindia.com');
     console.log('   Password: password123');
-    
+
     process.exit(0);
   } catch (error) {
     console.error('❌ Error seeding database:', error);

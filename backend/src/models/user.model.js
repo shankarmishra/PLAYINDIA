@@ -32,7 +32,7 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Please provide a password'],
     minlength: [8, 'Password must be at least 8 characters long'],
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         // Password must contain at least one uppercase letter, one lowercase letter, one number and one special character
         return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/])[A-Za-z\d@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/]{8,}$/.test(v);
       },
@@ -107,7 +107,10 @@ const userSchema = new mongoose.Schema({
     type: String
   }],
   preferences: {
-    favoriteGames: [String],
+    favoriteGames: {
+      type: [String],
+      default: []
+    },
     skillLevel: {
       type: String,
       enum: ['beginner', 'intermediate', 'advanced']
@@ -115,7 +118,10 @@ const userSchema = new mongoose.Schema({
     age: Number,
     ageGroup: String,
     city: String,
-    preferredPlayTime: [String], // ['morning', 'evening', 'weekend']
+    preferredPlayTime: {
+      type: [String],
+      default: []
+    }, // ['morning', 'evening', 'weekend']
     distancePreference: {
       type: Number,
       default: 5 // km
@@ -281,7 +287,7 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   // Only hash the password if it has been modified (or is new)
   if (!this.isModified('password')) return next();
 
@@ -291,7 +297,7 @@ userSchema.pre('save', async function(next) {
 });
 
 // Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 

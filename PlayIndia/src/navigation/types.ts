@@ -24,4 +24,8 @@ export type UserTabParamList = {
     PlayersRank: undefined;
     EditProfile: undefined;
     Bookings: undefined;
+    Security: undefined;
+    About: undefined;
+    Terms: undefined;
+    PrivacyPolicy: undefined;
 };

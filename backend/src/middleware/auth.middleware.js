@@ -7,7 +7,7 @@ const config = require('../config');
 const authenticate = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
-    
+
     if (!token) {
       return res.status(401).json({
         success: false,
@@ -16,7 +16,7 @@ const authenticate = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, config.jwtSecret);
-    
+
     // Check if user exists based on role
     let user;
     if (decoded.userType === 'admin') {
@@ -43,7 +43,7 @@ const authenticate = async (req, res, next) => {
     req.user = user;
     req.userId = decoded.id;
     req.userType = decoded.userType;
-    
+
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
@@ -52,14 +52,14 @@ const authenticate = async (req, res, next) => {
         message: 'Invalid token.'
       });
     }
-    
+
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
         message: 'Token expired.'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       message: 'Internal server error during authentication.'
@@ -83,12 +83,12 @@ const authorize = (...roles) => {
       // Check if any of the admin roles match the required roles
       const adminRoles = ['super_admin', 'admin', 'moderator', 'support_agent', 'content_manager'];
       const userRole = req.user.role || 'admin';
-      
+
       // If 'admin' is in required roles, allow any admin userType
       if (roles.includes('admin') && adminRoles.includes(userRole)) {
         return next();
       }
-      
+
       // If specific admin role is required, check if user has that role
       if (roles.includes(userRole)) {
         return next();
@@ -137,8 +137,41 @@ const checkUserStatus = async (req, res, next) => {
   }
 };
 
+// Optional authentication middleware
+const authenticateOptional = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return next();
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, config.jwtSecret);
+
+    // Check if user exists based on role
+    let user;
+    if (decoded.userType === 'admin') {
+      user = await Admin.findById(decoded.id).select('-password');
+    } else {
+      user = await User.findById(decoded.id).select('-password');
+    }
+
+    if (user && user.status !== 'inactive' && user.status !== 'suspended') {
+      req.user = user;
+      req.userId = decoded.id;
+      req.userType = decoded.userType;
+    }
+
+    next();
+  } catch (error) {
+    // Just proceed without req.user for optional authentication
+    next();
+  }
+};
+
 module.exports = {
   authenticate,
+  authenticateOptional,
   authorize,
   checkUserStatus
 };

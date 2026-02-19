@@ -114,7 +114,7 @@ const NearbyPlayersMap = () => {
   const [radius, setRadius] = useState(5); // in KM
   const [players, setPlayers] = useState(mockPlayers);
   const [loading, setLoading] = useState(true);
-  const [locationPermission, setLocationPermission] = useState(false);
+  const [locationPermission, setPermissionPermission] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [updatingLocation, setUpdatingLocation] = useState(false);
   const [userAddress, setUserAddress] = useState<string>('');
@@ -169,7 +169,7 @@ const NearbyPlayersMap = () => {
       return;
     }
 
-    setLocationPermission(true);
+    setPermissionPermission(true);
     setUpdatingLocation(true);
 
     GeolocationSafe.getCurrentPosition(
@@ -183,9 +183,12 @@ const NearbyPlayersMap = () => {
 
         // Update location on backend
         try {
-          await ApiService.post(`${API_BASE_URL}/api/locations/update`, {
-            lat: latitude,
-            lng: longitude,
+          await ApiService.users.updateProfile({
+            location: {
+              type: 'Point',
+              coordinates: [longitude, latitude],
+              address: address || ''
+            }
           });
         } catch (error: any) {
           // Silently fail - location will still work locally
@@ -256,7 +259,7 @@ const NearbyPlayersMap = () => {
       const params: any = {
         lat: currentLat,
         lng: currentLng,
-        radius: radius * 1000, // Convert to meters
+        distance: radius, // Using radius directly as distance in KM
       };
 
       if (filters.game) params.game = filters.game;
@@ -271,8 +274,8 @@ const NearbyPlayersMap = () => {
           name: player.name || 'Unknown Player',
           sport: player.preferences?.favoriteGames?.[0] || filters.game || 'General',
           skillLevel: player.preferences?.skillLevel || 'Intermediate',
-          distance: player.distance ? `${(player.distance / 1000).toFixed(1)} km` : 'N/A',
-          distanceMeters: player.distance || 0,
+          distance: player.distance ? `${player.distance.toFixed(1)} km` : 'N/A', // Distance is already in KM
+          distanceMeters: (player.distance || 0) * 1000,
           availability: player.availability || 'Available',
           rating: player.trustScore ? (player.trustScore / 20).toFixed(1) : '4.5',
           avatar:
@@ -767,7 +770,7 @@ const NearbyPlayersMap = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: theme.colors.background.tertiary,
   },
   topBar: {
     flexDirection: 'row',
@@ -793,7 +796,7 @@ const styles = StyleSheet.create({
   radiusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: theme.colors.background.tertiary,
     borderRadius: 20,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -821,7 +824,7 @@ const styles = StyleSheet.create({
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: theme.colors.background.tertiary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1082,7 +1085,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   gameChip: {
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: theme.colors.background.tertiary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1130,7 +1133,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.accent.neonGreen,
   },
   chatActionButton: {
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: theme.colors.background.tertiary,
     borderWidth: 1,
     borderColor: theme.colors.ui.border,
   },
@@ -1185,7 +1188,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   timeInput: {
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: theme.colors.background.tertiary,
     padding: 12,
     borderRadius: 12,
     fontSize: 16,

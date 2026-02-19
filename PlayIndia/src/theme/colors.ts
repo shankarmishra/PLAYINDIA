@@ -33,6 +33,7 @@ export const colors = {
     mutedGreen: '#2E7D32',
     card: '#FFFFFF',
     tab: '#FFFFFF',
+    tertiary: '#F3F4F6',
     overlay: 'rgba(27, 94, 32, 0.95)',
   },
   // Text Colors
