@@ -236,14 +236,14 @@ const productSchema = new mongoose.Schema({
 // Indexes for efficient queries
 productSchema.index({ storeId: 1 });
 productSchema.index({ category: 1 });
-productSchema.index({ sku: 1, unique: true });
+// sku already has unique index via schema definition
 productSchema.index({ name: 'text', description: 'text' });
 productSchema.index({ price: 1 });
 productSchema.index({ 'ratings.average': 1 });
 productSchema.index({ availability: 1 });
 productSchema.index({ features: 1 });
 productSchema.index({ 'inventory.quantity': 1 });
-productSchema.index({ 'seo.slug': 1, unique: true });
+// seo.slug already has unique index via schema definition
 productSchema.index({ 'analytics.revenue': -1 });
 
 module.exports = mongoose.model('Product', productSchema);

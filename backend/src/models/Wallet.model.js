@@ -89,7 +89,8 @@ const walletSchema = new mongoose.Schema({
 });
 
 // Indexes for efficient queries
-walletSchema.index({ userId: 1 });
+// userId already indexed in schema
+// walletSchema.index({ userId: 1 });
 walletSchema.index({ balance: 1 });
 walletSchema.index({ 'transactions.transactionDate': -1 });
 walletSchema.index({ 'transactions.type': 1 });

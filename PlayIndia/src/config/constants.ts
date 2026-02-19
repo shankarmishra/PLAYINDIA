@@ -4,8 +4,8 @@
  */
 
 // API Base URL
-// export const API_BASE_URL = 'https://playindia-3.onrender.com'; // Production backend
-export const API_BASE_URL = 'http://10.0.2.2:5000'; // Local backend for Android Emulator
+export const API_BASE_URL = 'https://playindia-3.onrender.com'; // Production backend
+// export const API_BASE_URL = 'http://192.168.0.146:5000'; // Local backend (Works for Emulator & Physical Device)
 
 // API Endpoints
 export const API_ENDPOINTS = {

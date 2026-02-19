@@ -217,14 +217,15 @@ const orderSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt timestamp before saving
-orderSchema.pre('save', function(next) {
+orderSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
 
 // Indexes for efficient queries
-orderSchema.index({ orderId: 1, unique: true });
-orderSchema.index({ userId: 1 });
+// orderId already has unique index via schema definition
+// userId already indexed in schema
+// orderSchema.index({ userId: 1 });
 orderSchema.index({ storeId: 1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ 'shipping.address.coordinates': '2dsphere' });

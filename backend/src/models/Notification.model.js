@@ -91,14 +91,15 @@ const notificationSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt timestamp before saving
-notificationSchema.pre('save', function(next) {
+notificationSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
 
 // Indexes for efficient queries
-notificationSchema.index({ notificationId: 1, unique: true });
-notificationSchema.index({ userId: 1 });
+// notificationId already has unique index via schema definition
+// userId already indexed in schema
+// notificationSchema.index({ userId: 1 });
 notificationSchema.index({ type: 1 });
 notificationSchema.index({ category: 1 });
 notificationSchema.index({ read: 1 });

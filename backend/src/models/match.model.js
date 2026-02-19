@@ -234,7 +234,7 @@ const matchSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt timestamp before saving
-matchSchema.pre('save', function(next) {
+matchSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
@@ -245,9 +245,8 @@ matchSchema.index({ 'teams.team1': 1 });
 matchSchema.index({ 'teams.team2': 1 });
 matchSchema.index({ status: 1 });
 matchSchema.index({ 'schedule.date': 1 });
-matchSchema.index({ 'location.coordinates': '2dsphere' });
 matchSchema.index({ createdAt: -1 });
-matchSchema.index({ matchNumber: 1 });
+// matchNumber already has unique index via schema definition
 matchSchema.index({ 'aiAnalysis.enabled': 1 });
 matchSchema.index({ 'broadcast.enabled': 1 });
 matchSchema.index({ 'sponsorship.enabled': 1 });

@@ -274,13 +274,15 @@ bookingSchema.pre('save', function (next) {
 });
 
 // Indexes for efficient queries
-bookingSchema.index({ bookingId: 1, unique: true });
-bookingSchema.index({ userId: 1 });
+// bookingId already has unique index via schema definition
+// userId already indexed in schema
+// bookingSchema.index({ userId: 1 });
 bookingSchema.index({ coachId: 1 });
 bookingSchema.index({ coachProfileId: 1 });
 bookingSchema.index({ status: 1 });
 bookingSchema.index({ 'schedule.date': 1 });
-bookingSchema.index({ 'location.coordinates': '2dsphere' });
+// location.coordinates already has 2dsphere index via schema definition
+// bookingSchema.index({ 'location.coordinates': '2dsphere' });
 bookingSchema.index({ createdAt: -1 });
 bookingSchema.index({ 'schedule.date': 1, 'schedule.startTime': 1 });
 bookingSchema.index({ 'aiFeatures.enabled': 1 });

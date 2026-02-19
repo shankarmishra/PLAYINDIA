@@ -112,13 +112,13 @@ const reviewSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt timestamp before saving
-reviewSchema.pre('save', function(next) {
+reviewSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
 
 // Indexes for efficient queries
-reviewSchema.index({ reviewId: 1, unique: true });
+// reviewId already has unique index via schema definition
 reviewSchema.index({ 'reviewer.userId': 1 });
 reviewSchema.index({ 'reviewee.userId': 1 });
 reviewSchema.index({ rating: 1 });
@@ -126,6 +126,7 @@ reviewSchema.index({ service: 1 });
 reviewSchema.index({ status: 1 });
 reviewSchema.index({ verified: 1 });
 reviewSchema.index({ createdAt: -1 });
-reviewSchema.index({ 'location.coordinates': '2dsphere' });
+// location.coordinates already has 2dsphere index via schema definition
+// reviewSchema.index({ 'location.coordinates': '2dsphere' });
 
 module.exports = mongoose.model('Review', reviewSchema);

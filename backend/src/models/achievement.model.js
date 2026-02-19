@@ -98,13 +98,13 @@ const achievementSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt timestamp before saving
-achievementSchema.pre('save', function(next) {
+achievementSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
 
 // Indexes for efficient queries
-achievementSchema.index({ achievementId: 1, unique: true });
+// achievementId already has unique index via schema definition
 achievementSchema.index({ category: 1 });
 achievementSchema.index({ type: 1 });
 achievementSchema.index({ level: 1 });

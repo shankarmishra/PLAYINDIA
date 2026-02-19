@@ -293,7 +293,7 @@ const tournamentSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt timestamp before saving
-tournamentSchema.pre('save', function(next) {
+tournamentSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
@@ -303,12 +303,12 @@ tournamentSchema.index({ organizer: 1 });
 tournamentSchema.index({ category: 1 });
 tournamentSchema.index({ level: 1 });
 tournamentSchema.index({ status: 1 });
-tournamentSchema.index({ 'location.coordinates': '2dsphere' });
+// location.coordinates already has 2dsphere index via schema definition
 tournamentSchema.index({ 'dates.tournamentStart': 1 });
 tournamentSchema.index({ 'dates.registrationEnd': 1 });
 tournamentSchema.index({ createdAt: -1 });
 tournamentSchema.index({ 'brackets.type': 1 });
 tournamentSchema.index({ 'analytics.revenue': 1 });
 tournamentSchema.index({ 'prizeDistribution.claimed': 1 });
-
+// location.coordinates already has 2dsphere index via schema definition
 module.exports = mongoose.model('Tournament', tournamentSchema);

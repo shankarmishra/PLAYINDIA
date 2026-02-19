@@ -214,7 +214,7 @@ const teamSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt timestamp before saving
-teamSchema.pre('save', function(next) {
+teamSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
@@ -224,11 +224,10 @@ teamSchema.index({ owner: 1 });
 teamSchema.index({ captain: 1 });
 teamSchema.index({ sport: 1 });
 teamSchema.index({ name: 'text' });
-teamSchema.index({ 'location.coordinates': '2dsphere' });
 teamSchema.index({ isActive: 1 });
 teamSchema.index({ createdAt: -1 });
 teamSchema.index({ 'aiAnalysis.enabled': 1 });
 teamSchema.index({ 'analytics.fanEngagement': 1 });
 teamSchema.index({ 'sponsorships.paymentStatus': 1 });
-
+// location.coordinates already has 2dsphere index via schema definition
 module.exports = mongoose.model('Team', teamSchema);

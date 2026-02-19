@@ -404,6 +404,11 @@ exports.updateUserProfile = async (req, res, next) => {
       delete updateData.profile;
     }
 
+    // Ensure age is synced if provided at top level or in preferences
+    if (req.body.age) {
+      updateData['preferences.age'] = req.body.age;
+    }
+
     const user = await User.findOneAndUpdate(
       query,
       { $set: updateData },

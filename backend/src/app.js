@@ -69,6 +69,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors());
 
 // Logging
+const requestLogger = require('./middleware/requestLogger');
+app.use(requestLogger);
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
 
 // Rate limiting

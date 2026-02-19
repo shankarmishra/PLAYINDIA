@@ -152,13 +152,13 @@ const adminSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-adminSchema.pre('save', async function(next) {
+adminSchema.pre('save', async function (next) {
   // Only hash the password if it has been modified (or is new)
   if (!this.isModified('password')) {
     this.updatedAt = Date.now();
     return next();
   }
-  
+
   // Hash the password with cost of 12
   this.password = await bcrypt.hash(this.password, 12);
   this.updatedAt = Date.now();
@@ -166,14 +166,13 @@ adminSchema.pre('save', async function(next) {
 });
 
 // Compare password method
-adminSchema.methods.comparePassword = async function(candidatePassword) {
+adminSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
 // Indexes for efficient queries
-adminSchema.index({ email: 1 });
-adminSchema.index({ userId: 1 });
-adminSchema.index({ role: 1 });
+// email already has unique index via schema definition
+// role already indexed in schema
 adminSchema.index({ status: 1 });
 adminSchema.index({ isActive: 1 });
 adminSchema.index({ lastLogin: -1 });

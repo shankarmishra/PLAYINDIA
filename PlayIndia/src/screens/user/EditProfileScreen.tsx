@@ -49,6 +49,7 @@ const EditProfileScreen = () => {
                     city: formData.city,
                     age: formData.age ? parseInt(formData.age) : undefined,
                 },
+                age: formData.age ? parseInt(formData.age) : undefined,
                 profile: {
                     ...user?.profile,
                     bio: formData.bio
@@ -90,7 +91,7 @@ const EditProfileScreen = () => {
                         <View style={styles.imageWrapper}>
                             <Image
                                 source={{ uri: user?.profileImage || 'https://cdn-icons-png.flaticon.com/512/1144/1144760.png' }}
-                                style={styles.profileImage}
+                                style={styles.profileImage as any}
                             />
                             <TouchableOpacity style={styles.cameraButton}>
                                 <Ionicons name="camera" size={20} color="#FFFFFF" />
@@ -188,6 +189,10 @@ const EditProfileScreen = () => {
     );
 };
 
+const neonGreen = '#2E7D32'; // Premium Active Green
+const softGreen = '#C8E6C9';
+const mutedGreen = '#66BB6A';
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -262,9 +267,6 @@ const styles = StyleSheet.create({
         color: '#1B5E20',
         marginBottom: 6,
     },
-    neonGreen: '#2E7D32', // Premium Active Green
-    softGreen: '#C8E6C9',
-    mutedGreen: '#66BB6A',
     input: {
         backgroundColor: '#FFFFFF',
         borderRadius: 12,

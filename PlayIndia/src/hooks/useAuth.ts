@@ -19,6 +19,7 @@ interface User {
   preferences: {
     favoriteGames: string[];
     skillLevel: 'beginner' | 'intermediate' | 'pro';
+    age?: number;
     ageGroup: string;
     city: string;
     preferredPlayTime: string[];
@@ -34,6 +35,18 @@ interface User {
       locationSharing: boolean;
       contactSharing: boolean;
     };
+  };
+  profile?: {
+    gender?: string;
+    dateOfBirth?: string;
+    city?: string;
+    bio?: string;
+    experience?: string;
+    preferredTime?: string;
+    availableDays?: string;
+    emergencyContact?: string;
+    preferredRadius?: number;
+    locationSharing?: boolean;
   };
   location?: {
     type: string;

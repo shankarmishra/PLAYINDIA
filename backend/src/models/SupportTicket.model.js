@@ -25,7 +25,7 @@ const supportTicketSchema = new mongoose.Schema({
   category: {
     type: String,
     enum: [
-      'account', 'payment', 'booking', 'order', 'delivery', 'coach', 'tournament', 
+      'account', 'payment', 'booking', 'order', 'delivery', 'coach', 'tournament',
       'technical', 'refund', 'verification', 'complaint', 'suggestion', 'other'
     ],
     required: true
@@ -121,14 +121,15 @@ const supportTicketSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt timestamp before saving
-supportTicketSchema.pre('save', function(next) {
+supportTicketSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
 
 // Indexes for efficient queries
-supportTicketSchema.index({ ticketId: 1, unique: true });
-supportTicketSchema.index({ userId: 1 });
+// ticketId already has unique index via schema definition
+// userId already indexed in schema
+// supportTicketSchema.index({ userId: 1 });
 supportTicketSchema.index({ status: 1 });
 supportTicketSchema.index({ category: 1 });
 supportTicketSchema.index({ priority: 1 });

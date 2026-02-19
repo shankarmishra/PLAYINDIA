@@ -112,6 +112,7 @@ exports.register = async (req, res, next) => {
       preferences: {
         favoriteGames: additionalData?.favoriteGames || [],
         skillLevel: (additionalData?.skillLevel || 'beginner').toLowerCase(),
+        age: additionalData?.age,
         notificationSettings: {
           push: additionalData?.notificationsEnabled ?? true,
           email: true,

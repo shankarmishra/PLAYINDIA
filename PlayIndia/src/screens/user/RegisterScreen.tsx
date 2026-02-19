@@ -44,6 +44,7 @@ interface RegisterFormData {
   darkMode: boolean;
   locationSharing: boolean;
   customSport: string;
+  age: string;
 }
 
 interface StepConfig {
@@ -80,6 +81,7 @@ const INITIAL_FORM_DATA: RegisterFormData = {
   darkMode: false,
   locationSharing: false,
   customSport: '',
+  age: '',
 };
 
 const AVAILABLE_SPORTS = [
@@ -152,6 +154,14 @@ const RegisterScreen: React.FC<Props> = React.memo(({ navigation }) => {
           newErrors.phone = 'Phone number is required';
         } else if (!validatePhone(formData.phone)) {
           newErrors.phone = 'Please enter a valid 10-digit mobile number (6-9)';
+        }
+        if (!formData.age.trim()) {
+          newErrors.age = 'Age is required';
+        } else {
+          const ageNum = parseInt(formData.age, 10);
+          if (isNaN(ageNum) || ageNum < 5 || ageNum > 100) {
+            newErrors.age = 'Please enter a valid age (5-100)';
+          }
         }
         break;
       }
@@ -389,6 +399,7 @@ const RegisterScreen: React.FC<Props> = React.memo(({ navigation }) => {
         preferredRadius: parseInt(formData.preferredRadius, 10) || 5,
         notificationsEnabled: formData.notificationsEnabled,
         locationSharing: formData.locationSharing,
+        age: parseInt(formData.age, 10) || 0,
       };
 
       const result = await register(
@@ -613,6 +624,40 @@ const RegisterScreen: React.FC<Props> = React.memo(({ navigation }) => {
                   editable={!isLoading}
                 />
               </View>
+            </View>
+
+            {/* Age */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>AGE *</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  !!errors.age && styles.inputWrapperError,
+                  focusedField === 'age' && styles.inputWrapperFocused,
+                ]}
+              >
+                <Icon
+                  name="calendar-outline"
+                  size={18}
+                  color="#4CAF50"
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 25"
+                  placeholderTextColor="#9E9E9E"
+                  value={formData.age}
+                  onChangeText={(text) => handleChange('age', text.replace(/[^0-9]/g, ''))}
+                  onFocus={() => handleFocus('age')}
+                  onBlur={handleBlur}
+                  keyboardType="numeric"
+                  maxLength={3}
+                  editable={!isLoading}
+                />
+              </View>
+              {errors.age && (
+                <Text style={styles.errorText}>{errors.age}</Text>
+              )}
             </View>
 
             {/* Navigation Buttons */}
@@ -1837,11 +1882,18 @@ const styles = StyleSheet.create({
   },
   stepButton: {
     flex: 1,
-    height: 50,
-    borderRadius: 12,
+    height: 56,
+    borderRadius: 16,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    paddingHorizontal: 0,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   primaryButton: {
     shadowColor: '#4CAF50',
@@ -1857,10 +1909,11 @@ const styles = StyleSheet.create({
   },
   buttonGradient: {
     flexDirection: 'row',
+    width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
   },
   buttonText: {
     color: '#FFF',
