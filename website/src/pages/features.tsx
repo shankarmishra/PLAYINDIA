@@ -77,7 +77,7 @@ const FeaturesPage = () => {
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
 
         <div className="relative z-10 max-w-7xl mx-auto text-center">
-          <h1 className="text-5xl md:text-7xl font-extrabold mb-8 tracking-tight">
+          <h1 className="text-5xl md:text-5xl font-extrabold mb-8 tracking-tight">
             Our <span className="text-red-500">Powerful</span> Features
           </h1>
           <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">

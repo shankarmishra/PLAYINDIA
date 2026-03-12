@@ -55,7 +55,21 @@ const SupportPage = () => {
       </Head>
 
       {/* Hero Section */}
-      <section className="relative py-20 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white overflow-hidden">
+
+      <section className="relative py-14 px-6 bg-gray-900 text-white overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-red-600/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
+        <div className="max-w-7xl mx-auto text-center relative z-10">
+          <h1 className="text-5xl md:text-5xl font-extrabold mb-8 tracking-tight">
+            How Can  <span className="text-red-500"> We  Help?</span>
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-300 max-w-8xl mx-auto font-light leading-relaxed">
+            Our specialized support team is ready to resolve your issues quickly and get you back in the game.
+          </p>
+        </div>
+      </section>
+      {/* <section className="relative py-20 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white overflow-hidden">
         <div className="absolute inset-0 bg-black opacity-30 z-0"></div>
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-red-600/20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
@@ -68,11 +82,9 @@ const SupportPage = () => {
           <h1 className="text-5xl md:text-6xl font-extrabold mb-6 tracking-tight">
             How Can We <span className="text-red-500">Help?</span>
           </h1>
-          <p className="text-xl md:text-2xl text-gray-200 max-w-3xl mx-auto font-light leading-relaxed">
-            Our specialized support team is ready to resolve your issues quickly and get you back in the game.
-          </p>
+
         </div>
-      </section>
+      </section> */}
 
       {/* Support Channels */}
       <section className="py-20 -mt-12 relative z-20 px-6">

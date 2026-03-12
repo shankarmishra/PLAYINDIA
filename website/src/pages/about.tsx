@@ -11,15 +11,10 @@ const AboutPage = () => {
       </Head>
 
       {/* Hero Section */}
-      <section className="relative py-15 px-10 overflow-hidden text-white">
-        <div className="absolute inset-0 z-0">
-          <img
-            src="https://lens.usercontent.google.com/banana?agsi=CmdnbG9iYWw6OjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAwZWI6MTo2Zjk2NmI5ZWZkZTBkMjdiOjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAxNmI0YjEwMzM2ODowMDA2NGMwZWI4N2RhOGVmEAI"
-            alt="About Sports"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black/80"></div>
-        </div>
+      <section className="relative py-14 px-6 bg-gray-900 text-white overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-red-600/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
         <div className="relative z-10 max-w-7xl mx-auto text-center">
           <h1 className="text-4xl md:text-4xl font-bold mb-6 text-red-500">About TeamUp India</h1>
           <p className="text-xl text-gray-200 max-w-2xl mx-auto font-medium">

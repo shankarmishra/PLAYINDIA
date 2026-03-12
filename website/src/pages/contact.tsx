@@ -45,24 +45,34 @@ const ContactPage = () => {
       </Head>
 
       {/* Hero Section */}
-      <section className="relative py-4 px-6 bg-slate-950 text-white overflow-hidden">
+
+      <section className="relative py-14 px-6 bg-gray-900 text-white overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-red-600/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
+        <div className="relative z-10 max-w-7xl mx-auto text-center">
+
+          <h1 className="text-4xl md:text-4xl font-bold mb-6 text-500">Get in <span className="text-red-400">Touch</span></h1>
+          <p className="text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto leading-relaxed font-medium">
+            Have questions? We're here to help. Reach out to our dedicated support team or explore partnership opportunities.
+          </p>
+
+        </div>
+      </section>
+
+      {/* <section className="relative py-4 px-6 bg-slate-950 text-white overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]"></div>
 
         <div className="relative z-10 max-w-7xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-4 py-1.5 text-indigo-400 text-sm font-medium mb-8">
-            <Sparkles className="w-4 h-4" />
-            <span>24/7 Support Available</span>
-          </div>
+         
           <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter">
             Get in <span className="bg-gradient-to-r from-indigo-400 to-blue-400 bg-clip-text text-transparent">Touch</span>
           </h1>
-          <p className="text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto leading-relaxed font-medium">
-            Have questions? We're here to help. Reach out to our dedicated support team or explore partnership opportunities.
-          </p>
+        
         </div>
-      </section>
+      </section> */}
 
       {/* Main Contact Section */}
       <section className="py-24 -mt-12 relative z-20">

@@ -23,7 +23,9 @@ const HowItWorksPage = () => {
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-red-600/20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
         <div className="max-w-7xl mx-auto text-center relative z-10">
-          <h1 className="text-5xl md:text-6xl font-extrabold mb-6 tracking-tight">How TeamUp India Works</h1>
+          <h1 className="text-5xl md:text-5xl font-extrabold mb-8 tracking-tight">
+            How <span className="text-red-500">Teamup India</span> work
+          </h1>
           <p className="text-xl md:text-2xl text-gray-200 max-w-3xl mx-auto font-light">
             Connecting the entire sports ecosystem in India — Simple, efficient, and effective.
           </p>
