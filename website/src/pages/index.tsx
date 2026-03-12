@@ -1,4 +1,3 @@
-import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 
@@ -11,20 +10,40 @@ const HomePage = () => {
       </Head>
 
       {/* Hero Section */}
-      <section className="py-20 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">Connect, Play & Grow with TeamUp India</h1>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-10">
+      <section className="relative h-[95vh] flex items-center justify-center overflow-hidden text-white">
+        {/* Video Background */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute z-0 w-auto min-w-full min-h-full max-w-none object-cover"
+        >
+          <source
+            src="https://assets.mixkit.co/videos/43479/43479-720.mp4"
+            type="video/mp4"
+          />
+          Your browser does not support the video tag.
+        </video>
+
+        {/* Overlay for better text readability */}
+        <div className="absolute z-10 w-full h-full bg-black/60"></div>
+
+        <div className="relative z-20 max-w-7xl mx-auto text-center px-6">
+          <h1 className="text-2xl md:text-3xl font-extrabold mb-6 tracking-tight">
+            Connect, Play & <span className="text-red-500">Grow</span> with TeamUp India
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-200 max-w-3xl mx-auto mb-10 leading-relaxed">
             The ultimate sports ecosystem connecting players, coaches, stores, and delivery partners across India
           </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link href="/coach/register" className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+          <div className="flex flex-col sm:flex-row justify-center gap-6">
+            <Link href="/coach/register" className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
               Register as Coach
             </Link>
-            <Link href="/store/register" className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+            <Link href="/store/register" className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
               Register as Store
             </Link>
-            <Link href="/delivery/register" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+            <Link href="/delivery/register" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
               Register as Delivery
             </Link>
           </div>
@@ -61,8 +80,8 @@ const HomePage = () => {
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">What is TeamUp India</h2>
           <div className="text-center max-w-3xl mx-auto">
             <p className="text-lg text-gray-700 mb-6">
-              TeamUp India is a comprehensive sports ecosystem that connects all stakeholders in the Indian sports community. 
-              We bridge the gap between players looking for coaches, stores selling sports equipment, and delivery partners 
+              TeamUp India is a comprehensive sports ecosystem that connects all stakeholders in the Indian sports community.
+              We bridge the gap between players looking for coaches, stores selling sports equipment, and delivery partners
               facilitating seamless transactions.
             </p>
             <p className="text-lg text-gray-700">
@@ -190,20 +209,33 @@ const HomePage = () => {
 
 
       {/* Call to Action */}
-      <section className="py-20 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Join TeamUp India?</h2>
-          <p className="text-xl text-gray-200 mb-10">
-            Whether you're a player, coach, store, or delivery partner, become part of India's premier sports ecosystem.
+      <section className="relative py-10 px-6 overflow-hidden">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&q=80&w=2000"
+            alt="Sports Background"
+            className="w-full h-full object-cover"
+          />
+          {/* Dark Overlay for readability */}
+          <div className="absolute inset-0 bg-black/70 bg-blend-multiply"></div>
+        </div>
+
+        <div className="relative z-10 max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl md:text-4xl font-black mb-6 text-white tracking-tight">
+            Ready to Join TeamUp India?
+          </h2>
+          <p className="text-xl md:text-2xl text-gray-200 mb-12 max-w-2xl mx-auto font-medium">
+            Whether you're a player, coach, store, or delivery partner, become part of India's premier sports ecosystem today.
           </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link href="/coach/register" className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+          <div className="flex flex-col sm:flex-row justify-center gap-7">
+            <Link href="/coach/register" className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-10 rounded-full transition duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(220,38,38,0.4)]">
               Register as Coach
             </Link>
-            <Link href="/store/register" className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+            <Link href="/store/register" className="bg-white hover:bg-gray-100 text-gray-900 font-bold py-4 px-10 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
               Register as Store
             </Link>
-            <Link href="/delivery/register" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+            <Link href="/delivery/register" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
               Register as Delivery
             </Link>
           </div>
@@ -211,21 +243,33 @@ const HomePage = () => {
       </section>
 
       {/* App Screenshots & Download Section */}
-      <section className="py-16 bg-white">
+      <section className="py-8 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Experience Our App</h2>
           <div className="flex flex-col lg:flex-row items-center gap-12">
             <div className="lg:w-1/2">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48" />
-                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48" />
-                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-48" />
+                <img
+                  src="https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&q=80&w=400"
+                  alt="App UI 1"
+                  className="rounded-xl w-full h-48 object-cover shadow-md hover:scale-105 transition-transform duration-300"
+                />
+                <img
+                  src="https://images.unsplash.com/photo-1526628953301-3e589a6a8b74?auto=format&fit=crop&q=80&w=400"
+                  alt="App UI 2"
+                  className="rounded-xl w-full h-48 object-cover shadow-md hover:scale-105 transition-transform duration-300"
+                />
+                <img
+                  src="https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&q=80&w=400"
+                  alt="App UI 3"
+                  className="rounded-xl w-full h-48 object-cover shadow-md hover:scale-105 transition-transform duration-300"
+                />
               </div>
             </div>
             <div className="lg:w-1/2 text-center lg:text-left">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Download Our Mobile App</h3>
               <p className="text-gray-700 mb-6">
-                Get the complete TeamUp India experience on your mobile device. Access coaches, book sessions, 
+                Get the complete TeamUp India experience on your mobile device. Access coaches, book sessions,
                 buy equipment, and connect with the sports community anytime, anywhere.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">

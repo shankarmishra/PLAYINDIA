@@ -9,11 +9,11 @@ interface LayoutProps {
   showNav?: boolean;
 }
 
-const Layout: React.FC<LayoutProps> = ({ 
-  children, 
-  title = 'TeamUp India - Sports Platform for Players, Coaches, Stores & Delivery', 
+const Layout: React.FC<LayoutProps> = ({
+  children,
+  title = 'TeamUp India - Sports Platform for Players, Coaches, Stores & Delivery',
   description = 'TeamUp India connects players, coaches, sports stores, and delivery partners in one comprehensive platform',
-  showNav = true 
+  showNav = true
 }) => {
   return (
     <div className="min-h-screen flex flex-col">
@@ -28,7 +28,7 @@ const Layout: React.FC<LayoutProps> = ({
           <div className="max-w-7xl mx-auto flex justify-between items-center">
             <div className="text-2xl font-bold text-red-500">TeamUp India</div>
             <nav className="hidden md:flex space-x-8">
-              <Link href="/" className="hover:text-red-400">Home</Link>
+              <Link href="/" className="hover:text-red-500">Home</Link>
               <Link href="/about" className="hover:text-red-400">About</Link>
               <Link href="/features" className="hover:text-red-400">Features</Link>
               <Link href="/how-it-works" className="hover:text-red-400">How It Works</Link>
@@ -84,6 +84,7 @@ const Layout: React.FC<LayoutProps> = ({
               <li><Link href="/help" className="hover:text-red-400">Help Center</Link></li>
               <li><Link href="/support" className="hover:text-red-400">Support Tickets</Link></li>
             </ul>
+
           </div>
         </div>
         <div className="max-w-7xl mx-auto mt-8 pt-6 border-t border-gray-700 text-center">

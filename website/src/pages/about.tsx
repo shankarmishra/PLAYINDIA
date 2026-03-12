@@ -11,35 +11,47 @@ const AboutPage = () => {
       </Head>
 
       {/* Hero Section */}
-      <section className="py-20 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">About TeamUp India</h1>
-          <p className="text-xl text-gray-200 max-w-3xl mx-auto">
+      <section className="relative py-15 px-10 overflow-hidden text-white">
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://lens.usercontent.google.com/banana?agsi=CmdnbG9iYWw6OjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAwZWI6MTo2Zjk2NmI5ZWZkZTBkMjdiOjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAxNmI0YjEwMzM2ODowMDA2NGMwZWI4N2RhOGVmEAI"
+            alt="About Sports"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/80"></div>
+        </div>
+        <div className="relative z-10 max-w-7xl mx-auto text-center">
+          <h1 className="text-4xl md:text-4xl font-bold mb-6 text-red-500">About TeamUp India</h1>
+          <p className="text-xl text-gray-200 max-w-2xl mx-auto font-medium">
             Connecting the sports ecosystem across India - Players, Coaches, Stores, and Delivery Partners
           </p>
         </div>
       </section>
 
       {/* Vision & Mission */}
-      <section className="py-16 bg-white">
+      <section className="py-15 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Vision</h2>
               <p className="text-lg text-gray-700 mb-6">
-                To create the most comprehensive sports ecosystem in India that connects all stakeholders in the sports industry - 
-                from grassroots players to professional coaches, from local sports stores to delivery partners ensuring seamless 
+                To create the most comprehensive sports ecosystem in India that connects all stakeholders in the sports industry -
+                from grassroots players to professional coaches, from local sports stores to delivery partners ensuring seamless
                 experiences for everyone involved.
               </p>
               <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Mission</h2>
               <p className="text-lg text-gray-700">
-                We are committed to making sports accessible, affordable, and enjoyable for everyone in India. 
-                By connecting players with the right coaches, stores with customers, and delivery partners with 
+                We are committed to making sports accessible, affordable, and enjoyable for everyone in India.
+                By connecting players with the right coaches, stores with customers, and delivery partners with
                 businesses, we're building a platform that enables growth, development, and success in the sports industry.
               </p>
             </div>
             <div className="flex justify-center">
-              <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-96" />
+              <img
+                src="https://lens.usercontent.google.com/banana?agsi=CmdnbG9iYWw6OjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAwZWI6MTpiZjRiMjg2NTcyNjA4ZjRmOjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAxNmI0YjEwMzM2ODowMDA2NGMwZThlNjc3MWJmEAI"
+                alt="Sports Vision"
+                className="rounded-xl w-full h-96 object-cover shadow-lg"
+              />
             </div>
           </div>
         </div>
@@ -82,39 +94,51 @@ const AboutPage = () => {
           <div className="space-y-12">
             <div className="flex flex-col md:flex-row items-center gap-8">
               <div className="md:w-1/3">
-                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-64" />
+                <img
+                  src="https://lens.usercontent.google.com/banana?agsi=CmdnbG9iYWw6OjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAwZWI6MTpkNzJhYjdjM2RkOWYxNzk2OjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAxNmI0YjEwMzM2ODowMDA2NGMwZWQ5YTM4ZDBmEAI"
+                  alt="Verified Profiles"
+                  className="rounded-xl w-full h-64 object-cover shadow-md"
+                />
               </div>
               <div className="md:w-2/3">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Verified Profiles</h3>
                 <p className="text-gray-700">
-                  All coaches, stores, and delivery partners on our platform are thoroughly verified to ensure 
-                  quality and trust. We check credentials, certifications, and conduct background verification 
+                  All coaches, stores, and delivery partners on our platform are thoroughly verified to ensure
+                  quality and trust. We check credentials, certifications, and conduct background verification
                   to provide a safe environment for everyone.
                 </p>
               </div>
             </div>
-            
+
             <div className="flex flex-col md:flex-row-reverse items-center gap-8">
               <div className="md:w-1/3">
-                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-64" />
+                <img
+                  src="https://lens.usercontent.google.com/banana?agsi=CmdnbG9iYWw6OjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAwZWI6MTphODAzZTZiYWY5MmNhNjMwOjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAxNmI0YjEwMzM2ODowMDA2NGMxNWQyNzI3ZjNmEAI"
+                  alt="Ecosystem"
+                  className="rounded-xl w-full h-74 object-cover shadow-md"
+                />
               </div>
               <div className="md:w-2/3">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Comprehensive Ecosystem</h3>
                 <p className="text-gray-700">
-                  Unlike other platforms that focus on a single aspect, TeamUp India connects all stakeholders 
+                  Unlike other platforms that focus on a single aspect, TeamUp India connects all stakeholders
                   in the sports ecosystem - players, coaches, stores, and delivery partners - in one unified platform.
                 </p>
               </div>
             </div>
-            
+
             <div className="flex flex-col md:flex-row items-center gap-8">
               <div className="md:w-1/3">
-                <div className="bg-gray-200 border-2 border-dashed rounded-xl w-full h-64" />
+                <img
+                  src="https://lens.usercontent.google.com/banana?agsi=CmdnbG9iYWw6OjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAwZWI6MTpmMGYzY2Y4OWE0YjBjY2FlOjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAxNmI0YjEwMzM2ODowMDA2NGMxNWVjZWQ5NDhmEAI"
+                  alt="Technology"
+                  className="rounded-xl w-full h-74 object-cover shadow-md"
+                />
               </div>
               <div className="md:w-2/3">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Technology-Driven Solutions</h3>
                 <p className="text-gray-700">
-                  We leverage advanced technology to match players with the right coaches, optimize delivery routes, 
+                  We leverage advanced technology to match players with the right coaches, optimize delivery routes,
                   and provide analytics for all stakeholders to grow their business effectively.
                 </p>
               </div>
@@ -129,10 +153,10 @@ const AboutPage = () => {
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Message from Our Founders</h2>
           <div className="max-w-3xl mx-auto">
             <p className="text-lg text-gray-700 italic mb-6">
-              "We started TeamUp India with a simple vision - to make sports accessible to everyone in India. 
-              Having experienced the challenges of finding the right coach, quality equipment, and reliable 
-              delivery services ourselves, we knew there had to be a better way. Today, we're proud to connect 
-              thousands of players, coaches, stores, and delivery partners across India, creating opportunities 
+              "We started TeamUp India with a simple vision - to make sports accessible to everyone in India.
+              Having experienced the challenges of finding the right coach, quality equipment, and reliable
+              delivery services ourselves, we knew there had to be a better way. Today, we're proud to connect
+              thousands of players, coaches, stores, and delivery partners across India, creating opportunities
               for growth and success in the sports industry."
             </p>
             <p className="text-gray-900 font-semibold">- The TeamUp India Founders</p>
@@ -145,8 +169,8 @@ const AboutPage = () => {
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Join Our Sports Ecosystem</h2>
           <p className="text-lg text-gray-700 mb-8">
-            Whether you're a player looking for coaching, a coach building your business, 
-            a store expanding your customer base, or a delivery partner looking for opportunities, 
+            Whether you're a player looking for coaching, a coach building your business,
+            a store expanding your customer base, or a delivery partner looking for opportunities,
             TeamUp India is the platform for you.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
